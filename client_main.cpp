@@ -32,13 +32,15 @@ public:
     m_svs.registerPrefix();
     
     // Create other thread to run
-    std::thread svs_thread([this] { m_svs.run(); });
+    std::thread thread_svs([this] { m_svs.run(); });
 
     // Accept user input data
-    printf("SVS publishes data\n");
+    printf("Accepting user input:\n");
+
+    // TODO: Read user input from stdout, print received msg to stdout
     m_svs.publishMsg("Hello World");
     
-    svs_thread.join();
+    thread_svs.join();
   }
 
 private:
