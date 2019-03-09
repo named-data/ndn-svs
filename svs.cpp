@@ -6,8 +6,14 @@
 namespace ndn {
 namespace svs {
 
+/**
+ * run() - Start event loop. Called by the application.
+ */
 void SVS::run() { m_face.processEvents(); }
 
+/**
+ * registerPrefix() - Called by the constructor.
+ */
 void SVS::registerPrefix() {
   m_face.setInterestFilter(InterestFilter(kSyncNotifyPrefix),
                            bind(&SVS::onSyncInterest, this, _2), nullptr);
@@ -15,6 +21,9 @@ void SVS::registerPrefix() {
                            bind(&SVS::onDataInterest, this, _2), nullptr);
 }
 
+/**
+ * publishMsg() - Public method called by application to send new msg.
+ */
 void SVS::publishMsg(const std::string &msg) {
 
   printf("Publishing data: %s\n", msg.c_str());
@@ -34,11 +43,9 @@ void SVS::publishMsg(const std::string &msg) {
   m_keyChain.sign(
       *data, security::SigningInfo(security::SigningInfo::SIGNER_TYPE_SHA256));
   data->setFreshnessPeriod(time::milliseconds(4000));
-  
+
   m_face.put(*data);
 }
-
-void SVS::onMsg(const std::string &msg) {}
 
 void SVS::onSyncInterest(const Interest &interest) {}
 

@@ -2,11 +2,11 @@
 // Email: jonnykong@cs.ucla.edu
 
 #include <boost/asio.hpp>
-#include <thread>
 #include <cstdint>
 #include <iostream>
 #include <ndn-cxx/face.hpp>
 #include <ndn-cxx/name.hpp>
+#include <thread>
 
 #include "svs.hpp"
 
@@ -23,27 +23,35 @@ namespace svs {
 
 class Program {
 public:
-  explicit Program(const Options &options) : m_options(options), m_svs(0) {
+  explicit Program(const Options &options)
+      : m_options(options),
+        m_svs(0, std::bind(&Program::onMsg, this, std::placeholders::_1)) {
     printf("SVS client starts\n");
   }
 
   void run() {
     printf("SVS client runs\n");
     m_svs.registerPrefix();
-    
+
     // Create other thread to run
     std::thread thread_svs([this] { m_svs.run(); });
 
     // Accept user input data
     printf("Accepting user input:\n");
 
-    // TODO: Read user input from stdout, print received msg to stdout
+    // TODO: Read user input from stdout
     m_svs.publishMsg("Hello World");
-    
+
     thread_svs.join();
   }
 
 private:
+  void onMsg(const std::string &msg) {
+    printf("App received msg\n");
+    fflush(stdout);
+    // TODO: Print received msg to stdout
+  }
+
   const Options m_options;
   SVS m_svs;
 };
