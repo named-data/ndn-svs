@@ -11,15 +11,15 @@ namespace svs {
 /**
  * run() - Start event loop. Called by the application.
  */
-void SVS::run() { 
+void SVS::run() {
   // Start periodically send sync interest
   retxSyncInterest();
-  
+
   // Start periodically send packets asynchronously
   asyncSendPacket();
 
   // Enter event loop
-  m_face.processEvents(); 
+  m_face.processEvents();
 }
 
 /**
@@ -100,18 +100,18 @@ void SVS::asyncSendPacket() {
             return asyncSendPacket();
           }
 
-          m_face.expressInterest(
-              *packet.interest, std::bind(&SVS::onDataReply, this, _2),
-              std::bind(&SVS::onNack, this,  _1, _2),
-              std::bind(&SVS::onTimeout, this,  _1));
+          m_face.expressInterest(*packet.interest,
+                                 std::bind(&SVS::onDataReply, this, _2),
+                                 std::bind(&SVS::onNack, this, _1, _2),
+                                 std::bind(&SVS::onTimeout, this, _1));
         }
 
         // Sync Interest
         else if (n.compare(0, 2, kSyncNotifyPrefix) == 0) {
-          m_face.expressInterest(
-              *packet.interest, std::bind(&SVS::onSyncAck, this, _2),
-              std::bind(&SVS::onNack, this,  _1, _2),
-              std::bind(&SVS::onTimeout, this,  _1));
+          m_face.expressInterest(*packet.interest,
+                                 std::bind(&SVS::onSyncAck, this, _2),
+                                 std::bind(&SVS::onNack, this, _1, _2),
+                                 std::bind(&SVS::onTimeout, this, _1));
         }
         break;
 
@@ -133,9 +133,8 @@ void SVS::asyncSendPacket() {
 
   int delay = packet_dist(rengine_);
   m_scheduler.cancelEvent(packet_event);
-  packet_event = m_scheduler.scheduleEvent(time::microseconds(delay), [this] {
-    asyncSendPacket();
-  });
+  packet_event = m_scheduler.scheduleEvent(time::microseconds(delay),
+                                           [this] { asyncSendPacket(); });
 }
 
 /**
@@ -145,7 +144,8 @@ void SVS::asyncSendPacket() {
 void SVS::onSyncInterest(const Interest &interest) {
   const auto &n = interest.getName();
   NodeID nid_other = ExtractNodeID(n);
-  printf("Received sync interest from node %llu: %s\n", nid_other, ExtractEncodedVV(n).c_str());
+  printf("Received sync interest from node %llu: %s\n", nid_other,
+         ExtractEncodedVV(n).c_str());
   fflush(stdout);
 
   // Merge state vector
@@ -173,7 +173,7 @@ void SVS::onSyncInterest(const Interest &interest) {
     m_scheduler.cancelEvent(retx_event);
     int delay = retx_dist(rengine_);
     retx_event = m_scheduler.scheduleEvent(time::milliseconds(delay),
-                              [this] { retxSyncInterest(); });
+                                           [this] { retxSyncInterest(); });
   } else if (other_vector_new) {
     retxSyncInterest();
   } else {
@@ -186,12 +186,10 @@ void SVS::onSyncInterest(const Interest &interest) {
  */
 void SVS::onDataInterest(const Interest &interest) {}
 
-
 /**
  * onSyncAck() - Decode version vector from data body, and merge vector.
  */
 void SVS::onSyncAck(const Data &data) {
-  
   // Extract content
   VersionVector vv_other;
   std::set<NodeID> interested_nodes;
@@ -199,7 +197,7 @@ void SVS::onSyncAck(const Data &data) {
   std::string content_str((char *)data.getContent().value(), data_size);
   std::tie(vv_other, interested_nodes) =
       DecodeVVFromNameWithInterest(ExtractEncodedVV(content_str));
-  
+
   printf("Received ack with content: %s", content_str.c_str());
 
   // Merge state vector
@@ -214,7 +212,7 @@ void SVS::onDataReply(const Data &data) {}
 /**
  * onNack() - Print error msg from NFD.
  */
-void SVS::onNack(const Interest& interest, const lp::Nack& nack){
+void SVS::onNack(const Interest &interest, const lp::Nack &nack) {
   std::cout << "received Nack with reason " << nack.getReason()
             << " for interest " << interest << std::endl;
 }
@@ -222,10 +220,9 @@ void SVS::onNack(const Interest& interest, const lp::Nack& nack){
 /**
  * onTimeout() - Print timeout msg.
  */
-void SVS::onTimeout(const Interest& interest){
+void SVS::onTimeout(const Interest &interest) {
   std::cout << "Timeout " << interest << std::endl;
 }
-
 
 /**
  * retxSyncInterest() - Cancel and schedule new retxSyncInterest event.
@@ -252,7 +249,7 @@ void SVS::sendSyncInterest() {
       duration_cast<milliseconds>(system_clock::now().time_since_epoch());
   auto pending_sync_notify =
       MakeSyncNotifyName(m_id, encoded_vv, cur_time_ms.count());
-  
+
   printf("Send sync interest: %s\n", encoded_vv.c_str());
   fflush(stdout);
 

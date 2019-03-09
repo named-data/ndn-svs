@@ -39,9 +39,9 @@ class SVS {
 
   void onDataReply(const Data &data);
 
-  void onNack(const Interest& interest, const lp::Nack& nack);
+  void onNack(const Interest &interest, const lp::Nack &nack);
 
-  void onTimeout(const Interest& interest);
+  void onTimeout(const Interest &interest);
 
   void retxSyncInterest();
 
