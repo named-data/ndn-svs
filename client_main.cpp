@@ -13,10 +13,10 @@
 #include "svs.hpp"
 
 class Options {
-public:
+ public:
   Options() : prefix("/ndn/svs") {}
 
-public:
+ public:
   ndn::Name prefix;
 };
 
@@ -24,7 +24,7 @@ namespace ndn {
 namespace svs {
 
 class Program {
-public:
+ public:
   explicit Program(const Options &options)
       : m_options(options),
         m_svs(0, std::bind(&Program::onMsg, this, std::placeholders::_1)) {
@@ -60,9 +60,9 @@ public:
     thread_svs.join();
   }
 
-private:
+ private:
   void onMsg(const std::string &msg) {
-    printf("App received msg\n");
+    printf("App received msg: %s\n", msg.c_str());
     fflush(stdout);
     // TODO: Print received msg to stdout
     //receive msg
@@ -104,8 +104,8 @@ private:
   SVS m_svs;
 };
 
-} // namespace svs
-} // namespace ndn
+}  // namespace svs
+}  // namespace ndn
 
 int main(int argc, char **argv) {
   Options opt;
