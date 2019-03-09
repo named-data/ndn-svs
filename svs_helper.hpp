@@ -15,9 +15,8 @@ namespace svs {
  * Where interested is 0/1 indicating whether this node is interested in data
  *  produced by this NodeID.
  */
-inline std::string
-EncodeVVToNameWithInterest(const VersionVector &v,
-                           std::function<bool(uint64_t)> is_important_data_) {
+inline std::string EncodeVVToNameWithInterest(
+    const VersionVector &v, std::function<bool(uint64_t)> is_important_data_) {
   std::string vv_encode = "";
   for (auto entry : v) {
     vv_encode += (to_string(entry.first) + "-" + to_string(entry.second) + "-");
@@ -34,8 +33,8 @@ EncodeVVToNameWithInterest(const VersionVector &v,
  *  <NodeID>-<seq>-<interested>
  * Return the state vector, and a set of its interested nodes.
  */
-inline std::pair<VersionVector, std::set<NodeID>>
-DecodeVVFromNameWithInterest(const std::string &vv_encode) {
+inline std::pair<VersionVector, std::set<NodeID>> DecodeVVFromNameWithInterest(
+    const std::string &vv_encode) {
   int start = 0;
   VersionVector vv;
   std::set<NodeID> interested_nodes;
@@ -47,8 +46,7 @@ DecodeVVFromNameWithInterest(const std::string &vv_encode) {
       NodeID nid = std::stoll(str.substr(0, cursor_1));
       uint64_t seq = std::stoll(str.substr(cursor_1 + 1, cursor_2));
       bool is_important = std::stoll(str.substr(cursor_2 + 1));
-      if (is_important)
-        interested_nodes.insert(nid);
+      if (is_important) interested_nodes.insert(nid);
       vv[nid] = seq;
       start = i + 1;
     }
@@ -77,5 +75,5 @@ inline std::string ExtractEncodedVV(const Name &n) { return n.get(-2).toUri(); }
 
 inline uint64_t ExtractSequence(const Name &n) { return n.get(-2).toNumber(); }
 
-} // namespace svs
-} // namespace ndn
+}  // namespace svs
+}  // namespace ndn
