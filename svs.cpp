@@ -17,7 +17,8 @@ void SVS::registerPrefix() {
 
 void SVS::publishMsg(const std::string &msg) {
 
-  printf("Publishing data: %s", msg.c_str());
+  printf("Publishing data: %s\n", msg.c_str());
+  fflush(stdout);
 
   m_vv[m_id]++;
 

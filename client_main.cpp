@@ -2,7 +2,7 @@
 // Email: jonnykong@cs.ucla.edu
 
 #include <boost/asio.hpp>
-#include <boost/thread.hpp>
+#include <thread>
 #include <cstdint>
 #include <iostream>
 #include <ndn-cxx/face.hpp>
@@ -32,11 +32,13 @@ public:
     m_svs.registerPrefix();
     
     // Create other thread to run
-    // std::unique_ptr<boost::thread> svs_thread = std::make_unique<boost::thread>(
-    //   [this] { m_svs.run(); });
-    // m_svs.run();
+    std::thread svs_thread([this] { m_svs.run(); });
+
+    // Accept user input data
+    printf("SVS publishes data\n");
+    m_svs.publishMsg("Hello World");
     
-    // svs_thread->join();
+    svs_thread.join();
   }
 
 private:
