@@ -7,6 +7,8 @@
 #include <ndn-cxx/face.hpp>
 #include <ndn-cxx/name.hpp>
 #include <thread>
+#include <string>
+#include <vector>
 
 #include "svs.hpp"
 
@@ -42,6 +44,19 @@ public:
     // TODO: Read user input from stdout
     m_svs.publishMsg("Hello World");
 
+//This is where I fuck up the program: TX
+  
+    std::string userInput = " ";
+
+    while (true){
+      std::cout << "Enter some fucking content"<<std::endl;
+      //send to Sync
+      std::getline (std::cin, userInput);
+      m_svs.publishMsg(userInput);
+    }
+    //while
+    //parse msg, std string --> call publish msg-->sync takes care of it
+
     thread_svs.join();
   }
 
@@ -50,6 +65,39 @@ private:
     printf("App received msg\n");
     fflush(stdout);
     // TODO: Print received msg to stdout
+    //receive msg
+    //display result
+    //format
+    
+    // std::string s = msg;
+    // std::string delimiter = ":";
+
+    // size_t pos = 0;
+    // std::string token;
+    // while ((pos = s.find(delimiter)) != std::string::npos) {
+    //   token = s.substr(0, pos);
+    //   std::cout << token << std::endl;
+    //   s.erase(0, pos + delimiter.length());
+    //   }
+    //   std::cout << s << std::endl;
+
+    std::string str = msg;
+    char delimiter = ':';
+    std::vector<std::string> v = split (str, delimiter);
+
+    std::cout << "sender id:" << v.at(0) << "data name:" << v.at(1) << "content:" << v.at(2) << std::endl;
+
+  }
+  //define split function
+  std::vector<std::string> split(std::string str, char delimiter){
+    std::vector<std::string> internal;
+    std::stringstream ss(str);
+    std::string tok;
+
+    while(std::getline(ss, tok, delimiter)) {
+      internal.push_back(tok);
+    }
+      return internal;
   }
 
   const Options m_options;
