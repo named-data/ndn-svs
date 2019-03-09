@@ -1,6 +1,9 @@
 #pragma once
 
+#include <deque>
 #include <iostream>
+#include <ndn-cxx/util/scheduler.hpp>
+#include <random>
 
 #include "svs_common.hpp"
 #include "svs_helper.hpp"
@@ -11,7 +14,8 @@ namespace svs {
 class SVS {
 public:
   SVS(NodeID id, std::function<void(const std::string &)> onMsg_)
-      : m_id(id), onMsg(onMsg_) {
+      : onMsg(onMsg_), m_id(id), m_scheduler(m_face.getIoService()) {
+    // Bootstrap with knowledge of itself only
     m_vv[id] = 0;
   }
 
@@ -21,16 +25,38 @@ public:
 
   void publishMsg(const std::string &msg);
 
+  void asyncSendPacket();
+
 private:
   void onSyncInterest(const Interest &interest);
 
   void onDataInterest(const Interest &interest);
 
+  std::pair<bool, bool> mergeStateVector(const VersionVector &vv_other);
+
+  std::function<void(const std::string &)> onMsg;
+
+  // Members
   NodeID m_id;
   Face m_face;
   KeyChain m_keyChain;
   VersionVector m_vv;
-  std::function<void(const std::string &)> onMsg;
+  Scheduler m_scheduler; // Use io_service from face
+  std::unordered_map<Name, std::shared_ptr<const Data>> m_data_store;
+
+  // Mult-level queues
+  std::deque<Packet> pending_ack;
+  std::deque<Packet> pending_sync_interest;
+  std::deque<Packet> pending_data_reply; 
+  std::deque<Packet> pending_data_interest_forwarded;
+  std::deque<Packet> pending_data_interest;
+
+  // Microseconds between sending two packets in the queues
+  std::uniform_int_distribution<> packet_dist =
+      std::uniform_int_distribution<>(10000, 15000);
+  // Microseconds for sending ACK if local vector isn't newer
+  std::uniform_int_distribution<> ack_dist
+    = std::uniform_int_distribution<>(20000, 40000);
 };
 
 } // namespace svs
