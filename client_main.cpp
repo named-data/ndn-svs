@@ -50,12 +50,12 @@ class Program {
 
     std::string userInput = " ";
 
-    while (true) {
-      std::cout << "Enter some fucking content" << std::endl;
-      // send to Sync
-      std::getline(std::cin, userInput);
-      m_svs.publishMsg(userInput);
-    }
+    // while (true) {
+    //   std::cout << "Enter some fucking content" << std::endl;
+    //   // send to Sync
+    //   std::getline(std::cin, userInput);
+    //   m_svs.publishMsg(userInput);
+    // }
     // while
     // parse msg, std string --> call publish msg-->sync takes care of it
 

@@ -81,7 +81,6 @@ void SVS::asyncSendPacket() {
     } else if (pending_sync_interest.size() > 0) {
       packet = pending_sync_interest.front();
       pending_sync_interest.pop_front();
-      printf("3\n"); fflush(stdout);
     } else if (pending_data_interest_forwarded.size() > 0) {
       packet = pending_data_interest_forwarded.front();
       pending_data_interest_forwarded.pop_front();
@@ -94,7 +93,6 @@ void SVS::asyncSendPacket() {
     switch (packet.packet_type) {
       case Packet::INTEREST_TYPE:
         n = (packet.interest)->getName();
-        printf("Async send interest: ");
         std::cout << n << std::endl;
         
         // Data Interest
@@ -191,11 +189,14 @@ void SVS::onSyncInterest(const Interest &interest) {
   // If incoming state newer than local vector, send sync interest immediately.
   // If local state newer than incoming state, do nothing.
   if (!my_vector_new && !other_vector_new) {
+    printf("Delay next sync interest\n"); fflush(stdout);
     m_scheduler.cancelEvent(retx_event);
     int delay = retx_dist(rengine_);
-    retx_event = m_scheduler.scheduleEvent(time::milliseconds(delay),
+    retx_event = m_scheduler.scheduleEvent(time::microseconds(delay),
                                            [this] { retxSyncInterest(); });
   } else if (other_vector_new) {
+    printf("Send next sync interest immediately\n"); fflush(stdout);
+    m_scheduler.cancelEvent(retx_event);
     retxSyncInterest();
   } else {
     // Do nothing
@@ -216,10 +217,9 @@ void SVS::onSyncAck(const Data &data) {
   std::set<NodeID> interested_nodes;
   size_t data_size = data.getContent().value_size();
   std::string content_str((char *)data.getContent().value(), data_size);
+  printf("Receive ACK: %s\n", content_str.c_str()); fflush(stdout);
   std::tie(vv_other, interested_nodes) =
-      DecodeVVFromNameWithInterest(ExtractEncodedVV(content_str));
-
-  printf("Received ack with content: %s", content_str.c_str());
+      DecodeVVFromNameWithInterest(content_str);
 
   // Merge state vector
   mergeStateVector(vv_other);
@@ -251,7 +251,6 @@ void SVS::onTimeout(const Interest &interest) {
 void SVS::retxSyncInterest() {
   sendSyncInterest();
   int delay = retx_dist(rengine_);
-  m_scheduler.cancelEvent(retx_event);
   retx_event = m_scheduler.scheduleEvent(time::microseconds(delay),
                                          [this] { retxSyncInterest(); });
 }
@@ -331,7 +330,7 @@ std::pair<bool, bool> SVS::mergeStateVector(const VersionVector &vv_other) {
         printf("Detect missing data: %llu-%llu", nid_other, seq);
 
       // Merge local vector
-      m_vv[seq_other] = seq_other;
+      m_vv[nid_other] = seq_other;
     }
   }
 
