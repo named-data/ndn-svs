@@ -9,7 +9,7 @@
 namespace ndn {
 namespace svs {
 
-// Type and constant declarations for VectorSync
+// Type and constant declarations for State Vector Sync (SVS)
 using NodeID = uint64_t;
 using VersionVector = std::unordered_map<NodeID, uint64_t>;
 

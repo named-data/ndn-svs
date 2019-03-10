@@ -1,3 +1,4 @@
+#include <boost/lexical_cast.hpp>
 #include <chrono>
 #include <iostream>
 #include <ndn-cxx/interest-filter.hpp>
@@ -37,7 +38,7 @@ void SVS::registerPrefix() {
  *  sync layer. The sync layer will keep a copy.
  */
 void SVS::publishMsg(const std::string &msg) {
-  printf("Publishing data: %s\n", msg.c_str());
+  printf("Sent data: %s\n\n", msg.c_str());
   fflush(stdout);
 
   m_vv[m_id]++;
@@ -53,7 +54,7 @@ void SVS::publishMsg(const std::string &msg) {
   data->setContent(contentBuf.get<uint8_t>(), contentBuf.size());
   m_keyChain.sign(
       *data, security::SigningInfo(security::SigningInfo::SIGNER_TYPE_SHA256));
-  data->setFreshnessPeriod(time::milliseconds(4000));
+  data->setFreshnessPeriod(time::milliseconds(1000));
 
   m_data_store[n] = data;
 
@@ -90,7 +91,6 @@ void SVS::asyncSendPacket() {
     switch (packet->packet_type) {
       case Packet::INTEREST_TYPE:
         n = packet->interest->getName();
-        std::cout << n << std::endl;
 
         // Data Interest
         if (n.compare(0, 3, kSyncDataPrefix) == 0) {
@@ -100,20 +100,19 @@ void SVS::asyncSendPacket() {
           }
 
           m_face.expressInterest(*packet->interest,
-                                std::bind(&SVS::onDataReply, this, _2),
-                                std::bind(&SVS::onNack, this, _1, _2),
-                                std::bind(&SVS::onTimeout, this, _1));
-          printf("Send data interest");
+                                 std::bind(&SVS::onDataReply, this, _2),
+                                 std::bind(&SVS::onNack, this, _1, _2),
+                                 std::bind(&SVS::onTimeout, this, _1));
+          // printf("Send data interest\n");
           fflush(stdout);
         }
 
         // Sync Interest
         else if (n.compare(0, 3, kSyncNotifyPrefix) == 0) {
           m_face.expressInterest(*packet->interest,
-                                std::bind(&SVS::onSyncAck, this, _2),
-                                std::bind(&SVS::onNack, this, _1, _2),
-                                std::bind(&SVS::onTimeout, this, _1));
-          printf("Send sync interest\n");
+                                 std::bind(&SVS::onSyncAck, this, _2),
+                                 std::bind(&SVS::onNack, this, _1, _2),
+                                 std::bind(&SVS::onTimeout, this, _1));
           fflush(stdout);
         }
 
@@ -163,8 +162,8 @@ void SVS::onSyncInterest(const Interest &interest) {
 
   if (nid_other == m_id) return;
 
-  printf("Received sync interest from node %llu: %s\n", nid_other,
-         ExtractEncodedVV(n).c_str());
+  // printf("Received sync interest from node %llu: %s\n", nid_other,
+  //        ExtractEncodedVV(n).c_str());
   fflush(stdout);
 
   // Merge state vector
@@ -189,14 +188,14 @@ void SVS::onSyncInterest(const Interest &interest) {
   // If incoming state newer than local vector, send sync interest immediately.
   // If local state newer than incoming state, do nothing.
   if (!my_vector_new && !other_vector_new) {
-    printf("Delay next sync interest\n");
+    // printf("Delay next sync interest\n");
     fflush(stdout);
     m_scheduler.cancelEvent(retx_event);
     int delay = retx_dist(rengine_);
     retx_event = m_scheduler.scheduleEvent(time::microseconds(delay),
                                            [this] { retxSyncInterest(); });
   } else if (other_vector_new) {
-    printf("Send next sync interest immediately\n");
+    // printf("Send next sync interest immediately\n");
     fflush(stdout);
     m_scheduler.cancelEvent(retx_event);
     retxSyncInterest();
@@ -209,16 +208,19 @@ void SVS::onSyncInterest(const Interest &interest) {
  * onDataInterest() -
  */
 void SVS::onDataInterest(const Interest &interest) {
-  const auto& n = interest.getName();
+  const auto &n = interest.getName();
   auto iter = m_data_store.find(n);
 
-  // If have data, reply
+  // If have data, reply. Otherwise forward with probability
   if (iter != m_data_store.end()) {
-    
+    Packet packet;
+    packet.packet_type = Packet::DATA_TYPE;
+    packet.data = iter->second;
+    pending_data_reply.push_back(std::make_shared<Packet>(packet));
   }
 
   else {
-
+    // TODO
   }
 }
 
@@ -231,7 +233,7 @@ void SVS::onSyncAck(const Data &data) {
   std::set<NodeID> interested_nodes;
   size_t data_size = data.getContent().value_size();
   std::string content_str((char *)data.getContent().value(), data_size);
-  printf("Receive ACK: %s\n", content_str.c_str());
+  // printf("Receive ACK: %s\n", content_str.c_str());
   fflush(stdout);
   std::tie(vv_other, interested_nodes) =
       DecodeVVFromNameWithInterest(content_str);
@@ -241,33 +243,40 @@ void SVS::onSyncAck(const Data &data) {
 }
 
 /**
- * onDataReply() -
+ * onDataReply() - Save data to data store, and call application callback to
+ *  pass the data northbound.
  */
 void SVS::onDataReply(const Data &data) {
-  const auto& n = data.getName();
+  const auto &n = data.getName();
+  NodeID nid_other = ExtractNodeID(n);
 
   // Drop duplicate data
-  if (m_data_store.find(n) != m_data_store.end())
-    return;
+  if (m_data_store.find(n) != m_data_store.end()) return;
 
-  printf("Received data: %s\n", n.toUri().c_str());
-
+  // printf("Received data: %s\n", n.toUri().c_str());
   m_data_store[n] = data.shared_from_this();
+
+  // Pass msg to application in format: <sender_id>:<content>
+  size_t data_size = data.getContent().value_size();
+  std::string content_str((char *)data.getContent().value(), data_size);
+  content_str = boost::lexical_cast<std::string>(nid_other) + ":" + content_str;
+
+  onMsg(content_str);
 }
 
 /**
  * onNack() - Print error msg from NFD.
  */
 void SVS::onNack(const Interest &interest, const lp::Nack &nack) {
-  std::cout << "received Nack with reason "
-            << " for interest " << interest << std::endl;
+  // std::cout << "received Nack with reason "
+  //           << " for interest " << interest << std::endl;
 }
 
 /**
  * onTimeout() - Print timeout msg.
  */
 void SVS::onTimeout(const Interest &interest) {
-  std::cout << "Timeout " << interest << std::endl;
+  // std::cout << "Timeout " << interest << std::endl;
 }
 
 /**
@@ -295,7 +304,7 @@ void SVS::sendSyncInterest() {
   auto pending_sync_notify =
       MakeSyncNotifyName(m_id, encoded_vv, cur_time_ms.count());
 
-  printf("Send sync interest: %s\n", encoded_vv.c_str());
+  // printf("Send sync interest: %s\n", encoded_vv.c_str());
   fflush(stdout);
 
   // Wrap into Packet
@@ -355,8 +364,9 @@ std::pair<bool, bool> SVS::mergeStateVector(const VersionVector &vv_other) {
         auto n = MakeDataName(nid_other, seq);
         Packet packet;
         packet.packet_type = Packet::INTEREST_TYPE;
-        packet.interest = std::make_shared<Interest>(n, time::milliseconds(1000));
-        // pending_data_interest.push_back(std::make_shared<Packet>(packet));
+        packet.interest =
+            std::make_shared<Interest>(n, time::milliseconds(1000));
+        pending_data_interest.push_back(std::make_shared<Packet>(packet));
       }
 
       // Merge local vector

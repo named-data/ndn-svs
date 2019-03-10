@@ -2,6 +2,7 @@
 // Email: jonnykong@cs.ucla.edu
 
 #include <boost/asio.hpp>
+#include <boost/lexical_cast.hpp>
 #include <cstdint>
 #include <iostream>
 #include <ndn-cxx/face.hpp>
@@ -31,76 +32,51 @@ class Program {
         m_svs(m_options.m_id,
               std::bind(&Program::onMsg, this, std::placeholders::_1)) {
     printf("SVS client %llu starts\n", m_options.m_id);
+
+    // Suppress warning
+    Interest::setDefaultCanBePrefix(true);
   }
 
   void run() {
-    printf("SVS client runs\n");
     m_svs.registerPrefix();
 
     // Create other thread to run
     std::thread thread_svs([this] { m_svs.run(); });
 
-    // Accept user input data
-    printf("Accepting user input:\n");
+    std::string init_msg = "User " +
+                           boost::lexical_cast<std::string>(m_options.m_id) +
+                           " has joined the groupchat";
+    m_svs.publishMsg(init_msg);
 
-    // TODO: Read user input from stdout
-    m_svs.publishMsg("Hello World");
+    std::string userInput = "";
 
-    // This is where I fuck up the program: TX
-
-    std::string userInput = " ";
-
-    // while (true) {
-    //   std::cout << "Enter some fucking content" << std::endl;
-    //   // send to Sync
-    //   std::getline(std::cin, userInput);
-    //   m_svs.publishMsg(userInput);
-    // }
-    // while
-    // parse msg, std string --> call publish msg-->sync takes care of it
+    while (true) {
+      // send to Sync
+      std::getline(std::cin, userInput);
+      m_svs.publishMsg(userInput);
+    }
 
     thread_svs.join();
   }
 
  private:
+  /**
+   * onMsg() - Callback on receiving msg from sync layer.
+   */
   void onMsg(const std::string &msg) {
-    printf("App received msg: %s\n", msg.c_str());
-    fflush(stdout);
-    // TODO: Print received msg to stdout
-    // receive msg
-    // display result
-    // format
+    // Parse received msg
+    std::vector<std::string> result;
+    size_t cursor = msg.find(":");
+    result.push_back(msg.substr(0, cursor));
+    if (cursor < msg.length() - 1)
+      result.push_back(msg.substr(cursor + 1));
+    else
+      result.push_back("");
 
-    // std::string s = msg;
-    // std::string delimiter = ":";
-
-    // size_t pos = 0;
-    // std::string token;
-    // while ((pos = s.find(delimiter)) != std::string::npos) {
-    //   token = s.substr(0, pos);
-    //   std::cout << token << std::endl;
-    //   s.erase(0, pos + delimiter.length());
-    //   }
-    //   std::cout << s << std::endl;
-
-    std::string str = msg;
-    char delimiter = ':';
-    std::vector<std::string> v = split(str, delimiter);
-
-    std::cout << "sender id:" << v.at(0) << "data name:" << v.at(1)
-              << "content:" << v.at(2) << std::endl;
+    // Print to stdout
+    printf("User %s:\t%s\n\n", result[0].c_str(), result[1].c_str());
   }
-  // define split function
-  std::vector<std::string> split(std::string str, char delimiter) {
-    std::vector<std::string> internal;
-    std::stringstream ss(str);
-    std::string tok;
 
-    while (std::getline(ss, tok, delimiter)) {
-      internal.push_back(tok);
-    }
-    return internal;
-  }
 
   const Options m_options;
   SVS m_svs;
@@ -111,7 +87,7 @@ class Program {
 
 int main(int argc, char **argv) {
   if (argc != 2) {
-    printf("Usage:\n");
+    printf("Usage: TODO\n");
     exit(1);
   }
 
