@@ -5,7 +5,7 @@ This is a vector sync library over NDN with a chatroom application as demo.
 
 ### Prerequisites
 
-[ndn-cxx](https://github.com/named-data/ndn-cxx)
+[ndn-cxx](https://github.com/named-data/ndn-cxx)  
 [NFD - NDN Forwarding Daemon](https://github.com/named-data/NFD)
 
 ### Build & Run
