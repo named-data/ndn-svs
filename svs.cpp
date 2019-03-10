@@ -48,7 +48,8 @@ void SVS::publishMsg(const std::string &msg) {
 
   // Set data content
   Buffer contentBuf;
-  for (int i = 0; i < msg.length(); ++i) contentBuf.push_back((uint8_t)msg[i]);
+  for (size_t i = 0; i < msg.length(); ++i)
+    contentBuf.push_back((uint8_t)msg[i]);
   data->setContent(contentBuf.get<uint8_t>(), contentBuf.size());
   m_keyChain.sign(
       *data, security::SigningInfo(security::SigningInfo::SIGNER_TYPE_SHA256));
@@ -100,9 +101,9 @@ void SVS::asyncSendPacket() {
         }
 
         m_face.expressInterest(*packet.interest,
-                                std::bind(&SVS::onDataReply, this, _2),
-                                std::bind(&SVS::onNack, this, _1, _2),
-                                std::bind(&SVS::onTimeout, this, _1));
+                               std::bind(&SVS::onDataReply, this, _2),
+                               std::bind(&SVS::onNack, this, _1, _2),
+                               std::bind(&SVS::onTimeout, this, _1));
         printf("Send data interest");
         fflush(stdout);
       }
@@ -110,9 +111,9 @@ void SVS::asyncSendPacket() {
       // Sync Interest
       else if (n.compare(0, 3, kSyncNotifyPrefix) == 0) {
         m_face.expressInterest(*packet.interest,
-                                std::bind(&SVS::onSyncAck, this, _2),
-                                std::bind(&SVS::onNack, this, _1, _2),
-                                std::bind(&SVS::onTimeout, this, _1));
+                               std::bind(&SVS::onSyncAck, this, _2),
+                               std::bind(&SVS::onNack, this, _1, _2),
+                               std::bind(&SVS::onTimeout, this, _1));
         printf("Send sync interest\n");
         fflush(stdout);
       }
@@ -236,7 +237,7 @@ void SVS::onDataReply(const Data &data) {}
  * onNack() - Print error msg from NFD.
  */
 void SVS::onNack(const Interest &interest, const lp::Nack &nack) {
-  std::cout << "received Nack with reason " << nack.getReason()
+  std::cout << "received Nack with reason "
             << " for interest " << interest << std::endl;
 }
 
@@ -295,7 +296,7 @@ void SVS::sendSyncACK(const Name &n) {
   std::string encoded_vv = EncodeVVToNameWithInterest(
       m_vv, [](uint64_t id) -> bool { return true; });
   Buffer contentBuf;
-  for (int i = 0; i < encoded_vv.size(); ++i)
+  for (size_t i = 0; i < encoded_vv.size(); ++i)
     contentBuf.push_back((uint8_t)encoded_vv[i]);
   data->setContent(contentBuf.get<uint8_t>(), contentBuf.size());
   m_keyChain.sign(
