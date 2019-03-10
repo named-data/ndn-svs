@@ -64,86 +64,86 @@ void SVS::publishMsg(const std::string &msg) {
  *  sending next packet with random delay.
  */
 void SVS::asyncSendPacket() {
+  // Decouple packet selection and packet sending
+  Name n;
+  Packet packet;
+  if (pending_ack.size() > 0) {
+    packet = pending_ack.front();
+    pending_ack.pop_front();
+  } else if (pending_data_reply.size() > 0) {
+    packet = pending_data_reply.front();
+    pending_data_reply.pop_front();
+  } else if (pending_sync_interest.size() > 0) {
+    packet = pending_sync_interest.front();
+    pending_sync_interest.pop_front();
+  } else if (pending_data_interest_forwarded.size() > 0) {
+    packet = pending_data_interest_forwarded.front();
+    pending_data_interest_forwarded.pop_front();
+  } else if (pending_data_interest.size() > 0) {
+    packet = pending_data_interest.front();
+    pending_data_interest.pop_front();
+  } else {
+    return;
+  }
 
-  if (pending_ack.size() > 0 || pending_sync_interest.size() > 0 ||
-      pending_data_reply.size() > 0 ||
-      pending_data_interest_forwarded.size() > 0 ||
-      pending_data_interest.size() > 0) {
-    // Decouple packet selection and packet sending
-    Name n;
-    Packet packet;
-    if (pending_ack.size() > 0) {
-      packet = pending_ack.front();
-      pending_ack.pop_front();
-    } else if (pending_data_reply.size() > 0) {
-      packet = pending_data_reply.front();
-      pending_data_reply.pop_front();
-    } else if (pending_sync_interest.size() > 0) {
-      packet = pending_sync_interest.front();
-      pending_sync_interest.pop_front();
-    } else if (pending_data_interest_forwarded.size() > 0) {
-      packet = pending_data_interest_forwarded.front();
-      pending_data_interest_forwarded.pop_front();
-    } else {
-      packet = pending_data_interest.front();
-      pending_data_interest.pop_front();
-    }
+  // Send packet
+  switch (packet.packet_type) {
+    case Packet::INTEREST_TYPE:
+      n = (packet.interest)->getName();
+      std::cout << n << std::endl;
 
-    // Send packet
-    switch (packet.packet_type) {
-      case Packet::INTEREST_TYPE:
-        n = (packet.interest)->getName();
-        std::cout << n << std::endl;
-        
-        // Data Interest
-        if (n.compare(0, 3, kSyncDataPrefix) == 0) {
-          // Drop falsy data interest
-          if (m_data_store.find(n) != m_data_store.end()) {
-            return asyncSendPacket();
-          }
-
-          m_face.expressInterest(*packet.interest,
-                                 std::bind(&SVS::onDataReply, this, _2),
-                                 std::bind(&SVS::onNack, this, _1, _2),
-                                 std::bind(&SVS::onTimeout, this, _1));
-          printf("Send data interest"); fflush(stdout);
+      // Data Interest
+      if (n.compare(0, 3, kSyncDataPrefix) == 0) {
+        // Drop falsy data interest
+        if (m_data_store.find(n) != m_data_store.end()) {
+          return asyncSendPacket();
         }
 
-        // Sync Interest
-        else if (n.compare(0, 3, kSyncNotifyPrefix) == 0) {
-          m_face.expressInterest(*packet.interest,
-                                 std::bind(&SVS::onSyncAck, this, _2),
-                                 std::bind(&SVS::onNack, this, _1, _2),
-                                 std::bind(&SVS::onTimeout, this, _1));
-          printf("Send sync interest\n"); fflush(stdout);
-        }
+        m_face.expressInterest(*packet.interest,
+                                std::bind(&SVS::onDataReply, this, _2),
+                                std::bind(&SVS::onNack, this, _1, _2),
+                                std::bind(&SVS::onTimeout, this, _1));
+        printf("Send data interest");
+        fflush(stdout);
+      }
 
-        else
-          assert(0);
+      // Sync Interest
+      else if (n.compare(0, 3, kSyncNotifyPrefix) == 0) {
+        m_face.expressInterest(*packet.interest,
+                                std::bind(&SVS::onSyncAck, this, _2),
+                                std::bind(&SVS::onNack, this, _1, _2),
+                                std::bind(&SVS::onTimeout, this, _1));
+        printf("Send sync interest\n");
+        fflush(stdout);
+      }
 
-        break;
+      else {
+        std::cout << "Invalid name: " << n << std::endl;
+        // assert(0);
+      }
 
-      case Packet::DATA_TYPE:
-        n = (packet.data)->getName();
+      break;
 
-        // Data Reply
-        if (n.compare(0, 3, kSyncDataPrefix) == 0) {
-          m_face.put(*packet.data);
-        }
+    case Packet::DATA_TYPE:
+      n = (packet.data)->getName();
 
-        // Sync Ack
-        else if (n.compare(0, 3, kSyncNotifyPrefix) == 0) {
-          m_face.put(*packet.data);
-        }
+      // Data Reply
+      if (n.compare(0, 3, kSyncDataPrefix) == 0) {
+        m_face.put(*packet.data);
+      }
 
-        else
-          assert(0);
+      // Sync Ack
+      else if (n.compare(0, 3, kSyncNotifyPrefix) == 0) {
+        m_face.put(*packet.data);
+      }
 
-        break;
-      
-      default:
+      else
         assert(0);
-    }
+
+      break;
+
+    default:
+      assert(0);
   }
 
   int delay = packet_dist(rengine_);
@@ -160,8 +160,7 @@ void SVS::onSyncInterest(const Interest &interest) {
   const auto &n = interest.getName();
   NodeID nid_other = ExtractNodeID(n);
 
-  if (nid_other == m_id)
-    return;
+  if (nid_other == m_id) return;
 
   printf("Received sync interest from node %llu: %s\n", nid_other,
          ExtractEncodedVV(n).c_str());
@@ -189,13 +188,15 @@ void SVS::onSyncInterest(const Interest &interest) {
   // If incoming state newer than local vector, send sync interest immediately.
   // If local state newer than incoming state, do nothing.
   if (!my_vector_new && !other_vector_new) {
-    printf("Delay next sync interest\n"); fflush(stdout);
+    printf("Delay next sync interest\n");
+    fflush(stdout);
     m_scheduler.cancelEvent(retx_event);
     int delay = retx_dist(rengine_);
     retx_event = m_scheduler.scheduleEvent(time::microseconds(delay),
                                            [this] { retxSyncInterest(); });
   } else if (other_vector_new) {
-    printf("Send next sync interest immediately\n"); fflush(stdout);
+    printf("Send next sync interest immediately\n");
+    fflush(stdout);
     m_scheduler.cancelEvent(retx_event);
     retxSyncInterest();
   } else {
@@ -217,7 +218,8 @@ void SVS::onSyncAck(const Data &data) {
   std::set<NodeID> interested_nodes;
   size_t data_size = data.getContent().value_size();
   std::string content_str((char *)data.getContent().value(), data_size);
-  printf("Receive ACK: %s\n", content_str.c_str()); fflush(stdout);
+  printf("Receive ACK: %s\n", content_str.c_str());
+  fflush(stdout);
   std::tie(vv_other, interested_nodes) =
       DecodeVVFromNameWithInterest(content_str);
 
