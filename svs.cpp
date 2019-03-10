@@ -56,7 +56,7 @@ void SVS::publishMsg(const std::string &msg) {
   data->setFreshnessPeriod(time::milliseconds(4000));
 
   m_data_store[n] = data;
-  // TODO: Send sync interest immediately
+
   sendSyncInterest();
 }
 
@@ -67,7 +67,7 @@ void SVS::publishMsg(const std::string &msg) {
 void SVS::asyncSendPacket() {
   // Decouple packet selection and packet sending
   Name n;
-  Packet packet;
+  std::shared_ptr<Packet> packet;
   if (pending_ack.size() > 0) {
     packet = pending_ack.front();
     pending_ack.pop_front();
@@ -83,68 +83,68 @@ void SVS::asyncSendPacket() {
   } else if (pending_data_interest.size() > 0) {
     packet = pending_data_interest.front();
     pending_data_interest.pop_front();
-  } else {
-    return;
   }
 
-  // Send packet
-  switch (packet.packet_type) {
-    case Packet::INTEREST_TYPE:
-      n = (packet.interest)->getName();
-      std::cout << n << std::endl;
+  if (packet != nullptr) {
+    // Send packet
+    switch (packet->packet_type) {
+      case Packet::INTEREST_TYPE:
+        n = packet->interest->getName();
+        std::cout << n << std::endl;
 
-      // Data Interest
-      if (n.compare(0, 3, kSyncDataPrefix) == 0) {
-        // Drop falsy data interest
-        if (m_data_store.find(n) != m_data_store.end()) {
-          return asyncSendPacket();
+        // Data Interest
+        if (n.compare(0, 3, kSyncDataPrefix) == 0) {
+          // Drop falsy data interest
+          if (m_data_store.find(n) != m_data_store.end()) {
+            return asyncSendPacket();
+          }
+
+          m_face.expressInterest(*packet->interest,
+                                std::bind(&SVS::onDataReply, this, _2),
+                                std::bind(&SVS::onNack, this, _1, _2),
+                                std::bind(&SVS::onTimeout, this, _1));
+          printf("Send data interest");
+          fflush(stdout);
         }
 
-        m_face.expressInterest(*packet.interest,
-                               std::bind(&SVS::onDataReply, this, _2),
-                               std::bind(&SVS::onNack, this, _1, _2),
-                               std::bind(&SVS::onTimeout, this, _1));
-        printf("Send data interest");
-        fflush(stdout);
-      }
+        // Sync Interest
+        else if (n.compare(0, 3, kSyncNotifyPrefix) == 0) {
+          m_face.expressInterest(*packet->interest,
+                                std::bind(&SVS::onSyncAck, this, _2),
+                                std::bind(&SVS::onNack, this, _1, _2),
+                                std::bind(&SVS::onTimeout, this, _1));
+          printf("Send sync interest\n");
+          fflush(stdout);
+        }
 
-      // Sync Interest
-      else if (n.compare(0, 3, kSyncNotifyPrefix) == 0) {
-        m_face.expressInterest(*packet.interest,
-                               std::bind(&SVS::onSyncAck, this, _2),
-                               std::bind(&SVS::onNack, this, _1, _2),
-                               std::bind(&SVS::onTimeout, this, _1));
-        printf("Send sync interest\n");
-        fflush(stdout);
-      }
+        else {
+          std::cout << "Invalid name: " << n << std::endl;
+          // assert(0);
+        }
 
-      else {
-        std::cout << "Invalid name: " << n << std::endl;
-        // assert(0);
-      }
+        break;
 
-      break;
+      case Packet::DATA_TYPE:
+        n = packet->data->getName();
 
-    case Packet::DATA_TYPE:
-      n = (packet.data)->getName();
+        // Data Reply
+        if (n.compare(0, 3, kSyncDataPrefix) == 0) {
+          m_face.put(*packet->data);
+        }
 
-      // Data Reply
-      if (n.compare(0, 3, kSyncDataPrefix) == 0) {
-        m_face.put(*packet.data);
-      }
+        // Sync Ack
+        else if (n.compare(0, 3, kSyncNotifyPrefix) == 0) {
+          m_face.put(*packet->data);
+        }
 
-      // Sync Ack
-      else if (n.compare(0, 3, kSyncNotifyPrefix) == 0) {
-        m_face.put(*packet.data);
-      }
+        else
+          assert(0);
 
-      else
+        break;
+
+      default:
         assert(0);
-
-      break;
-
-    default:
-      assert(0);
+    }
   }
 
   int delay = packet_dist(rengine_);
@@ -208,7 +208,19 @@ void SVS::onSyncInterest(const Interest &interest) {
 /**
  * onDataInterest() -
  */
-void SVS::onDataInterest(const Interest &interest) {}
+void SVS::onDataInterest(const Interest &interest) {
+  const auto& n = interest.getName();
+  auto iter = m_data_store.find(n);
+
+  // If have data, reply
+  if (iter != m_data_store.end()) {
+    
+  }
+
+  else {
+
+  }
+}
 
 /**
  * onSyncAck() - Decode version vector from data body, and merge vector.
@@ -231,7 +243,17 @@ void SVS::onSyncAck(const Data &data) {
 /**
  * onDataReply() -
  */
-void SVS::onDataReply(const Data &data) {}
+void SVS::onDataReply(const Data &data) {
+  const auto& n = data.getName();
+
+  // Drop duplicate data
+  if (m_data_store.find(n) != m_data_store.end())
+    return;
+
+  printf("Received data: %s\n", n.toUri().c_str());
+
+  m_data_store[n] = data.shared_from_this();
+}
 
 /**
  * onNack() - Print error msg from NFD.
@@ -282,7 +304,7 @@ void SVS::sendSyncInterest() {
   packet.interest =
       std::make_shared<Interest>(pending_sync_notify, time::milliseconds(1000));
   pending_sync_interest.clear();  // Flush sync interest queue
-  pending_sync_interest.push_back(packet);
+  pending_sync_interest.push_back(std::make_shared<Packet>(packet));
 }
 
 /**
@@ -307,13 +329,13 @@ void SVS::sendSyncACK(const Name &n) {
   Packet packet;
   packet.packet_type = Packet::DATA_TYPE;
   packet.data = data;
-  pending_ack.push_back(packet);
+  pending_ack.push_back(std::make_shared<Packet>(packet));
 }
 
 /**
  * mergeStateVector() - Merge state vector, return a pair of boolean
  *  representing: <my_vector_new, other_vector_new>.
- * TODO: Add missing data interests
+ * Then, add missing data interests to data interest queue.
  */
 std::pair<bool, bool> SVS::mergeStateVector(const VersionVector &vv_other) {
   bool my_vector_new = false, other_vector_new = false;
@@ -329,8 +351,13 @@ std::pair<bool, bool> SVS::mergeStateVector(const VersionVector &vv_other) {
       // Detect new data
       auto start_seq =
           m_vv.find(nid_other) == m_vv.end() ? 1 : m_vv[nid_other] + 1;
-      for (auto seq = start_seq; seq <= seq_other; ++seq)
-        printf("Detect missing data: %llu-%llu", nid_other, seq);
+      for (auto seq = start_seq; seq <= seq_other; ++seq) {
+        auto n = MakeDataName(nid_other, seq);
+        Packet packet;
+        packet.packet_type = Packet::INTEREST_TYPE;
+        packet.interest = std::make_shared<Interest>(n, time::milliseconds(1000));
+        // pending_data_interest.push_back(std::make_shared<Packet>(packet));
+      }
 
       // Merge local vector
       m_vv[nid_other] = seq_other;

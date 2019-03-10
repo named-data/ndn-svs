@@ -62,11 +62,11 @@ class SVS {
   std::unordered_map<Name, std::shared_ptr<const Data>> m_data_store;
 
   // Mult-level queues
-  std::deque<Packet> pending_ack;
-  std::deque<Packet> pending_sync_interest;
-  std::deque<Packet> pending_data_reply;
-  std::deque<Packet> pending_data_interest_forwarded;
-  std::deque<Packet> pending_data_interest;
+  std::deque<std::shared_ptr<Packet>> pending_ack;
+  std::deque<std::shared_ptr<Packet>> pending_sync_interest;
+  std::deque<std::shared_ptr<Packet>> pending_data_reply;
+  std::deque<std::shared_ptr<Packet>> pending_data_interest_forwarded;
+  std::deque<std::shared_ptr<Packet>> pending_data_interest;
 
   // Microseconds between sending two packets in the queues
   std::uniform_int_distribution<> packet_dist =

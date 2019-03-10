@@ -22,13 +22,10 @@ typedef struct Packet_ {
 
   enum PacketType { INTEREST_TYPE, DATA_TYPE } packet_type;
 
-  int64_t last_sent;
-
-  // Define copy constructor to safely copy shared ptr
-  Packet_() : interest(nullptr), data(nullptr){};
-  Packet_(const Packet_ &c)
-      : interest(c.interest), data(c.data), packet_type(c.packet_type) {}
-
+  // // Define copy constructor to safely copy shared ptr
+  // Packet_() : interest(nullptr), data(nullptr){};
+  // Packet_(const Packet_ &c)
+  //     : interest(c.interest), data(c.data), packet_type(c.packet_type) {}
 } Packet;
 
 }  // namespace svs
