@@ -103,8 +103,8 @@ void SVS::asyncSendPacket() {
                                  std::bind(&SVS::onDataReply, this, _2),
                                  std::bind(&SVS::onNack, this, _1, _2),
                                  std::bind(&SVS::onTimeout, this, _1));
+          pending_data_interest.push_back(packet);
           // printf("Send data interest\n");
-          fflush(stdout);
         }
 
         // Sync Interest
