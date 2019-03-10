@@ -74,7 +74,7 @@ class Program {
       result.push_back("");
 
     // Print to stdout
-    printf("User %s:\t%s\n\n", result[0].c_str(), result[1].c_str());
+    printf("User %s>> %s\n\n", result[0].c_str(), result[1].c_str());
   }
 
 

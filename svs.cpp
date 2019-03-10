@@ -38,7 +38,7 @@ void SVS::registerPrefix() {
  *  sync layer. The sync layer will keep a copy.
  */
 void SVS::publishMsg(const std::string &msg) {
-  printf("Sent data: %s\n\n", msg.c_str());
+  printf(">> %s\n\n", msg.c_str());
   fflush(stdout);
 
   m_vv[m_id]++;
