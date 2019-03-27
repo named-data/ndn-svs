@@ -4,6 +4,8 @@
 #include <iostream>
 #include <ndn-cxx/util/scheduler.hpp>
 #include <random>
+#include <thread>
+#include <mutex>
 
 #include "svs_common.hpp"
 #include "svs_helper.hpp"
@@ -67,6 +69,7 @@ class SVS {
   std::deque<std::shared_ptr<Packet>> pending_data_reply;
   std::deque<std::shared_ptr<Packet>> pending_data_interest_forwarded;
   std::deque<std::shared_ptr<Packet>> pending_data_interest;
+  std::mutex pending_sync_interest_mutex;
 
   // Microseconds between sending two packets in the queues
   std::uniform_int_distribution<> packet_dist =

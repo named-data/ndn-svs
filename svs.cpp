@@ -69,6 +69,7 @@ void SVS::asyncSendPacket() {
   // Decouple packet selection and packet sending
   Name n;
   std::shared_ptr<Packet> packet;
+  pending_sync_interest_mutex.lock();
   if (pending_ack.size() > 0) {
     packet = pending_ack.front();
     pending_ack.pop_front();
@@ -85,6 +86,7 @@ void SVS::asyncSendPacket() {
     packet = pending_data_interest.front();
     pending_data_interest.pop_front();
   }
+  pending_sync_interest_mutex.unlock();
 
   if (packet != nullptr) {
     // Send packet
@@ -291,7 +293,9 @@ void SVS::retxSyncInterest() {
 
 /**
  * sendSyncInterest() - Add one sync interest to queue. Called by
- *  SVS::retxSyncInterest(), or directly.
+ *  SVS::retxSyncInterest(), or directly. Because this function is
+ *  also called upon new msg via PublishMsg(), the shared data 
+ *  structures could cause race conditions.
  */
 void SVS::sendSyncInterest() {
   using namespace std::chrono;
@@ -312,8 +316,11 @@ void SVS::sendSyncInterest() {
   packet.packet_type = Packet::INTEREST_TYPE;
   packet.interest =
       std::make_shared<Interest>(pending_sync_notify, time::milliseconds(1000));
+
+  pending_sync_interest_mutex.lock();
   pending_sync_interest.clear();  // Flush sync interest queue
   pending_sync_interest.push_back(std::make_shared<Packet>(packet));
+  pending_sync_interest_mutex.unlock();
 }
 
 /**
