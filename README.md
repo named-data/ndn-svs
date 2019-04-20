@@ -24,7 +24,7 @@ nfdc strategy set / /localhost/nfd/strategy/multicast/%FD%03
 MacOS supports setting up ad-hoc Wi-Fi between computers (en0) interface, so you can configure routes through this face. On other platforms, configure route with UDP4 face:
 
 ```
-nfdc face create udp4://<ip_other>::6363
+nfdc face create udp4://<ip_other>:6363
 ```
 
 Then, add outgoing faces for both prefixes:
