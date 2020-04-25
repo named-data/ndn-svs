@@ -85,8 +85,8 @@ class SVS {
   std::mt19937 rengine_;
 
   // Events
-  EventId retx_event;    // will send retx next sync intrest
-  EventId packet_event;  // Will send next packet async
+  scheduler::EventId retx_event;    // will send retx next sync intrest
+  scheduler::EventId packet_event;  // Will send next packet async
 };
 
 }  // namespace svs
