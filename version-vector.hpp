@@ -38,11 +38,14 @@ public:
 
   VersionVector(const VersionVector&) = default;
 
-  /** Decode a version vector from encoded string */
-  VersionVector(std::string encoded);
+  /** Decode a version vector from ndn::buffer */
+  VersionVector(const ndn::Buffer encoded);
+
+  /** Decode a version vector from raw buffer */
+  VersionVector(const uint8_t* buf, const size_t size);
 
   /** Encode the version vector to a string */
-  std::string
+  ndn::Buffer
   encode() const;
 
   SeqNo

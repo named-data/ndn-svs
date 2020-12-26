@@ -1,5 +1,5 @@
 CXX = clang++
-CXXFLAGS = -std=c++14 -Wall `pkg-config --cflags libndn-cxx` -g
+CXXFLAGS = -std=c++14 -Wall `pkg-config --cflags libndn-cxx` -lboost_serialization
 LIBS = `pkg-config --libs libndn-cxx`
 SOURCE_OBJS = client_main.o svs.o version-vector.o
 PROGRAMS = client

@@ -19,31 +19,31 @@
 
 #include "version-vector.hpp"
 
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/serialization/unordered_map.hpp>
+
 namespace ndn {
 namespace svs {
 
-VersionVector::VersionVector(std::string encoded) {
-  int start = 0;
-  for (size_t i = 0; i < encoded.size(); ++i) {
-    if (encoded[i] == '_') {
-      std::string str = encoded.substr(start, i - start);
-      size_t cursor_1 = str.find("-");
-      NodeID nid = unescape(str.substr(0, cursor_1));
-      uint64_t seq = std::stoll(str.substr(cursor_1 + 1, i));
-      set(nid, seq);
-      start = i + 1;
-    }
-  }
+VersionVector::VersionVector(const ndn::Buffer buf)
+  : VersionVector::VersionVector(buf.data(), buf.size()) {}
+
+VersionVector::VersionVector(const uint8_t* buf, const std::size_t size) {
+  std::stringstream stream;
+  stream.write(reinterpret_cast<const char*>(buf), size);
+  boost::archive::binary_iarchive ar(stream, boost::archive::no_header);
+  ar >> m_umap;
 }
 
-std::string
+ndn::Buffer
 VersionVector::encode() const
 {
-  std::string encoded = "";
-  for (auto entry : m_umap) {
-    encoded += (escape(entry.first) + "-" + to_string(entry.second) + "_");
-  }
-  return encoded;
+  std::ostringstream stream;
+  boost::archive::binary_oarchive oa(stream, boost::archive::no_header);
+  oa << m_umap;
+  std::string serialized = stream.str();
+  return Buffer(serialized.data(), serialized.size());
 }
 
 } // namespace ndn
