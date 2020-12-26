@@ -20,6 +20,9 @@
 #ifndef SVS_SOCKET_HPP
 #define SVS_SOCKET_HPP
 
+#include "common.hpp"
+#include "version-vector.hpp"
+
 #include <deque>
 #include <iostream>
 #include <random>
@@ -28,38 +31,15 @@
 
 #include <boost/asio.hpp>
 
-#include <ndn-cxx/face.hpp>
 #include <ndn-cxx/util/scheduler.hpp>
 #include <ndn-cxx/security/validator.hpp>
 #include <ndn-cxx/ims/in-memory-storage-persistent.hpp>
-
-#include "common.hpp"
-#include "version-vector.hpp"
 
 using ndn::security::ValidationError;
 using ndn::security::Validator;
 
 namespace ndn {
 namespace svs {
-
-class MissingDataInfo
-{
-public:
-  /// @brief session name
-  NodeID nid;
-  /// @brief the lowest one of missing sequence numbers
-  SeqNo low;
-  /// @brief the highest one of missing sequence numbers
-  SeqNo high;
-};
-
-/**
- * @brief The callback function to handle state updates
- *
- * The parameter is a set of MissingDataInfo, of which each corresponds to
- * a session that has changed its state.
- */
-using UpdateCallback = function<void(const std::vector<MissingDataInfo>&)>;
 
 /**
  * @brief A simple interface to interact with client code

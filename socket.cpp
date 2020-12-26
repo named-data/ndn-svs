@@ -137,8 +137,6 @@ Socket::publishData(const Block& content, const ndn::time::milliseconds& freshne
  * sending next packet with random delay.
  */
 void Socket::asyncSendPacket() {
-  // Decouple packet selection and packet sending
-  Name n;
   std::shared_ptr<Packet> packet;
   pending_sync_interest_mutex.lock();
   if (pending_ack.size() > 0) {
@@ -157,38 +155,31 @@ void Socket::asyncSendPacket() {
     switch (packet->packet_type) {
       case Packet::INTEREST_TYPE:
         interest = Interest(*packet->interest);
-        n = interest.getName();
         interest.setCanBePrefix(true);
         interest.setMustBeFresh(true);
 
         // Sync Interest
-        if (m_syncPrefix.isPrefixOf(n)) {
+        if (m_syncPrefix.isPrefixOf(interest.getName()))
           m_face.expressInterest(interest,
                                  std::bind(&Socket::onSyncAck, this, _2),
                                  std::bind(&Socket::onSyncNack, this, _1, _2),
                                  std::bind(&Socket::onSyncTimeout, this, _1));
-        } else {
-          NDN_THROW(Error("Invalid interest name: " + n.toUri()));
-        }
+        else
+          NDN_THROW(Error("Invalid sync interest name"));
 
         break;
 
       case Packet::DATA_TYPE:
-        n = packet->data->getName();
-
         // Data Reply
-        if (m_syncPrefix.isPrefixOf(n)) {
+        if (m_syncPrefix.isPrefixOf(packet->data->getName()))
           m_face.put(*packet->data);
-        }
-
-        else {
-          NDN_THROW(Error("Invalid data name: " + n.toUri()));
-        }
+        else
+          NDN_THROW(Error("Invalid sync data name"));
 
         break;
 
       default:
-        NDN_THROW(Error("Invalid packet type"));
+        NDN_THROW(Error("Invalid queued packet type"));
     }
   }
 
@@ -334,11 +325,13 @@ Socket::onDataValidationFailed(const Data& data,
 }
 
 void
-Socket::onSyncNack(const Interest &interest, const lp::Nack &nack) {
+Socket::onSyncNack(const Interest &interest, const lp::Nack &nack)
+{
 }
 
 void
-Socket::onSyncTimeout(const Interest &interest) {
+Socket::onSyncTimeout(const Interest &interest)
+{
 }
 
 /**

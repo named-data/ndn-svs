@@ -30,16 +30,31 @@ namespace svs {
 using NodeID = std::string;
 using SeqNo = uint64_t;
 
-typedef struct Packet_ {
+class MissingDataInfo
+{
+public:
+  /// @brief session name
+  NodeID nid;
+  /// @brief the lowest one of missing sequence numbers
+  SeqNo low;
+  /// @brief the highest one of missing sequence numbers
+  SeqNo high;
+};
+
+/**
+ * @brief The callback function to handle state updates
+ *
+ * The parameter is a set of MissingDataInfo, of which each corresponds to
+ * a session that has changed its state.
+ */
+using UpdateCallback = function<void(const std::vector<MissingDataInfo>&)>;
+
+typedef struct Packet_
+{
   std::shared_ptr<const Interest> interest;
   std::shared_ptr<const Data> data;
 
   enum PacketType { INTEREST_TYPE, DATA_TYPE } packet_type;
-
-  // // Define copy constructor to safely copy shared ptr
-  // Packet_() : interest(nullptr), data(nullptr){};
-  // Packet_(const Packet_ &c)
-  //     : interest(c.interest), data(c.data), packet_type(c.packet_type) {}
 } Packet;
 
 }  // namespace svs
