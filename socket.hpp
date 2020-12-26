@@ -24,12 +24,8 @@
 #include "version-vector.hpp"
 
 #include <deque>
-#include <iostream>
 #include <random>
-#include <thread>
 #include <mutex>
-
-#include <boost/asio.hpp>
 
 #include <ndn-cxx/util/scheduler.hpp>
 #include <ndn-cxx/security/validator.hpp>

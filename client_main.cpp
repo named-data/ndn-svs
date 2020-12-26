@@ -1,12 +1,7 @@
 // AUTHOR: Zhaoning Kong
 // Email: jonnykong@cs.ucla.edu
 
-#include <boost/asio.hpp>
-#include <boost/lexical_cast.hpp>
-#include <cstdint>
 #include <iostream>
-#include <ndn-cxx/face.hpp>
-#include <ndn-cxx/name.hpp>
 #include <string>
 #include <thread>
 #include <vector>
@@ -46,9 +41,7 @@ class Program {
     // Create other thread to run
     std::thread thread_svs([this] { face.processEvents(); });
 
-    std::string init_msg = "User " +
-                           boost::lexical_cast<std::string>(m_options.m_id) +
-                           " has joined the groupchat";
+    std::string init_msg = "User " + m_options.m_id + " has joined the groupchat";
     publishMsg(init_msg);
 
     std::string userInput = "";
@@ -91,7 +84,7 @@ class Program {
 
 int main(int argc, char **argv) {
   if (argc != 2) {
-    printf("Usage: TODO\n");
+    printf("Usage: client <prefix>\n");
     exit(1);
   }
 

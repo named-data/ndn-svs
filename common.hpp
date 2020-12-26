@@ -21,7 +21,6 @@
 #define SVS_COMMON_HPP
 
 #include <ndn-cxx/face.hpp>
-#include <ndn-cxx/name.hpp>
 
 namespace ndn {
 namespace svs {
