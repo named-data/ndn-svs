@@ -3,7 +3,7 @@ CXXFLAGS = -std=c++14 -Wall `pkg-config --cflags libndn-cxx` -g
 LIBS = `pkg-config --libs libndn-cxx`
 SOURCE_OBJS = client_main.o svs.o
 PROGRAMS = client
-DEPS = svs_common.hpp svs_helper.hpp
+DEPS = svs_common.hpp svs_helper.hpp version-vector.hpp
 
 all: $(PROGRAMS)
 

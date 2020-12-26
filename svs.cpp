@@ -57,7 +57,7 @@ Socket::Socket(const Name& syncPrefix,
 
   // Start with self only
   m_id = m_userPrefix.toUri();
-  m_vv[m_id] = 0;
+  m_vv.set(m_id, 0);
 
   // Start periodically send sync interest
   retxSyncInterest();
@@ -95,7 +95,7 @@ Socket::publishData(const Block& content, const ndn::time::milliseconds& freshne
   data->setContent(content);
   data->setFreshnessPeriod(freshness);
 
-  SeqNo newSeq = ++m_vv[m_id];
+  SeqNo newSeq = m_vv.get(m_id) + 1;
   Name dataName;
   dataName.append(m_id).appendNumber(newSeq);
   data->setName(dataName);
@@ -105,6 +105,7 @@ Socket::publishData(const Block& content, const ndn::time::milliseconds& freshne
   else
     m_keyChain.sign(*data, security::signingByIdentity(m_signingId));
 
+  m_vv.set(m_id, newSeq);
   m_ims.insert(*data);
   sendSyncInterest();
 }
@@ -199,14 +200,9 @@ void Socket::asyncSendPacket() {
 
 void Socket::onSyncInterest(const Interest &interest) {
   const auto &n = interest.getName();
-  NodeID nid_other = ExtractNodeID(n);
-  // std::cout << "Receive sync interest: " << n << " from " << nid_other << std::endl;
+  NodeID nidOther = ExtractNodeID(n);
 
-  if (nid_other == m_id) return;
-
-  // printf("Received sync interest from node %llu: %s\n", nid_other,
-  //        ExtractEncodedVV(n).c_str());
-  fflush(stdout);
+  if (nidOther == m_id) return;
 
   // Merge state vector
   bool my_vector_new, other_vector_new;
@@ -228,19 +224,13 @@ void Socket::onSyncInterest(const Interest &interest) {
   // If incoming state newer than local vector, send sync interest immediately.
   // If local state newer than incoming state, do nothing.
   if (!my_vector_new && !other_vector_new) {
-    // printf("Delay next sync interest\n");
-    fflush(stdout);
     retx_event.cancel();
     int delay = retx_dist(rengine_);
     retx_event = m_scheduler.schedule(time::microseconds(delay),
                                       [this] { retxSyncInterest(); });
   } else if (other_vector_new) {
-    // printf("Send next sync interest immediately\n");
-    fflush(stdout);
     retx_event.cancel();
     retxSyncInterest();
-  } else {
-    // Do nothing
   }
 }
 
@@ -432,21 +422,17 @@ Socket::mergeStateVector(const VersionVector &vv_other) {
 
   // Check if other vector has newer state
   for (auto entry : vv_other) {
-    auto nidOther = entry.first;
-    auto seqOther = entry.second;
-    auto it = m_vv.find(nidOther);
+    NodeID nidOther = entry.first;
+    SeqNo seqOther = entry.second;
+    SeqNo seqCurrent = m_vv.get(nidOther);
 
-    if (it == m_vv.end() || it->second < seqOther) {
+    if (seqCurrent < seqOther) {
       other_vector_new = true;
-      // Detect new data
-      auto startSeq =
-        m_vv.find(nidOther) == m_vv.end() ? 1 : (m_vv[nidOther] + 1);
 
-      // Add missing data
+      SeqNo startSeq = m_vv.get(nidOther) + 1;
       v.push_back({nidOther, startSeq, seqOther});
 
-      // Merge local vector
-      m_vv[nidOther] = seqOther;
+      m_vv.set(nidOther, seqOther);
     }
   }
 
@@ -457,11 +443,11 @@ Socket::mergeStateVector(const VersionVector &vv_other) {
 
   // Check if I have newer state
   for (auto entry : m_vv) {
-    auto nid = entry.first;
-    auto seq = entry.second;
-    auto it = vv_other.find(nid);
+    NodeID nid = entry.first;
+    SeqNo seq = entry.second;
+    SeqNo seqOther = vv_other.get(nid);
 
-    if (it == vv_other.end() || it->second < seq) {
+    if (seqOther < seq) {
       my_vector_new = true;
       break;
     }

@@ -17,32 +17,57 @@
  * SVS, e.g., in COPYING.md file.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef SVS_COMMON_HPP
-#define SVS_COMMON_HPP
+#ifndef SVS_VERSION_VECTOR_HPP
+#define SVS_VERSION_VECTOR_HPP
 
-#include <ndn-cxx/face.hpp>
-#include <ndn-cxx/name.hpp>
+#include "svs_common.hpp"
+
+#include <unordered_map>
 
 namespace ndn {
 namespace svs {
 
-// Type and constant declarations for State Vector Sync (SVS)
-using NodeID = std::string;
-using SeqNo = uint64_t;
+class VersionVector
+{
+public:
+  using const_iterator = std::unordered_map<NodeID, SeqNo>::const_iterator;
 
-typedef struct Packet_ {
-  std::shared_ptr<const Interest> interest;
-  std::shared_ptr<const Data> data;
+  SeqNo
+  set(NodeID nid, SeqNo seqNo)
+  {
+    m_umap[nid] = seqNo;
+    return seqNo;
+  }
 
-  enum PacketType { INTEREST_TYPE, DATA_TYPE } packet_type;
+  SeqNo
+  get(NodeID nid) const
+  {
+    auto elem = m_umap.find(nid);
+    return elem == m_umap.end() ? 0 : elem->second;
+  }
 
-  // // Define copy constructor to safely copy shared ptr
-  // Packet_() : interest(nullptr), data(nullptr){};
-  // Packet_(const Packet_ &c)
-  //     : interest(c.interest), data(c.data), packet_type(c.packet_type) {}
-} Packet;
+  const_iterator
+  begin() const
+  {
+    return m_umap.begin();
+  }
 
-}  // namespace svs
-}  // namespace ndn
+  const_iterator
+  end() const
+  {
+    return m_umap.end();
+  }
 
-#endif // SVS_COMMON_HPP
+  bool
+  has(NodeID nid) const
+  {
+    return m_umap.find(nid) != end();
+  }
+private:
+  std::unordered_map<NodeID, SeqNo> m_umap;
+};
+
+} // namespace ndn
+} // namespace svs
+
+#endif // SVS_VERSION_VECTOR_HPP

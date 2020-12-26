@@ -6,6 +6,7 @@
 #include <ndn-cxx/util/string-helper.hpp>
 
 #include "svs_common.hpp"
+#include "version-vector.hpp"
 
 namespace ndn {
 namespace svs {
@@ -43,7 +44,7 @@ DecodeVVFromNameWithInterest(const std::string &vv_encode)
       size_t cursor_1 = str.find("-");
       NodeID nid = unescape(str.substr(0, cursor_1));
       uint64_t seq = std::stoll(str.substr(cursor_1 + 1, i));
-      vv[nid] = seq;
+      vv.set(nid, seq);
       start = i + 1;
     }
   }

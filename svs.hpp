@@ -35,14 +35,13 @@
 
 #include "svs_common.hpp"
 #include "svs_helper.hpp"
+#include "version-vector.hpp"
 
 using ndn::security::ValidationError;
 using ndn::security::Validator;
 
 namespace ndn {
 namespace svs {
-
-using SeqNo = uint64_t;
 
 class MissingDataInfo
 {
