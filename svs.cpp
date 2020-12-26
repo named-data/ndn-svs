@@ -83,7 +83,7 @@ void Socket::publishMsg(const std::string &msg) {
   // Set data name
   auto n = MakeDataName(m_id, m_vv[m_id]);
   std::shared_ptr<Data> data = std::make_shared<Data>(n);
-  std::cout << "Sending data packet with name: " << n << std::endl;
+  // std::cout << "Sending data packet with name: " << n << std::endl;
 
   // Set data content
   Buffer contentBuf;
@@ -135,9 +135,18 @@ void Socket::asyncSendPacket() {
         interest = Interest(*packet->interest);
         n = interest.getName();
         interest.setCanBePrefix(true);
+        interest.setMustBeFresh(true);
 
-        // Data Interest
-        if (m_userPrefix.isPrefixOf(n)) {
+        // Sync Interest
+        if (m_syncPrefix.isPrefixOf(n)) {
+          m_face.expressInterest(interest,
+                                 std::bind(&Socket::onSyncAck, this, _2),
+                                 std::bind(&Socket::onNack, this, _1, _2),
+                                 std::bind(&Socket::onTimeout, this, _1));
+          // std::cout << "Send sync interest: " << n << std::endl;
+        }
+        else
+        {
           // Drop falsy data interest
           if (m_data_store.find(n) != m_data_store.end()) {
             return asyncSendPacket();
@@ -147,21 +156,7 @@ void Socket::asyncSendPacket() {
                                  std::bind(&Socket::onDataReply, this, _2),
                                  std::bind(&Socket::onNack, this, _1, _2),
                                  std::bind(&Socket::onTimeout, this, _1));
-          pending_data_interest.push_back(packet);
-          std::cout << "Send data interest: " << n << std::endl;
-        }
-
-        // Sync Interest
-        else if (m_syncPrefix.isPrefixOf(n)) {
-          m_face.expressInterest(interest,
-                                 std::bind(&Socket::onSyncAck, this, _2),
-                                 std::bind(&Socket::onNack, this, _1, _2),
-                                 std::bind(&Socket::onTimeout, this, _1));
-          std::cout << "Send sync interest: " << n << std::endl;
-        }
-
-        else {
-          std::cout << "Invalid interest name: " << n << std::endl;
+          // std::cout << "Send data interest: " << n << std::endl;
         }
 
         break;
@@ -198,7 +193,7 @@ void Socket::asyncSendPacket() {
 void Socket::onSyncInterest(const Interest &interest) {
   const auto &n = interest.getName();
   NodeID nid_other = ExtractNodeID(n);
-  std::cout << "Receive sync interest: " << n << " from " << nid_other << std::endl;
+  // std::cout << "Receive sync interest: " << n << " from " << nid_other << std::endl;
 
   if (nid_other == m_id) return;
 
@@ -278,9 +273,8 @@ void Socket::onSyncAck(const Data &data) {
  */
 void Socket::onDataReply(const Data &data) {
   const auto &n = data.getName();
-  std::cout << "Receive data reply: " << n << std::endl;
-#if 0
-  NodeID nid_other = ExtractNodeID(n);
+  NodeID nid_other = n.getPrefix(-1).toUri();
+  // std::cout << "Receive data reply: " << n << std::endl;
 
   // Drop duplicate data
   if (m_data_store.find(n) != m_data_store.end()) return;
@@ -293,8 +287,8 @@ void Socket::onDataReply(const Data &data) {
   std::string content_str((char *)data.getContent().value(), data_size);
   content_str = boost::lexical_cast<std::string>(nid_other) + ":" + content_str;
 
-  onMsg(content_str);
-#endif
+  std::cout << content_str << std::endl;
+  // onMsg(content_str);
 }
 
 /**
@@ -426,9 +420,8 @@ Socket::mergeStateVector(const VersionVector &vv_other) {
 
 Name
 Socket::MakeDataName(const NodeID &nid, uint64_t seq) {
-  // name = /[vsyncData_prefix]/[node_id]/[seq]/%0
-  Name n(m_syncPrefix);
-  n.append(escape(nid)).appendNumber(seq).appendNumber(0);
+  Name n(nid);
+  n.appendNumber(seq);
   return n;
 }
 
