@@ -49,14 +49,13 @@ class Program {
     std::string init_msg = "User " +
                            boost::lexical_cast<std::string>(m_options.m_id) +
                            " has joined the groupchat";
-    m_svs.publishMsg(init_msg);
+    publishMsg(init_msg);
 
     std::string userInput = "";
 
     while (true) {
-      // send to Sync
       std::getline(std::cin, userInput);
-      m_svs.publishMsg(userInput);
+      publishMsg(userInput);
     }
 
     thread_svs.join();
@@ -67,14 +66,20 @@ class Program {
     for (size_t i = 0; i < v.size(); i++) {
       for(SeqNo s = v[i].low; s <= v[i].high; ++s) {
         NodeID nid = v[i].nid;
-        m_svs.fetchData(nid, s, [this, nid] (const Data& data) {
+        m_svs.fetchData(nid, s, [nid] (const Data& data) {
             size_t data_size = data.getContent().value_size();
             std::string content_str((char *)data.getContent().value(), data_size);
-            content_str = nid + ":" + content_str;
+            content_str = nid + " : " + content_str;
             std::cout << content_str << std::endl;
           });
       }
     }
+  }
+
+  void publishMsg(std::string msg) {
+    m_svs.publishData(reinterpret_cast<const uint8_t*>(msg.c_str()),
+                      msg.size(),
+                      time::milliseconds(1000));
   }
 
   const Options m_options;

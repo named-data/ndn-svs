@@ -31,6 +31,7 @@
 #include <ndn-cxx/face.hpp>
 #include <ndn-cxx/util/scheduler.hpp>
 #include <ndn-cxx/security/validator.hpp>
+#include <ndn-cxx/ims/in-memory-storage-persistent.hpp>
 
 #include "svs_common.hpp"
 #include "svs_helper.hpp"
@@ -102,10 +103,6 @@ public:
 
   using DataValidationErrorCallback = function<void(const Data&, const ValidationError& error)> ;
 
-  /** @brief Publish a string data packet */
-  void
-  publishMsg(const std::string &msg);
-
   /**
    * @brief Publish a data packet in the session and trigger synchronization updates
    *
@@ -129,6 +126,25 @@ public:
    *
    * This method will create a data packet with the supplied content.
    * The packet name is the local session + seqNo.
+   * The seqNo is set by the application.
+   *
+   * @throws It will throw error, if the prefix does not exist in m_logic
+   *
+   * @param buf Pointer to the bytes in content
+   * @param len size of the bytes in content
+   * @param freshness FreshnessPeriod of the data packet.
+   * @param seqNo Sequence number of the data
+   * @param prefix The user prefix that will be used to publish the data.
+   */
+  void
+  publishData(const uint8_t* buf, size_t len, const ndn::time::milliseconds& freshness,
+              const uint64_t& seqNo, const Name& prefix = DEFAULT_PREFIX);
+
+  /**
+   * @brief Publish a data packet in the session and trigger synchronization updates
+   *
+   * This method will create a data packet with the supplied content.
+   * The packet name is the local session + seqNo.
    * The seqNo is automatically maintained by internal Logic.
    *
    * @throws It will throw error, if the prefix does not exist in m_logic
@@ -140,6 +156,24 @@ public:
   void
   publishData(const Block& content, const ndn::time::milliseconds& freshness,
               const Name& prefix = DEFAULT_PREFIX);
+
+  /**
+   * @brief Publish a data packet in the session and trigger synchronization updates
+   *
+   * This method will create a data packet with the supplied content.
+   * The packet name is the local session + seqNo.
+   * The seqNo is set by the application.
+   *
+   * @throws It will throw error, if the prefix does not exist in m_logic
+   *
+   * @param content Block that will be set as the content of the data packet.
+   * @param freshness FreshnessPeriod of the data packet.
+   * @param seqNo Sequence number of the data
+   * @param prefix The user prefix that will be used to publish the data.
+   */
+  void
+  publishData(const Block& content, const ndn::time::milliseconds& freshness,
+              const uint64_t& seqNo, const Name& prefix = DEFAULT_PREFIX);
 
   /**
    * @brief Retrive a data packet with a particular seqNo from a session
@@ -214,7 +248,8 @@ private:
   onDataValidationFailed(const Data& data,
                          const ValidationError& error);
 
-  std::pair<bool, bool> mergeStateVector(const VersionVector &vv_other);
+  std::pair<bool, bool>
+  mergeStateVector(const VersionVector &vv_other);
 
   std::function<void(const std::string &)> onMsg;
 
@@ -226,8 +261,6 @@ private:
   Face& m_face;
   KeyChain m_keyChain;
   VersionVector m_vv;
-  std::unordered_map<Name, std::shared_ptr<const Data>> m_data_store;
-  RegisteredPrefixList m_registeredPrefixList;
 
   // Validator
   std::shared_ptr<Validator> m_validator;
@@ -238,7 +271,6 @@ private:
   // Mult-level queues
   std::deque<std::shared_ptr<Packet>> pending_ack;
   std::deque<std::shared_ptr<Packet>> pending_sync_interest;
-  std::deque<std::shared_ptr<Packet>> pending_data_reply;
   std::mutex pending_sync_interest_mutex;
 
   // Microseconds between sending two packets in the queues
@@ -255,10 +287,10 @@ private:
   std::random_device rdevice_;
   std::mt19937 rengine_;
 
-  // Scheduler
   ndn::Scheduler m_scheduler;
+  RegisteredPrefixList m_registeredPrefixList;
+  ndn::InMemoryStoragePersistent m_ims;
 
-  // Events
   scheduler::EventId retx_event;    // will send retx next sync intrest
   scheduler::EventId packet_event;  // Will send next packet async
 };

@@ -22,6 +22,7 @@
 
 #include <ndn-cxx/interest-filter.hpp>
 #include <ndn-cxx/util/string-helper.hpp>
+#include <ndn-cxx/security/signing-helpers.hpp>
 
 #include "svs.hpp"
 
@@ -29,6 +30,7 @@ namespace ndn {
 namespace svs {
 
 const ndn::Name Socket::DEFAULT_NAME;
+const ndn::Name Socket::DEFAULT_PREFIX;
 const std::shared_ptr<Validator> Socket::DEFAULT_VALIDATOR;
 
 Socket::Socket(const Name& syncPrefix,
@@ -75,25 +77,59 @@ Socket::~Socket()
   }
 }
 
-void Socket::publishMsg(const std::string &msg) {
-  m_vv[m_id]++;
+void
+Socket::publishData(const uint8_t* buf, size_t len, const ndn::time::milliseconds& freshness,
+                    const Name& prefix)
+{
+  publishData(ndn::encoding::makeBinaryBlock(ndn::tlv::Content, buf, len), freshness, prefix);
+}
 
-  // Set data name
-  auto n = MakeDataName(m_id, m_vv[m_id]);
-  std::shared_ptr<Data> data = std::make_shared<Data>(n);
-  // std::cout << "Sending data packet with name: " << n << std::endl;
+void
+Socket::publishData(const uint8_t* buf, size_t len, const ndn::time::milliseconds& freshness,
+                    const uint64_t& seqNo, const Name& prefix)
+{
+  publishData(ndn::encoding::makeBinaryBlock(ndn::tlv::Content, buf, len), freshness, seqNo, prefix);
+}
 
-  // Set data content
-  Buffer contentBuf;
-  for (size_t i = 0; i < msg.length(); ++i)
-    contentBuf.push_back((uint8_t)msg[i]);
-  data->setContent(contentBuf.get<uint8_t>(), contentBuf.size());
-  m_keyChain.sign(
-      *data, security::SigningInfo(security::SigningInfo::SIGNER_TYPE_SHA256));
-  data->setFreshnessPeriod(time::milliseconds(1000));
+void
+Socket::publishData(const Block& content, const ndn::time::milliseconds& freshness,
+                    const Name& prefix)
+{
+  shared_ptr<Data> data = make_shared<Data>();
+  data->setContent(content);
+  data->setFreshnessPeriod(freshness);
 
-  m_data_store[n] = data;
+  SeqNo newSeq = ++m_vv[m_id];
+  Name dataName = MakeDataName(m_id, newSeq);
+  data->setName(dataName);
 
+  if (m_signingId.empty())
+    m_keyChain.sign(*data);
+  else
+    m_keyChain.sign(*data, security::signingByIdentity(m_signingId));
+
+  m_ims.insert(*data);
+  sendSyncInterest();
+}
+
+void
+Socket::publishData(const Block& content, const ndn::time::milliseconds& freshness,
+                    const uint64_t& seqNo, const Name& prefix)
+{
+  shared_ptr<Data> data = make_shared<Data>();
+  data->setContent(content);
+  data->setFreshnessPeriod(freshness);
+
+  SeqNo newSeq = seqNo;
+  Name dataName = MakeDataName(m_id, newSeq);
+  data->setName(dataName);
+
+  if (m_signingId.empty())
+    m_keyChain.sign(*data);
+  else
+    m_keyChain.sign(*data, security::signingByIdentity(m_signingId));
+
+  m_ims.insert(*data);
   sendSyncInterest();
 }
 
@@ -109,9 +145,6 @@ void Socket::asyncSendPacket() {
   if (pending_ack.size() > 0) {
     packet = pending_ack.front();
     pending_ack.pop_front();
-  } else if (pending_data_reply.size() > 0) {
-    packet = pending_data_reply.front();
-    pending_data_reply.pop_front();
   } else if (pending_sync_interest.size() > 0) {
     packet = pending_sync_interest.front();
     pending_sync_interest.pop_front();
@@ -135,7 +168,6 @@ void Socket::asyncSendPacket() {
                                  std::bind(&Socket::onSyncAck, this, _2),
                                  std::bind(&Socket::onNack, this, _1, _2),
                                  std::bind(&Socket::onTimeout, this, _1));
-          // std::cout << "Send sync interest: " << n << std::endl;
         } else {
           NDN_THROW(Error("Invalid interest name: " + n.toUri()));
         }
@@ -146,7 +178,7 @@ void Socket::asyncSendPacket() {
         n = packet->data->getName();
 
         // Data Reply
-        if (m_userPrefix.isPrefixOf(n) || m_syncPrefix.isPrefixOf(n)) {
+        if (m_syncPrefix.isPrefixOf(n)) {
           m_face.put(*packet->data);
         }
 
@@ -216,16 +248,12 @@ void Socket::onSyncInterest(const Interest &interest) {
 
 void Socket::onDataInterest(const Interest &interest) {
   const auto &n = interest.getName();
-  auto iter = m_data_store.find(n);
 
-  // If have data, reply. Otherwise forward with probability
-  if (iter != m_data_store.end()) {
-    Packet packet;
-    packet.packet_type = Packet::DATA_TYPE;
-    packet.data = iter->second;
-    pending_data_reply.push_back(std::make_shared<Packet>(packet));
+  // If have data, reply. Otherwise forward with probability (?)
+  shared_ptr<const Data> data = m_ims.find(interest);
+  if (data != nullptr) {
+    m_face.put(*data);
   }
-
   else {
     // TODO
   }
