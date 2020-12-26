@@ -24,6 +24,8 @@
 
 #include <unordered_map>
 
+#include <ndn-cxx/util/string-helper.hpp>
+
 namespace ndn {
 namespace svs {
 
@@ -31,6 +33,24 @@ class VersionVector
 {
 public:
   using const_iterator = std::unordered_map<NodeID, SeqNo>::const_iterator;
+
+  VersionVector() = default;
+
+  VersionVector(const VersionVector&) = default;
+
+  VersionVector(std::string encoded) {
+    int start = 0;
+    for (size_t i = 0; i < encoded.size(); ++i) {
+      if (encoded[i] == '_') {
+        std::string str = encoded.substr(start, i - start);
+        size_t cursor_1 = str.find("-");
+        NodeID nid = unescape(str.substr(0, cursor_1));
+        uint64_t seq = std::stoll(str.substr(cursor_1 + 1, i));
+        set(nid, seq);
+        start = i + 1;
+      }
+    }
+  }
 
   SeqNo
   set(NodeID nid, SeqNo seqNo)
@@ -62,6 +82,17 @@ public:
   has(NodeID nid) const
   {
     return m_umap.find(nid) != end();
+  }
+
+  /** Encode the version vector to a string */
+  std::string
+  encode() const
+  {
+    std::string encoded = "";
+    for (auto entry : m_umap) {
+      encoded += (escape(entry.first) + "-" + to_string(entry.second) + "_");
+    }
+    return encoded;
   }
 private:
   std::unordered_map<NodeID, SeqNo> m_umap;

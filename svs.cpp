@@ -206,8 +206,7 @@ void Socket::onSyncInterest(const Interest &interest) {
 
   // Merge state vector
   bool my_vector_new, other_vector_new;
-  VersionVector vv_other =
-      DecodeVVFromNameWithInterest(ExtractEncodedVV(n));
+  VersionVector vv_other(ExtractEncodedVV(n));
   std::tie(my_vector_new, other_vector_new) = mergeStateVector(vv_other);
 
   // If my vector newer, send ACK immediately. Otherwise send with random delay
@@ -252,7 +251,7 @@ void Socket::onSyncAck(const Data &data) {
   size_t data_size = data.getContent().value_size();
   std::string content_str((char *)data.getContent().value(), data_size);
 
-  VersionVector vv_other = DecodeVVFromNameWithInterest(content_str);
+  VersionVector vv_other(content_str);
 
   // Merge state vector
   mergeStateVector(vv_other);
@@ -368,7 +367,7 @@ Socket::sendSyncInterest() {
 
   Name pending_sync_notify(m_syncPrefix);
   pending_sync_notify.append(escape(m_id))
-                     .append(EncodeVVToNameWithInterest(m_vv))
+                     .append(m_vv.encode())
                      .appendTimestamp();
 
   // Wrap into Packet
@@ -392,11 +391,12 @@ Socket::sendSyncAck(const Name &n) {
   std::shared_ptr<Data> data = std::make_shared<Data>(n);
 
   // Set data content
-  std::string encoded_vv = EncodeVVToNameWithInterest(m_vv);
+  std::string encoded_vv = m_vv.encode();
   Buffer contentBuf;
   for (size_t i = 0; i < encoded_vv.size(); ++i)
-    contentBuf.push_back((uint8_t)encoded_vv[i]);
+    contentBuf.push_back((uint8_t) encoded_vv[i]);
   data->setContent(contentBuf.get<uint8_t>(), contentBuf.size());
+
   m_keyChain.sign(
       *data, security::SigningInfo(security::SigningInfo::SIGNER_TYPE_SHA256));
   data->setFreshnessPeriod(time::milliseconds(4000));
