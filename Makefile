@@ -7,8 +7,8 @@ DEPS = common.hpp version-vector.hpp
 
 all: $(PROGRAMS)
 
-svs.o: svs.cpp svs.hpp $(DEPS)
-	$(CXX) $(CXXFLAGS) -o $@ -c $(LIBS) svs.cpp
+svs.o: socket.cpp socket.hpp $(DEPS)
+	$(CXX) $(CXXFLAGS) -o $@ -c $(LIBS) socket.cpp
 
 client_main.o: client_main.cpp
 	$(CXX) $(CXXFLAGS) -o $@ -c $(LIBS) client_main.cpp

@@ -17,7 +17,7 @@
  * SVS, e.g., in COPYING.md file.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "svs.hpp"
+#include "socket.hpp"
 
 #include <ndn-cxx/util/string-helper.hpp>
 #include <ndn-cxx/security/signing-helpers.hpp>
