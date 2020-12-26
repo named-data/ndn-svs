@@ -33,8 +33,7 @@
 #include <ndn-cxx/security/validator.hpp>
 #include <ndn-cxx/ims/in-memory-storage-persistent.hpp>
 
-#include "svs_common.hpp"
-#include "svs_helper.hpp"
+#include "common.hpp"
 #include "version-vector.hpp"
 
 using ndn::security::ValidationError;

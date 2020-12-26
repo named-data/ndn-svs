@@ -20,7 +20,7 @@
 #ifndef SVS_VERSION_VECTOR_HPP
 #define SVS_VERSION_VECTOR_HPP
 
-#include "svs_common.hpp"
+#include "common.hpp"
 
 #include <unordered_map>
 

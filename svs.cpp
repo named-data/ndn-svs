@@ -200,17 +200,17 @@ void Socket::asyncSendPacket() {
 
 void Socket::onSyncInterest(const Interest &interest) {
   const auto &n = interest.getName();
-  NodeID nidOther = ExtractNodeID(n);
+  NodeID nidOther = unescape(n.get(-3).toUri());
 
   if (nidOther == m_id) return;
 
   // Merge state vector
-  bool my_vector_new, other_vector_new;
-  VersionVector vv_other(ExtractEncodedVV(n));
-  std::tie(my_vector_new, other_vector_new) = mergeStateVector(vv_other);
+  bool myVectorNew, otherVectorNew;
+  VersionVector vvOther(n.get(-2).toUri());
+  std::tie(myVectorNew, otherVectorNew) = mergeStateVector(vvOther);
 
   // If my vector newer, send ACK immediately. Otherwise send with random delay
-  if (my_vector_new) {
+  if (myVectorNew) {
     sendSyncAck(n);
   } else {
     int delay = packet_dist(rengine_);
@@ -222,12 +222,12 @@ void Socket::onSyncInterest(const Interest &interest) {
   //  next sync interest.
   // If incoming state newer than local vector, send sync interest immediately.
   // If local state newer than incoming state, do nothing.
-  if (!my_vector_new && !other_vector_new) {
+  if (!myVectorNew && !otherVectorNew) {
     retx_event.cancel();
     int delay = retx_dist(rengine_);
     retx_event = m_scheduler.schedule(time::microseconds(delay),
                                       [this] { retxSyncInterest(); });
-  } else if (other_vector_new) {
+  } else if (otherVectorNew) {
     retx_event.cancel();
     retxSyncInterest();
   }
