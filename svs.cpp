@@ -42,6 +42,7 @@ Socket::Socket(const Name& syncPrefix,
   , m_signingId(signingId)
   , m_face(face)
   , m_validator(validator)
+  , m_onUpdate(updateCallback)
   , m_scheduler(m_face.getIoService())
 {
   if (m_userPrefix != DEFAULT_NAME)
@@ -75,9 +76,6 @@ Socket::~Socket()
 }
 
 void Socket::publishMsg(const std::string &msg) {
-  printf(">> %s\n\n", msg.c_str());
-  fflush(stdout);
-
   m_vv[m_id]++;
 
   // Set data name
@@ -117,12 +115,6 @@ void Socket::asyncSendPacket() {
   } else if (pending_sync_interest.size() > 0) {
     packet = pending_sync_interest.front();
     pending_sync_interest.pop_front();
-  } else if (pending_data_interest_forwarded.size() > 0) {
-    packet = pending_data_interest_forwarded.front();
-    pending_data_interest_forwarded.pop_front();
-  } else if (pending_data_interest.size() > 0) {
-    packet = pending_data_interest.front();
-    pending_data_interest.pop_front();
   }
   pending_sync_interest_mutex.unlock();
 
@@ -144,19 +136,8 @@ void Socket::asyncSendPacket() {
                                  std::bind(&Socket::onNack, this, _1, _2),
                                  std::bind(&Socket::onTimeout, this, _1));
           // std::cout << "Send sync interest: " << n << std::endl;
-        }
-        else
-        {
-          // Drop falsy data interest
-          if (m_data_store.find(n) != m_data_store.end()) {
-            return asyncSendPacket();
-          }
-
-          m_face.expressInterest(interest,
-                                 std::bind(&Socket::onDataReply, this, _2),
-                                 std::bind(&Socket::onNack, this, _1, _2),
-                                 std::bind(&Socket::onTimeout, this, _1));
-          // std::cout << "Send data interest: " << n << std::endl;
+        } else {
+          NDN_THROW(Error("Invalid interest name: " + n.toUri()));
         }
 
         break;
@@ -165,22 +146,18 @@ void Socket::asyncSendPacket() {
         n = packet->data->getName();
 
         // Data Reply
-        if (m_userPrefix.isPrefixOf(n)) {
+        if (m_userPrefix.isPrefixOf(n) || m_syncPrefix.isPrefixOf(n)) {
           m_face.put(*packet->data);
         }
 
-        // Sync Ack
-        else if (m_syncPrefix.isPrefixOf(n)) {
-          m_face.put(*packet->data);
+        else {
+          NDN_THROW(Error("Invalid data name: " + n.toUri()));
         }
-
-        else
-          assert(0);
 
         break;
 
       default:
-        assert(0);
+        NDN_THROW(Error("Invalid packet type"));
     }
   }
 
@@ -267,28 +244,81 @@ void Socket::onSyncAck(const Data &data) {
   mergeStateVector(vv_other);
 }
 
-/**
- * onDataReply() - Save data to data store, and call application callback to
- *  pass the data northbound.
- */
-void Socket::onDataReply(const Data &data) {
-  const auto &n = data.getName();
-  NodeID nid_other = n.getPrefix(-1).toUri();
-  // std::cout << "Receive data reply: " << n << std::endl;
+void
+Socket::fetchData(const NodeID& nid, const SeqNo& seqNo,
+                  const DataValidatedCallback& dataCallback,
+                  int nRetries)
+{
+  Name interestName = MakeDataName(nid, seqNo);
 
-  // Drop duplicate data
-  if (m_data_store.find(n) != m_data_store.end()) return;
+  Interest interest(interestName);
+  interest.setMustBeFresh(true);
+  interest.setCanBePrefix(false);
 
-  // printf("Received data: %s\n", n.toUri().c_str());
-  m_data_store[n] = data.shared_from_this();
+  DataValidationErrorCallback failureCallback =
+    bind(&Socket::onDataValidationFailed, this, _1, _2);
 
-  // Pass msg to application in format: <sender_id>:<content>
-  size_t data_size = data.getContent().value_size();
-  std::string content_str((char *)data.getContent().value(), data_size);
-  content_str = boost::lexical_cast<std::string>(nid_other) + ":" + content_str;
+  m_face.expressInterest(interest,
+                         bind(&Socket::onData, this, _1, _2, dataCallback, failureCallback),
+                         bind(&Socket::onDataTimeout, this, _1, nRetries,
+                              dataCallback, failureCallback), // Nack
+                         bind(&Socket::onDataTimeout, this, _1, nRetries,
+                              dataCallback, failureCallback));
+}
 
-  std::cout << content_str << std::endl;
-  // onMsg(content_str);
+void
+Socket::fetchData(const NodeID& nid, const SeqNo& seqNo,
+                  const DataValidatedCallback& dataCallback,
+                  const DataValidationErrorCallback& failureCallback,
+                  const ndn::TimeoutCallback& onTimeout,
+                  int nRetries)
+{
+  Name interestName = MakeDataName(nid, seqNo);
+
+  Interest interest(interestName);
+  interest.setMustBeFresh(true);
+  interest.setCanBePrefix(false);
+
+  m_face.expressInterest(interest,
+                         bind(&Socket::onData, this, _1, _2, dataCallback, failureCallback),
+                         bind(onTimeout, _1), // Nack
+                         onTimeout);
+}
+
+void
+Socket::onData(const Interest& interest, const Data& data,
+               const DataValidatedCallback& onValidated,
+               const DataValidationErrorCallback& onFailed)
+{
+  if (static_cast<bool>(m_validator))
+    m_validator->validate(data, onValidated, onFailed);
+  else
+    onValidated(data);
+}
+
+void
+Socket::onDataTimeout(const Interest& interest, int nRetries,
+                      const DataValidatedCallback& onValidated,
+                      const DataValidationErrorCallback& onFailed)
+{
+  if (nRetries <= 0)
+    return;
+
+  Interest newNonceInterest(interest);
+  newNonceInterest.refreshNonce();
+
+  m_face.expressInterest(newNonceInterest,
+                         bind(&Socket::onData, this, _1, _2, onValidated, onFailed),
+                         bind(&Socket::onDataTimeout, this, _1, nRetries - 1,
+                              onValidated, onFailed), // Nack
+                         bind(&Socket::onDataTimeout, this, _1, nRetries - 1,
+                              onValidated, onFailed));
+}
+
+void
+Socket::onDataValidationFailed(const Data& data,
+                               const ValidationError& error)
+{
 }
 
 /**
@@ -378,29 +408,32 @@ std::pair<bool, bool>
 Socket::mergeStateVector(const VersionVector &vv_other) {
   bool my_vector_new = false, other_vector_new = false;
 
+  // New data
+  std::vector<MissingDataInfo> v;
+
   // Check if other vector has newer state
   for (auto entry : vv_other) {
-    auto nid_other = entry.first;
-    auto seq_other = entry.second;
-    auto it = m_vv.find(nid_other);
+    auto nidOther = entry.first;
+    auto seqOther = entry.second;
+    auto it = m_vv.find(nidOther);
 
-    if (it == m_vv.end() || it->second < seq_other) {
+    if (it == m_vv.end() || it->second < seqOther) {
       other_vector_new = true;
       // Detect new data
-      auto start_seq =
-          m_vv.find(nid_other) == m_vv.end() ? 1 : m_vv[nid_other] + 1;
-      for (auto seq = start_seq; seq <= seq_other; ++seq) {
-        auto n = MakeDataName(nid_other, seq);
-        Packet packet;
-        packet.packet_type = Packet::INTEREST_TYPE;
-        packet.interest =
-            std::make_shared<Interest>(n, time::milliseconds(1000));
-        pending_data_interest.push_back(std::make_shared<Packet>(packet));
-      }
+      auto startSeq =
+          m_vv.find(nidOther) == m_vv.end() ? 1 : (m_vv[nidOther] + 1);
+
+      // Add missing data
+      v.push_back({nidOther, startSeq, seqOther});
 
       // Merge local vector
-      m_vv[nid_other] = seq_other;
+      m_vv[nidOther] = seqOther;
     }
+  }
+
+  // Callback if missing data found
+  if (!v.empty()) {
+    m_onUpdate(v);
   }
 
   // Check if I have newer state
@@ -419,9 +452,10 @@ Socket::mergeStateVector(const VersionVector &vv_other) {
 }
 
 Name
-Socket::MakeDataName(const NodeID &nid, uint64_t seq) {
-  Name n(nid);
-  n.appendNumber(seq);
+Socket::MakeDataName(const NodeID &nid, SeqNo seq) {
+  Name n;
+  n.append(nid)
+   .appendNumber(seq);
   return n;
 }
 

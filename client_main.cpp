@@ -63,27 +63,19 @@ class Program {
   }
 
  private:
-  void onMissingData(const std::vector<ndn::svs::MissingDataInfo>&) {
-    std::cout << "Received missing data" << std::endl;
+  void onMissingData(const std::vector<ndn::svs::MissingDataInfo>& v) {
+    for (size_t i = 0; i < v.size(); i++) {
+      for(SeqNo s = v[i].low; s <= v[i].high; ++s) {
+        NodeID nid = v[i].nid;
+        m_svs.fetchData(nid, s, [this, nid] (const Data& data) {
+            size_t data_size = data.getContent().value_size();
+            std::string content_str((char *)data.getContent().value(), data_size);
+            content_str = nid + ":" + content_str;
+            std::cout << content_str << std::endl;
+          });
+      }
+    }
   }
-
-  /**
-   * onMsg() - Callback on receiving msg from sync layer.
-   */
-  void onMsg(const std::string &msg) {
-    // Parse received msg
-    std::vector<std::string> result;
-    size_t cursor = msg.find(":");
-    result.push_back(msg.substr(0, cursor));
-    if (cursor < msg.length() - 1)
-      result.push_back(msg.substr(cursor + 1));
-    else
-      result.push_back("");
-
-    // Print to stdout
-    printf("User %s>> %s\n\n", result[0].c_str(), result[1].c_str());
-  }
-
 
   const Options m_options;
   Socket m_svs;

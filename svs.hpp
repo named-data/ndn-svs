@@ -41,11 +41,17 @@ using ndn::security::Validator;
 namespace ndn {
 namespace svs {
 
+using SeqNo = uint64_t;
+
 class MissingDataInfo
 {
 public:
   /// @brief session name
-  Name session;
+  NodeID nid;
+  /// @brief the lowest one of missing sequence numbers
+  SeqNo low;
+  /// @brief the highest one of missing sequence numbers
+  SeqNo high;
 };
 
 /**
@@ -71,7 +77,18 @@ using UpdateCallback = function<void(const std::vector<MissingDataInfo>&)>;
  */
 class Socket : noncopyable
 {
- public:
+public:
+  class Error : public std::runtime_error
+  {
+  public:
+    explicit
+    Error(const std::string& what)
+      : std::runtime_error(what)
+    {
+    }
+  };
+
+public:
   Socket(const Name& syncPrefix,
          const Name& userPrefix,
          ndn::Face& face,
@@ -124,12 +141,42 @@ class Socket : noncopyable
   publishData(const Block& content, const ndn::time::milliseconds& freshness,
               const Name& prefix = DEFAULT_PREFIX);
 
- public:
+  /**
+   * @brief Retrive a data packet with a particular seqNo from a session
+   *
+   * @param sessionName The name of the target session.
+   * @param seq The seqNo of the data packet.
+   * @param onValidated The callback when the retrieved packet has been validated.
+   * @param nRetries The number of retries.
+   */
+  void
+  fetchData(const NodeID& nid, const SeqNo& seq,
+            const DataValidatedCallback& onValidated,
+            int nRetries = 0);
+
+  /**
+   * @brief Retrive a data packet with a particular seqNo from a session
+   *
+   * @param sessionName The name of the target session.
+   * @param seq The seqNo of the data packet.
+   * @param onValidated The callback when the retrieved packet has been validated.
+   * @param onValidationFailed The callback when the retrieved packet failed validation.
+   * @param onTimeout The callback when data is not retrieved.
+   * @param nRetries The number of retries.
+   */
+  void
+  fetchData(const NodeID& nid, const SeqNo& seq,
+            const DataValidatedCallback& onValidated,
+            const DataValidationErrorCallback& onValidationFailed,
+            const ndn::TimeoutCallback& onTimeout,
+            int nRetries = 0);
+
+public:
   static const ndn::Name DEFAULT_NAME;
   static const ndn::Name DEFAULT_PREFIX;
   static const std::shared_ptr<Validator> DEFAULT_VALIDATOR;
 
- private:
+private:
   using RegisteredPrefixList = std::unordered_map<ndn::Name, ndn::RegisteredPrefixHandle>;
 
   void asyncSendPacket();
@@ -139,8 +186,6 @@ class Socket : noncopyable
   void onDataInterest(const Interest &interest);
 
   void onSyncAck(const Data &data);
-
-  void onDataReply(const Data &data);
 
   void onNack(const Interest &interest, const lp::Nack &nack);
 
@@ -153,7 +198,7 @@ class Socket : noncopyable
   void sendSyncACK(const Name &n);
 
   Name
-  MakeDataName(const NodeID &nid, uint64_t seq);
+  MakeDataName(const NodeID &nid, SeqNo seq);
 
   void
   onData(const Interest& interest, const Data& data,
@@ -173,27 +218,27 @@ class Socket : noncopyable
 
   std::function<void(const std::string &)> onMsg;
 
-  // Members
+  // State
   NodeID m_id;
   Name m_syncPrefix;
   Name m_userPrefix;
   Name m_signingId;
   Face& m_face;
   KeyChain m_keyChain;
+  VersionVector m_vv;
+  std::unordered_map<Name, std::shared_ptr<const Data>> m_data_store;
+  RegisteredPrefixList m_registeredPrefixList;
+
+  // Validator
   std::shared_ptr<Validator> m_validator;
 
-  VersionVector m_vv;
-
-  std::unordered_map<Name, std::shared_ptr<const Data>> m_data_store;
-
-  RegisteredPrefixList m_registeredPrefixList;
+  // Callback
+  UpdateCallback m_onUpdate;
 
   // Mult-level queues
   std::deque<std::shared_ptr<Packet>> pending_ack;
   std::deque<std::shared_ptr<Packet>> pending_sync_interest;
   std::deque<std::shared_ptr<Packet>> pending_data_reply;
-  std::deque<std::shared_ptr<Packet>> pending_data_interest_forwarded;
-  std::deque<std::shared_ptr<Packet>> pending_data_interest;
   std::mutex pending_sync_interest_mutex;
 
   // Microseconds between sending two packets in the queues
@@ -210,6 +255,7 @@ class Socket : noncopyable
   std::random_device rdevice_;
   std::mt19937 rengine_;
 
+  // Scheduler
   ndn::Scheduler m_scheduler;
 
   // Events
