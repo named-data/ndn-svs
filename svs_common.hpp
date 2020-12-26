@@ -10,11 +10,8 @@ namespace ndn {
 namespace svs {
 
 // Type and constant declarations for State Vector Sync (SVS)
-using NodeID = uint64_t;
+using NodeID = std::string;
 using VersionVector = std::unordered_map<NodeID, uint64_t>;
-
-static const Name kSyncNotifyPrefix = Name("/ndn/svs/syncNotify");
-static const Name kSyncDataPrefix = Name("/ndn/svs/vsyncData");
 
 typedef struct Packet_ {
   std::shared_ptr<const Interest> interest;

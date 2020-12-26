@@ -1,36 +1,137 @@
-#pragma once
+/* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
+/*
+ * Copyright (c) 2012-2020 University of California, Los Angeles
+ *
+ * This file is part of SVS, synchronization library for distributed realtime
+ * applications for NDN.
+ *
+ * SVS is free software: you can redistribute it and/or modify it under the terms
+ * of the GNU General Public License as published by the Free Software Foundation, either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * SVS is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ * PURPOSE.  See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * SVS, e.g., in COPYING.md file.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#ifndef SVS_SVS_HPP
+#define SVS_SVS_HPP
 
 #include <deque>
 #include <iostream>
-#include <ndn-cxx/util/scheduler.hpp>
 #include <random>
 #include <thread>
 #include <mutex>
 
+#include <boost/asio.hpp>
+
+#include <ndn-cxx/face.hpp>
+#include <ndn-cxx/util/scheduler.hpp>
+#include <ndn-cxx/security/validator.hpp>
+
 #include "svs_common.hpp"
 #include "svs_helper.hpp"
+
+using ndn::security::ValidationError;
+using ndn::security::Validator;
 
 namespace ndn {
 namespace svs {
 
-class SVS {
+class MissingDataInfo
+{
+public:
+  /// @brief session name
+  Name session;
+};
+
+/**
+ * @brief The callback function to handle state updates
+ *
+ * The parameter is a set of MissingDataInfo, of which each corresponds to
+ * a session that has changed its state.
+ */
+using UpdateCallback = function<void(const std::vector<MissingDataInfo>&)>;
+
+/**
+ * @brief A simple interface to interact with client code
+ *
+ * Though it is called Socket, it is not a real socket. It just trying to provide
+ * a simplified interface for data publishing and fetching.
+ *
+ * This interface simplify data publishing.  Client can simply dump raw data
+ * into this interface without handling the SVS specific details, such
+ * as sequence number and session id.
+ *
+ * This interface also simplifies data fetching.  Client only needs to provide a
+ * data fetching strategy (through a updateCallback).
+ */
+class Socket : noncopyable
+{
  public:
-  SVS(NodeID id, std::function<void(const std::string &)> onMsg_)
-      : onMsg(onMsg_),
-        m_id(id),
-        m_scheduler(m_face.getIoService()),
-        rengine_(rdevice_()) {
-    // Bootstrap with knowledge of itself only
-    m_vv[id] = 0;
-  }
+  Socket(const Name& syncPrefix,
+         const Name& userPrefix,
+         ndn::Face& face,
+         const UpdateCallback& updateCallback,
+         const Name& signingId = DEFAULT_NAME,
+         std::shared_ptr<Validator> validator = DEFAULT_VALIDATOR);
 
-  void run();
+  ~Socket();
 
-  void registerPrefix();
+  using DataValidatedCallback = function<void(const Data&)>;
 
-  void publishMsg(const std::string &msg);
+  using DataValidationErrorCallback = function<void(const Data&, const ValidationError& error)> ;
+
+  /** @brief Publish a string data packet */
+  void
+  publishMsg(const std::string &msg);
+
+  /**
+   * @brief Publish a data packet in the session and trigger synchronization updates
+   *
+   * This method will create a data packet with the supplied content.
+   * The packet name is the local session + seqNo.
+   * The seqNo is automatically maintained by internal Logic.
+   *
+   * @throws It will throw error, if the prefix does not exist
+   *
+   * @param buf Pointer to the bytes in content
+   * @param len size of the bytes in content
+   * @param freshness FreshnessPeriod of the data packet.
+   * @param prefix The user prefix that will be used to publish the data.
+   */
+  void
+  publishData(const uint8_t* buf, size_t len, const ndn::time::milliseconds& freshness,
+              const Name& prefix = DEFAULT_PREFIX);
+
+  /**
+   * @brief Publish a data packet in the session and trigger synchronization updates
+   *
+   * This method will create a data packet with the supplied content.
+   * The packet name is the local session + seqNo.
+   * The seqNo is automatically maintained by internal Logic.
+   *
+   * @throws It will throw error, if the prefix does not exist in m_logic
+   *
+   * @param content Block that will be set as the content of the data packet.
+   * @param freshness FreshnessPeriod of the data packet.
+   * @param prefix The user prefix that will be used to publish the data.
+   */
+  void
+  publishData(const Block& content, const ndn::time::milliseconds& freshness,
+              const Name& prefix = DEFAULT_PREFIX);
+
+ public:
+  static const ndn::Name DEFAULT_NAME;
+  static const ndn::Name DEFAULT_PREFIX;
+  static const std::shared_ptr<Validator> DEFAULT_VALIDATOR;
 
  private:
+  using RegisteredPrefixList = std::unordered_map<ndn::Name, ndn::RegisteredPrefixHandle>;
+
   void asyncSendPacket();
 
   void onSyncInterest(const Interest &interest);
@@ -51,17 +152,41 @@ class SVS {
 
   void sendSyncACK(const Name &n);
 
+  Name
+  MakeDataName(const NodeID &nid, uint64_t seq);
+
+  void
+  onData(const Interest& interest, const Data& data,
+         const DataValidatedCallback& dataCallback,
+         const DataValidationErrorCallback& failCallback);
+
+  void
+  onDataTimeout(const Interest& interest, int nRetries,
+                const DataValidatedCallback& dataCallback,
+                const DataValidationErrorCallback& failCallback);
+
+  void
+  onDataValidationFailed(const Data& data,
+                         const ValidationError& error);
+
   std::pair<bool, bool> mergeStateVector(const VersionVector &vv_other);
 
   std::function<void(const std::string &)> onMsg;
 
   // Members
   NodeID m_id;
-  Face m_face;
+  Name m_syncPrefix;
+  Name m_userPrefix;
+  Name m_signingId;
+  Face& m_face;
   KeyChain m_keyChain;
+  std::shared_ptr<Validator> m_validator;
+
   VersionVector m_vv;
-  Scheduler m_scheduler;  // Use io_service from face
+
   std::unordered_map<Name, std::shared_ptr<const Data>> m_data_store;
+
+  RegisteredPrefixList m_registeredPrefixList;
 
   // Mult-level queues
   std::deque<std::shared_ptr<Packet>> pending_ack;
@@ -80,9 +205,12 @@ class SVS {
   // Microseconds for sending ACK if local vector isn't newer
   std::uniform_int_distribution<> ack_dist =
       std::uniform_int_distribution<>(20000, 40000);
+
   // Random engine
   std::random_device rdevice_;
   std::mt19937 rengine_;
+
+  ndn::Scheduler m_scheduler;
 
   // Events
   scheduler::EventId retx_event;    // will send retx next sync intrest
@@ -91,3 +219,5 @@ class SVS {
 
 }  // namespace svs
 }  // namespace ndn
+
+#endif // SVS_SVS_HPP

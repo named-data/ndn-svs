@@ -1,43 +1,80 @@
-#include <boost/lexical_cast.hpp>
+/* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
+/*
+ * Copyright (c) 2012-2020 University of California, Los Angeles
+ *
+ * This file is part of SVS, synchronization library for distributed realtime
+ * applications for NDN.
+ *
+ * SVS is free software: you can redistribute it and/or modify it under the terms
+ * of the GNU General Public License as published by the Free Software Foundation, either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * SVS is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ * PURPOSE.  See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * SVS, e.g., in COPYING.md file.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include <chrono>
-#include <iostream>
+#include <boost/lexical_cast.hpp>
+
 #include <ndn-cxx/interest-filter.hpp>
-#include <random>
+#include <ndn-cxx/util/string-helper.hpp>
 
 #include "svs.hpp"
 
 namespace ndn {
 namespace svs {
 
-/**
- * run() - Start event loop. Called by the application.
- */
-void SVS::run() {
+const ndn::Name Socket::DEFAULT_NAME;
+const std::shared_ptr<Validator> Socket::DEFAULT_VALIDATOR;
+
+Socket::Socket(const Name& syncPrefix,
+               const Name& userPrefix,
+               ndn::Face& face,
+               const UpdateCallback& updateCallback,
+               const Name& signingId,
+               std::shared_ptr<Validator> validator)
+  : m_syncPrefix(syncPrefix)
+  , m_userPrefix(userPrefix)
+  , m_signingId(signingId)
+  , m_face(face)
+  , m_validator(validator)
+  , m_scheduler(m_face.getIoService())
+{
+  if (m_userPrefix != DEFAULT_NAME)
+    m_registeredPrefixList[m_userPrefix] =
+      m_face.setInterestFilter(m_userPrefix,
+                               bind(&Socket::onDataInterest, this, _2),
+                               [] (const Name& prefix, const std::string& msg) {});
+
+  // Register sync interest filter
+  m_registeredPrefixList[syncPrefix] =
+    m_face.setInterestFilter(syncPrefix,
+                             bind(&Socket::onSyncInterest, this, _2),
+                             [] (const Name& prefix, const std::string& msg) {});
+
+  // Start with self only
+  m_id = m_userPrefix.toUri();
+  m_vv[m_id] = 0;
+
   // Start periodically send sync interest
   retxSyncInterest();
 
   // Start periodically send packets asynchronously
   asyncSendPacket();
-
-  // Enter event loop
-  m_face.processEvents();
 }
 
-/**
- * registerPrefix() - Called by the constructor.
- */
-void SVS::registerPrefix() {
-  m_face.setInterestFilter(InterestFilter(kSyncNotifyPrefix),
-                           bind(&SVS::onSyncInterest, this, _2), nullptr);
-  m_face.setInterestFilter(InterestFilter(kSyncDataPrefix),
-                           bind(&SVS::onDataInterest, this, _2), nullptr);
+Socket::~Socket()
+{
+  for (auto& itr : m_registeredPrefixList) {
+    itr.second.unregister();
+  }
 }
 
-/**
- * publishMsg() - Public method called by application to send new msg to the
- *  sync layer. The sync layer will keep a copy.
- */
-void SVS::publishMsg(const std::string &msg) {
+void Socket::publishMsg(const std::string &msg) {
   printf(">> %s\n\n", msg.c_str());
   fflush(stdout);
 
@@ -46,6 +83,7 @@ void SVS::publishMsg(const std::string &msg) {
   // Set data name
   auto n = MakeDataName(m_id, m_vv[m_id]);
   std::shared_ptr<Data> data = std::make_shared<Data>(n);
+  std::cout << "Sending data packet with name: " << n << std::endl;
 
   // Set data content
   Buffer contentBuf;
@@ -63,9 +101,9 @@ void SVS::publishMsg(const std::string &msg) {
 
 /**
  * asyncSendPacket() - Send one pending packet with highest priority. Schedule
- *  sending next packet with random delay.
+ * sending next packet with random delay.
  */
-void SVS::asyncSendPacket() {
+void Socket::asyncSendPacket() {
   // Decouple packet selection and packet sending
   Name n;
   std::shared_ptr<Packet> packet;
@@ -88,39 +126,42 @@ void SVS::asyncSendPacket() {
   }
   pending_sync_interest_mutex.unlock();
 
+  Interest interest;
+
   if (packet != nullptr) {
     // Send packet
     switch (packet->packet_type) {
       case Packet::INTEREST_TYPE:
-        n = packet->interest->getName();
+        interest = Interest(*packet->interest);
+        n = interest.getName();
+        interest.setCanBePrefix(true);
 
         // Data Interest
-        if (n.compare(0, 3, kSyncDataPrefix) == 0) {
+        if (m_userPrefix.isPrefixOf(n)) {
           // Drop falsy data interest
           if (m_data_store.find(n) != m_data_store.end()) {
             return asyncSendPacket();
           }
 
-          m_face.expressInterest(*packet->interest,
-                                 std::bind(&SVS::onDataReply, this, _2),
-                                 std::bind(&SVS::onNack, this, _1, _2),
-                                 std::bind(&SVS::onTimeout, this, _1));
+          m_face.expressInterest(interest,
+                                 std::bind(&Socket::onDataReply, this, _2),
+                                 std::bind(&Socket::onNack, this, _1, _2),
+                                 std::bind(&Socket::onTimeout, this, _1));
           pending_data_interest.push_back(packet);
-          // printf("Send data interest\n");
+          std::cout << "Send data interest: " << n << std::endl;
         }
 
         // Sync Interest
-        else if (n.compare(0, 3, kSyncNotifyPrefix) == 0) {
-          m_face.expressInterest(*packet->interest,
-                                 std::bind(&SVS::onSyncAck, this, _2),
-                                 std::bind(&SVS::onNack, this, _1, _2),
-                                 std::bind(&SVS::onTimeout, this, _1));
-          fflush(stdout);
+        else if (m_syncPrefix.isPrefixOf(n)) {
+          m_face.expressInterest(interest,
+                                 std::bind(&Socket::onSyncAck, this, _2),
+                                 std::bind(&Socket::onNack, this, _1, _2),
+                                 std::bind(&Socket::onTimeout, this, _1));
+          std::cout << "Send sync interest: " << n << std::endl;
         }
 
         else {
-          std::cout << "Invalid name: " << n << std::endl;
-          // assert(0);
+          std::cout << "Invalid interest name: " << n << std::endl;
         }
 
         break;
@@ -129,12 +170,12 @@ void SVS::asyncSendPacket() {
         n = packet->data->getName();
 
         // Data Reply
-        if (n.compare(0, 3, kSyncDataPrefix) == 0) {
+        if (m_userPrefix.isPrefixOf(n)) {
           m_face.put(*packet->data);
         }
 
         // Sync Ack
-        else if (n.compare(0, 3, kSyncNotifyPrefix) == 0) {
+        else if (m_syncPrefix.isPrefixOf(n)) {
           m_face.put(*packet->data);
         }
 
@@ -154,13 +195,10 @@ void SVS::asyncSendPacket() {
                                       [this] { asyncSendPacket(); });
 }
 
-/**
- * onSyncInterest() - Merge vector, send ack and schedule to forward next sync
- *  interest.
- */
-void SVS::onSyncInterest(const Interest &interest) {
+void Socket::onSyncInterest(const Interest &interest) {
   const auto &n = interest.getName();
   NodeID nid_other = ExtractNodeID(n);
+  std::cout << "Receive sync interest: " << n << " from " << nid_other << std::endl;
 
   if (nid_other == m_id) return;
 
@@ -170,9 +208,7 @@ void SVS::onSyncInterest(const Interest &interest) {
 
   // Merge state vector
   bool my_vector_new, other_vector_new;
-  VersionVector vv_other;
-  std::set<NodeID> interested_nodes;
-  std::tie(vv_other, interested_nodes) =
+  VersionVector vv_other =
       DecodeVVFromNameWithInterest(ExtractEncodedVV(n));
   std::tie(my_vector_new, other_vector_new) = mergeStateVector(vv_other);
 
@@ -206,10 +242,7 @@ void SVS::onSyncInterest(const Interest &interest) {
   }
 }
 
-/**
- * onDataInterest() -
- */
-void SVS::onDataInterest(const Interest &interest) {
+void Socket::onDataInterest(const Interest &interest) {
   const auto &n = interest.getName();
   auto iter = m_data_store.find(n);
 
@@ -229,16 +262,11 @@ void SVS::onDataInterest(const Interest &interest) {
 /**
  * onSyncAck() - Decode version vector from data body, and merge vector.
  */
-void SVS::onSyncAck(const Data &data) {
-  // Extract content
-  VersionVector vv_other;
-  std::set<NodeID> interested_nodes;
+void Socket::onSyncAck(const Data &data) {
   size_t data_size = data.getContent().value_size();
   std::string content_str((char *)data.getContent().value(), data_size);
-  // printf("Receive ACK: %s\n", content_str.c_str());
-  fflush(stdout);
-  std::tie(vv_other, interested_nodes) =
-      DecodeVVFromNameWithInterest(content_str);
+
+  VersionVector vv_other = DecodeVVFromNameWithInterest(content_str);
 
   // Merge state vector
   mergeStateVector(vv_other);
@@ -248,8 +276,10 @@ void SVS::onSyncAck(const Data &data) {
  * onDataReply() - Save data to data store, and call application callback to
  *  pass the data northbound.
  */
-void SVS::onDataReply(const Data &data) {
+void Socket::onDataReply(const Data &data) {
   const auto &n = data.getName();
+  std::cout << "Receive data reply: " << n << std::endl;
+#if 0
   NodeID nid_other = ExtractNodeID(n);
 
   // Drop duplicate data
@@ -264,27 +294,25 @@ void SVS::onDataReply(const Data &data) {
   content_str = boost::lexical_cast<std::string>(nid_other) + ":" + content_str;
 
   onMsg(content_str);
+#endif
 }
 
 /**
  * onNack() - Print error msg from NFD.
  */
-void SVS::onNack(const Interest &interest, const lp::Nack &nack) {
-  // std::cout << "received Nack with reason "
-  //           << " for interest " << interest << std::endl;
+void Socket::onNack(const Interest &interest, const lp::Nack &nack) {
 }
 
 /**
  * onTimeout() - Print timeout msg.
  */
-void SVS::onTimeout(const Interest &interest) {
-  // std::cout << "Timeout " << interest << std::endl;
+void Socket::onTimeout(const Interest &interest) {
 }
 
 /**
  * retxSyncInterest() - Cancel and schedule new retxSyncInterest event.
  */
-void SVS::retxSyncInterest() {
+void Socket::retxSyncInterest() {
   sendSyncInterest();
   int delay = retx_dist(rengine_);
   retx_event = m_scheduler.schedule(time::microseconds(delay),
@@ -293,20 +321,20 @@ void SVS::retxSyncInterest() {
 
 /**
  * sendSyncInterest() - Add one sync interest to queue. Called by
- *  SVS::retxSyncInterest(), or directly. Because this function is
- *  also called upon new msg via PublishMsg(), the shared data 
+ *  Socket::retxSyncInterest(), or directly. Because this function is
+ *  also called upon new msg via PublishMsg(), the shared data
  *  structures could cause race conditions.
  */
-void SVS::sendSyncInterest() {
+void Socket::sendSyncInterest() {
   using namespace std::chrono;
 
   // Append a timestamp to make name unique
-  std::string encoded_vv = EncodeVVToNameWithInterest(
-      m_vv, [](uint64_t id) -> bool { return true; });
+  std::string encoded_vv = EncodeVVToNameWithInterest(m_vv);
   milliseconds cur_time_ms =
       duration_cast<milliseconds>(system_clock::now().time_since_epoch());
-  auto pending_sync_notify =
-      MakeSyncNotifyName(m_id, encoded_vv, cur_time_ms.count());
+
+  Name pending_sync_notify(m_syncPrefix);
+  pending_sync_notify.append(escape(m_id)).append(encoded_vv).appendTimestamp();
 
   // printf("Send sync interest: %s\n", encoded_vv.c_str());
   fflush(stdout);
@@ -326,13 +354,12 @@ void SVS::sendSyncInterest() {
 /**
  * sendSyncACK() - Add an ACK into queue
  */
-void SVS::sendSyncACK(const Name &n) {
+void Socket::sendSyncACK(const Name &n) {
   // Set data name
   std::shared_ptr<Data> data = std::make_shared<Data>(n);
 
   // Set data content
-  std::string encoded_vv = EncodeVVToNameWithInterest(
-      m_vv, [](uint64_t id) -> bool { return true; });
+  std::string encoded_vv = EncodeVVToNameWithInterest(m_vv);
   Buffer contentBuf;
   for (size_t i = 0; i < encoded_vv.size(); ++i)
     contentBuf.push_back((uint8_t)encoded_vv[i]);
@@ -353,7 +380,8 @@ void SVS::sendSyncACK(const Name &n) {
  *  representing: <my_vector_new, other_vector_new>.
  * Then, add missing data interests to data interest queue.
  */
-std::pair<bool, bool> SVS::mergeStateVector(const VersionVector &vv_other) {
+std::pair<bool, bool>
+Socket::mergeStateVector(const VersionVector &vv_other) {
   bool my_vector_new = false, other_vector_new = false;
 
   // Check if other vector has newer state
@@ -394,6 +422,14 @@ std::pair<bool, bool> SVS::mergeStateVector(const VersionVector &vv_other) {
   }
 
   return std::make_pair(my_vector_new, other_vector_new);
+}
+
+Name
+Socket::MakeDataName(const NodeID &nid, uint64_t seq) {
+  // name = /[vsyncData_prefix]/[node_id]/[seq]/%0
+  Name n(m_syncPrefix);
+  n.append(escape(nid)).appendNumber(seq).appendNumber(0);
+  return n;
 }
 
 }  // namespace svs

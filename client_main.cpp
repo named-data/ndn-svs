@@ -19,7 +19,7 @@ class Options {
 
  public:
   ndn::Name prefix;
-  uint64_t m_id;
+  std::string m_id;
 };
 
 namespace ndn {
@@ -29,19 +29,22 @@ class Program {
  public:
   explicit Program(const Options &options)
       : m_options(options),
-        m_svs(m_options.m_id,
-              std::bind(&Program::onMsg, this, std::placeholders::_1)) {
-    printf("SVS client %llu starts\n", m_options.m_id);
+        m_svs(
+          ndn::Name("/ndnnew/svs"),
+          ndn::Name(m_options.m_id),
+          face,
+          std::bind(&Program::onMissingData, this, _1)) {
+    printf("SVS client %s starts\n", m_options.m_id.c_str());
 
     // Suppress warning
     Interest::setDefaultCanBePrefix(true);
   }
 
-  void run() {
-    m_svs.registerPrefix();
+  ndn::Face face;
 
+  void run() {
     // Create other thread to run
-    std::thread thread_svs([this] { m_svs.run(); });
+    std::thread thread_svs([this] { face.processEvents(); });
 
     std::string init_msg = "User " +
                            boost::lexical_cast<std::string>(m_options.m_id) +
@@ -60,6 +63,10 @@ class Program {
   }
 
  private:
+  void onMissingData(const std::vector<ndn::svs::MissingDataInfo>&) {
+    std::cout << "Received missing data" << std::endl;
+  }
+
   /**
    * onMsg() - Callback on receiving msg from sync layer.
    */
@@ -79,7 +86,7 @@ class Program {
 
 
   const Options m_options;
-  SVS m_svs;
+  Socket m_svs;
 };
 
 }  // namespace svs
@@ -92,7 +99,7 @@ int main(int argc, char **argv) {
   }
 
   Options opt;
-  opt.m_id = std::stoll(argv[1]);
+  opt.m_id = argv[1];
 
   ndn::svs::Program program(opt);
   program.run();
