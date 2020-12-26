@@ -213,26 +213,32 @@ public:
 private:
   using RegisteredPrefixList = std::unordered_map<ndn::Name, ndn::RegisteredPrefixHandle>;
 
-  void asyncSendPacket();
+  void
+  asyncSendPacket();
 
-  void onSyncInterest(const Interest &interest);
+  void
+  onSyncInterest(const Interest &interest);
 
-  void onDataInterest(const Interest &interest);
+  void
+  onDataInterest(const Interest &interest);
 
-  void onSyncAck(const Data &data);
+  void
+  onSyncAck(const Data &data);
 
-  void onNack(const Interest &interest, const lp::Nack &nack);
+  void
+  onSyncNack(const Interest &interest, const lp::Nack &nack);
 
-  void onTimeout(const Interest &interest);
+  void
+  onSyncTimeout(const Interest &interest);
 
-  void retxSyncInterest();
+  void
+  retxSyncInterest();
 
-  void sendSyncInterest();
+  void
+  sendSyncInterest();
 
-  void sendSyncACK(const Name &n);
-
-  Name
-  MakeDataName(const NodeID &nid, SeqNo seq);
+  void
+  sendSyncAck(const Name &n);
 
   void
   onData(const Interest& interest, const Data& data,

@@ -17,14 +17,10 @@
  * SVS, e.g., in COPYING.md file.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <chrono>
-#include <boost/lexical_cast.hpp>
+#include "svs.hpp"
 
-#include <ndn-cxx/interest-filter.hpp>
 #include <ndn-cxx/util/string-helper.hpp>
 #include <ndn-cxx/security/signing-helpers.hpp>
-
-#include "svs.hpp"
 
 namespace ndn {
 namespace svs {
@@ -100,7 +96,8 @@ Socket::publishData(const Block& content, const ndn::time::milliseconds& freshne
   data->setFreshnessPeriod(freshness);
 
   SeqNo newSeq = ++m_vv[m_id];
-  Name dataName = MakeDataName(m_id, newSeq);
+  Name dataName;
+  dataName.append(m_id).appendNumber(newSeq);
   data->setName(dataName);
 
   if (m_signingId.empty())
@@ -121,7 +118,8 @@ Socket::publishData(const Block& content, const ndn::time::milliseconds& freshne
   data->setFreshnessPeriod(freshness);
 
   SeqNo newSeq = seqNo;
-  Name dataName = MakeDataName(m_id, newSeq);
+  Name dataName;
+  dataName.append(m_id).appendNumber(newSeq);
   data->setName(dataName);
 
   if (m_signingId.empty())
@@ -166,8 +164,8 @@ void Socket::asyncSendPacket() {
         if (m_syncPrefix.isPrefixOf(n)) {
           m_face.expressInterest(interest,
                                  std::bind(&Socket::onSyncAck, this, _2),
-                                 std::bind(&Socket::onNack, this, _1, _2),
-                                 std::bind(&Socket::onTimeout, this, _1));
+                                 std::bind(&Socket::onSyncNack, this, _1, _2),
+                                 std::bind(&Socket::onSyncTimeout, this, _1));
         } else {
           NDN_THROW(Error("Invalid interest name: " + n.toUri()));
         }
@@ -218,11 +216,11 @@ void Socket::onSyncInterest(const Interest &interest) {
 
   // If my vector newer, send ACK immediately. Otherwise send with random delay
   if (my_vector_new) {
-    sendSyncACK(n);
+    sendSyncAck(n);
   } else {
     int delay = packet_dist(rengine_);
     m_scheduler.schedule(time::microseconds(delay),
-                         [this, n] { sendSyncACK(n); });
+                         [this, n] { sendSyncAck(n); });
   }
 
   // If incoming state identical to local vector, reset timer to delay sending
@@ -247,8 +245,6 @@ void Socket::onSyncInterest(const Interest &interest) {
 }
 
 void Socket::onDataInterest(const Interest &interest) {
-  const auto &n = interest.getName();
-
   // If have data, reply. Otherwise forward with probability (?)
   shared_ptr<const Data> data = m_ims.find(interest);
   if (data != nullptr) {
@@ -277,7 +273,8 @@ Socket::fetchData(const NodeID& nid, const SeqNo& seqNo,
                   const DataValidatedCallback& dataCallback,
                   int nRetries)
 {
-  Name interestName = MakeDataName(nid, seqNo);
+  Name interestName;
+  interestName.append(nid).appendNumber(seqNo);
 
   Interest interest(interestName);
   interest.setMustBeFresh(true);
@@ -301,7 +298,8 @@ Socket::fetchData(const NodeID& nid, const SeqNo& seqNo,
                   const ndn::TimeoutCallback& onTimeout,
                   int nRetries)
 {
-  Name interestName = MakeDataName(nid, seqNo);
+  Name interestName;
+  interestName.append(nid).appendNumber(seqNo);
 
   Interest interest(interestName);
   interest.setMustBeFresh(true);
@@ -349,22 +347,19 @@ Socket::onDataValidationFailed(const Data& data,
 {
 }
 
-/**
- * onNack() - Print error msg from NFD.
- */
-void Socket::onNack(const Interest &interest, const lp::Nack &nack) {
+void
+Socket::onSyncNack(const Interest &interest, const lp::Nack &nack) {
 }
 
-/**
- * onTimeout() - Print timeout msg.
- */
-void Socket::onTimeout(const Interest &interest) {
+void
+Socket::onSyncTimeout(const Interest &interest) {
 }
 
 /**
  * retxSyncInterest() - Cancel and schedule new retxSyncInterest event.
  */
-void Socket::retxSyncInterest() {
+void
+Socket::retxSyncInterest() {
   sendSyncInterest();
   int delay = retx_dist(rengine_);
   retx_event = m_scheduler.schedule(time::microseconds(delay),
@@ -377,19 +372,14 @@ void Socket::retxSyncInterest() {
  *  also called upon new msg via PublishMsg(), the shared data
  *  structures could cause race conditions.
  */
-void Socket::sendSyncInterest() {
+void
+Socket::sendSyncInterest() {
   using namespace std::chrono;
 
-  // Append a timestamp to make name unique
-  std::string encoded_vv = EncodeVVToNameWithInterest(m_vv);
-  milliseconds cur_time_ms =
-      duration_cast<milliseconds>(system_clock::now().time_since_epoch());
-
   Name pending_sync_notify(m_syncPrefix);
-  pending_sync_notify.append(escape(m_id)).append(encoded_vv).appendTimestamp();
-
-  // printf("Send sync interest: %s\n", encoded_vv.c_str());
-  fflush(stdout);
+  pending_sync_notify.append(escape(m_id))
+                     .append(EncodeVVToNameWithInterest(m_vv))
+                     .appendTimestamp();
 
   // Wrap into Packet
   Packet packet;
@@ -404,9 +394,10 @@ void Socket::sendSyncInterest() {
 }
 
 /**
- * sendSyncACK() - Add an ACK into queue
+ * sendSyncAck() - Add an ACK into queue
  */
-void Socket::sendSyncACK(const Name &n) {
+void
+Socket::sendSyncAck(const Name &n) {
   // Set data name
   std::shared_ptr<Data> data = std::make_shared<Data>(n);
 
@@ -449,7 +440,7 @@ Socket::mergeStateVector(const VersionVector &vv_other) {
       other_vector_new = true;
       // Detect new data
       auto startSeq =
-          m_vv.find(nidOther) == m_vv.end() ? 1 : (m_vv[nidOther] + 1);
+        m_vv.find(nidOther) == m_vv.end() ? 1 : (m_vv[nidOther] + 1);
 
       // Add missing data
       v.push_back({nidOther, startSeq, seqOther});
@@ -477,14 +468,6 @@ Socket::mergeStateVector(const VersionVector &vv_other) {
   }
 
   return std::make_pair(my_vector_new, other_vector_new);
-}
-
-Name
-Socket::MakeDataName(const NodeID &nid, SeqNo seq) {
-  Name n;
-  n.append(nid)
-   .appendNumber(seq);
-  return n;
 }
 
 }  // namespace svs
