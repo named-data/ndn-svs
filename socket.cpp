@@ -377,18 +377,18 @@ Socket::sendSyncInterest() {
  */
 void
 Socket::sendSyncAck(const Name &n) {
-  // Set data name
   std::shared_ptr<Data> data = std::make_shared<Data>(n);
-
-  // Set data content
   Buffer encodedVV = m_vv.encode();
   data->setContent(encodedVV.data(), encodedVV.size());
 
-  m_keyChain.sign(
-      *data, security::SigningInfo(security::SigningInfo::SIGNER_TYPE_SHA256));
+  if (m_signingId.empty())
+    m_keyChain.sign(*data);
+  else
+    m_keyChain.sign(*data, security::signingByIdentity(m_signingId));
+
+  // TODO : this should not be hard-coded
   data->setFreshnessPeriod(time::milliseconds(4000));
 
-  // Wrap into Packet
   Packet packet;
   packet.packet_type = Packet::DATA_TYPE;
   packet.data = data;
