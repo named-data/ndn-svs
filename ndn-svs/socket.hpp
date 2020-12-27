@@ -17,8 +17,8 @@
  * SVS, e.g., in COPYING.md file.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef SVS_SOCKET_HPP
-#define SVS_SOCKET_HPP
+#ifndef NDN_SVS_SOCKET_HPP
+#define NDN_SVS_SOCKET_HPP
 
 #include "common.hpp"
 #include "version-vector.hpp"
@@ -278,4 +278,4 @@ private:
 }  // namespace svs
 }  // namespace ndn
 
-#endif // SVS_SOCKET_HPP
+#endif // NDN_SVS_SOCKET_HPP

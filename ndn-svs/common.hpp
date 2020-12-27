@@ -17,8 +17,8 @@
  * SVS, e.g., in COPYING.md file.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef SVS_COMMON_HPP
-#define SVS_COMMON_HPP
+#ifndef NDN_SVS_COMMON_HPP
+#define NDN_SVS_COMMON_HPP
 
 #include <ndn-cxx/face.hpp>
 
@@ -59,4 +59,4 @@ typedef struct Packet_
 }  // namespace svs
 }  // namespace ndn
 
-#endif // SVS_COMMON_HPP
+#endif // NDN_SVS_COMMON_HPP

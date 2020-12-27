@@ -17,8 +17,8 @@
  * SVS, e.g., in COPYING.md file.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef SVS_VERSION_VECTOR_HPP
-#define SVS_VERSION_VECTOR_HPP
+#ifndef NDN_SVS_VERSION_VECTOR_HPP
+#define NDN_SVS_VERSION_VECTOR_HPP
 
 #include "common.hpp"
 
@@ -86,4 +86,4 @@ private:
 } // namespace ndn
 } // namespace svs
 
-#endif // SVS_VERSION_VECTOR_HPP
+#endif // NDN_SVS_VERSION_VECTOR_HPP
