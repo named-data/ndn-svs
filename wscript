@@ -17,12 +17,40 @@ def options(opt):
              tooldir=['.waf-tools'])
 
     optgrp = opt.add_option_group('ndn-svs Options')
+
+    optgrp.add_option('--enable-static', action='store_true', default=False,
+                      dest='enable_static', help='Build static library (disabled by default)')
+    optgrp.add_option('--disable-static', action='store_false', default=False,
+                      dest='enable_static', help='Do not build static library (disabled by default)')
+
+    optgrp.add_option('--enable-shared', action='store_true', default=True,
+                      dest='enable_shared', help='Build shared library (enabled by default)')
+    optgrp.add_option('--disable-shared', action='store_false', default=True,
+                      dest='enable_shared', help='Do not build shared library (enabled by default)')
+
     optgrp.add_option('--with-tests', action='store_true', default=False,
                       help='Build unit tests')
     optgrp.add_option('--with-examples', action='store_true', default=False,
                       help='Build examples')
 
 def configure(conf):
+    conf.start_msg('Building static library')
+    if conf.options.enable_static:
+        conf.end_msg('yes')
+    else:
+        conf.end_msg('no', color='YELLOW')
+    conf.env.enable_static = conf.options.enable_static
+
+    conf.start_msg('Building shared library')
+    if conf.options.enable_shared:
+        conf.end_msg('yes')
+    else:
+        conf.end_msg('no', color='YELLOW')
+    conf.env.enable_shared = conf.options.enable_shared
+
+    if not conf.options.enable_shared and not conf.options.enable_static:
+        conf.fatal('Either static library or shared library must be enabled')
+
     conf.load(['compiler_cxx', 'gnu_dirs',
                'default-compiler-flags', 'boost',
                'doxygen', 'sphinx_build'])
@@ -58,13 +86,22 @@ def configure(conf):
     conf.write_config_header('config.hpp')
 
 def build(bld):
-    bld.shlib(target='ndn-svs',
-              vnum=VERSION,
-              cnum=VERSION,
-              source=bld.path.ant_glob('ndn-svs/**/*.cpp'),
-              use='NDN_CXX BOOST',
-              includes='ndn-svs .',
-              export_includes='ndn-svs .')
+    libndn_svs = dict(
+        target='ndn-svs',
+        vnum=VERSION,
+        cnum=VERSION,
+        source=bld.path.ant_glob('ndn-svs/**/*.cpp'),
+        use='NDN_CXX BOOST',
+        includes='ndn-svs .',
+        export_includes='ndn-svs .')
+
+    if bld.env.enable_shared:
+        bld.shlib(name='ndn-svs',
+                  **libndn_svs)
+
+    if bld.env.enable_static:
+        bld.stlib(name='ndn-svs-static' if bld.env.enable_shared else 'ndn-svs',
+                  **libndn_svs)
 
     if bld.env.WITH_TESTS:
         bld.recurse('tests')
