@@ -6,7 +6,7 @@
 #include <thread>
 #include <vector>
 
-#include "socket.hpp"
+#include <ndn-svs/socket.hpp>
 
 class Options {
  public:

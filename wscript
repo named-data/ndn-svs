@@ -61,10 +61,10 @@ def build(bld):
     bld.shlib(target='ndn-svs',
               vnum=VERSION,
               cnum=VERSION,
-              source=bld.path.ant_glob('src/**/*.cpp'),
+              source=bld.path.ant_glob('ndn-svs/**/*.cpp'),
               use='NDN_CXX BOOST',
-              includes='src .',
-              export_includes='src .')
+              includes='ndn-svs .',
+              export_includes='ndn-svs .')
 
     if bld.env.WITH_TESTS:
         bld.recurse('tests')
@@ -74,14 +74,14 @@ def build(bld):
 
     bld.install_files(
         dest = '%s/ndn-svs' % bld.env.INCLUDEDIR,
-        files = bld.path.ant_glob(['src/*.hpp', 'common.hpp']),
-        cwd = bld.path.find_dir('src'),
+        files = bld.path.ant_glob(['ndn-svs/*.hpp', 'common.hpp']),
+        cwd = bld.path.find_dir('ndn-svs'),
         relative_trick = False)
 
     bld.install_files(
         dest = '%s/ndn-svs' % bld.env.INCLUDEDIR,
-        files = bld.path.get_bld().ant_glob(['src/*.hpp', 'common.hpp', 'config.hpp']),
-        cwd = bld.path.get_bld().find_dir('src'),
+        files = bld.path.get_bld().ant_glob(['ndn-svs/*.hpp', 'common.hpp', 'config.hpp']),
+        cwd = bld.path.get_bld().find_dir('ndn-svs'),
         relative_trick = False)
 
     bld(features='subst',
