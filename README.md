@@ -1,41 +1,47 @@
-# Sync-MANET
-### Overview
+# ndn-svs: State Vector Sync library for distributed realtime applications for NDN
 
-This is a vector sync library over NDN with a chatroom application as demo. 
+This library implements the State Vector Sync (SVS) protocol to synchronise state between multiple clients over NDN.
+
+**This is NOT an official implementation**.
+
+ndn-svs uses the [ndn-cxx](https://github.com/named-data/ndn-cxx) library.
+
+## Installation
 
 ### Prerequisites
 
-[ndn-cxx](https://github.com/named-data/ndn-cxx)  
-[NFD - NDN Forwarding Daemon](https://github.com/named-data/NFD)
+* [ndn-cxx and its dependencies](https://named-data.net/doc/ndn-cxx/current/INSTALL.html)
 
-### Build & Run
+### Build
 
-After installing ndn-cxx and NFD, build and run the chatroom client:
-```
-make
-./client <my_id>
-```
+To build ndn-svs from the source:
 
-You may have to explicitly configure NFD to be multicast:
-```bash
-nfdc strategy set / /localhost/nfd/strategy/multicast/%FD%03
-```
+    ./waf configure
+    ./waf
+    sudo ./waf install
 
-MacOS supports setting up ad-hoc Wi-Fi between computers (en0) interface, so you can configure routes through this face. On other platforms, configure route with UDP4 face:
+To build on memory constrained platform, please use `./waf -j1` instead of `./waf`. The
+command will disable parallel compilation.
 
-```
-nfdc face create udp4://<ip_other>:6363
-```
+### Examples
 
-Then, add outgoing faces for both prefixes:
+To try out the demo CLI chat application:
 
-```
-nfdc route add /ndn/svs/syncNotify <face_id>
-nfdc route add /ndn/svs/vsyncData <face_id>
-```
+    ./waf configure --enable-static --disable-shared --with-examples
+    ./waf
+    ./build/examples/chat <prefix>
 
-Restarting clients of same id numbers during testing may cause inconsistency due to NFD Content Store. To disable Content Store, run:
+## Contributing
 
-```
-nfdc cs config serve off
-```
+We greatly appreciate contributions to the ndn-svs code base, provided that they are
+licensed under the GPL 3.0+ or a compatible license (see below).
+If you are new to the NDN software community, please read the
+[Contributor's Guide](https://github.com/named-data/.github/blob/master/CONTRIBUTING.md)
+to get started.
+
+Since ndn-svs is an unofficial implementation, contributions are welcome through GitHub.
+
+## License
+
+ChronoSync is an open source project licensed under the GPL version 3.
+See [`COPYING.md`](COPYING.md) for more information.
