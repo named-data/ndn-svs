@@ -43,5 +43,5 @@ Since ndn-svs is an unofficial implementation, contributions are welcome through
 
 ## License
 
-ChronoSync is an open source project licensed under the GPL version 3.
+ndn-svs is an open source project licensed under the GPL version 3.
 See [`COPYING.md`](COPYING.md) for more information.

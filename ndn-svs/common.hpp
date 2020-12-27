@@ -2,19 +2,19 @@
 /*
  * Copyright (c) 2012-2020 University of California, Los Angeles
  *
- * This file is part of SVS, synchronization library for distributed realtime
+ * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
  *
- * SVS is free software: you can redistribute it and/or modify it under the terms
+ * ndn-svs is free software: you can redistribute it and/or modify it under the terms
  * of the GNU General Public License as published by the Free Software Foundation, either
  * version 3 of the License, or (at your option) any later version.
  *
- * SVS is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * ndn-svs is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
  * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
  * PURPOSE.  See the GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License along with
- * SVS, e.g., in COPYING.md file.  If not, see <http://www.gnu.org/licenses/>.
+ * ndn-svs, e.g., in COPYING.md file.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifndef NDN_SVS_COMMON_HPP
