@@ -8,37 +8,33 @@
 
 #include <ndn-svs/socket.hpp>
 
-class Options {
- public:
+class Options
+{
+public:
   Options() : prefix("/ndn/svs") {}
 
- public:
-  ndn::Name prefix;
+public:
+  std::string prefix;
   std::string m_id;
 };
 
-namespace ndn {
-namespace svs {
-
-class Program {
- public:
-  explicit Program(const Options &options)
-      : m_options(options),
-        m_svs(
-          ndn::Name("/ndnnew/svs"),
-          ndn::Name(m_options.m_id),
-          face,
-          std::bind(&Program::onMissingData, this, _1)) {
-    printf("SVS client %s starts\n", m_options.m_id.c_str());
-
-    // Suppress warning
-    Interest::setDefaultCanBePrefix(true);
+class Program
+{
+public:
+  Program(const Options &options)
+    : m_options(options),
+      m_svs(
+        ndn::Name(m_options.prefix),
+        ndn::Name(m_options.m_id),
+        face,
+        std::bind(&Program::onMissingData, this, _1))
+  {
+    std::cout << "SVS client stared:" << m_options.m_id << std::endl;
   }
 
-  ndn::Face face;
-
-  void run() {
-    // Create other thread to run
+  void
+  run()
+  {
     std::thread thread_svs([this] { face.processEvents(); });
 
     std::string init_msg = "User " + m_options.m_id + " has joined the groupchat";
@@ -54,12 +50,17 @@ class Program {
     thread_svs.join();
   }
 
- private:
-  void onMissingData(const std::vector<ndn::svs::MissingDataInfo>& v) {
-    for (size_t i = 0; i < v.size(); i++) {
-      for(SeqNo s = v[i].low; s <= v[i].high; ++s) {
-        NodeID nid = v[i].nid;
-        m_svs.fetchData(nid, s, [nid] (const Data& data) {
+private:
+  void
+  onMissingData(const std::vector<ndn::svs::MissingDataInfo>& v)
+  {
+    for (size_t i = 0; i < v.size(); i++)
+    {
+      for (ndn::svs::SeqNo s = v[i].low; s <= v[i].high; ++s)
+      {
+        ndn::svs::NodeID nid = v[i].nid;
+        m_svs.fetchData(nid, s, [nid] (const ndn::Data& data)
+          {
             size_t data_size = data.getContent().value_size();
             std::string content_str((char *)data.getContent().value(), data_size);
             content_str = nid + " : " + content_str;
@@ -69,29 +70,32 @@ class Program {
     }
   }
 
-  void publishMsg(std::string msg) {
+  void
+  publishMsg(std::string msg)
+  {
     m_svs.publishData(reinterpret_cast<const uint8_t*>(msg.c_str()),
                       msg.size(),
-                      time::milliseconds(1000));
+                      ndn::time::milliseconds(1000));
   }
 
+public:
   const Options m_options;
-  Socket m_svs;
+  ndn::Face face;
+  ndn::svs::Socket m_svs;
 };
 
-}  // namespace svs
-}  // namespace ndn
-
-int main(int argc, char **argv) {
+int
+main(int argc, char **argv)
+{
   if (argc != 2) {
-    printf("Usage: client <prefix>\n");
+    std::cout << "Usage: client <prefix>" << std::endl;
     exit(1);
   }
 
   Options opt;
   opt.m_id = argv[1];
 
-  ndn::svs::Program program(opt);
+  Program program(opt);
   program.run();
   return 0;
 }
