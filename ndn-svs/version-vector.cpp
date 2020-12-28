@@ -46,5 +46,15 @@ VersionVector::encode() const
   return Buffer(serialized.data(), serialized.size());
 }
 
+std::string
+VersionVector::toStr() const
+{
+  std::ostringstream stream;
+  for (auto &elem : m_umap) {
+    stream << elem.first << ":" << elem.second << " ";
+  }
+  return stream.str();
+}
+
 } // namespace ndn
 } // namespace svs

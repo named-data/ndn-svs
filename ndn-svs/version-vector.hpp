@@ -48,6 +48,10 @@ public:
   ndn::Buffer
   encode() const;
 
+  /** Get a human-readable representation */
+  std::string
+  toStr() const;
+
   SeqNo
   set(NodeID nid, SeqNo seqNo)
   {

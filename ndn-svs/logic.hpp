@@ -141,6 +141,12 @@ public:
   std::set<NodeID>
   getSessionNames() const;
 
+  std::string
+  getStateStr() const
+  {
+    return m_vv.toStr();
+  }
+
 private:
   void
   printState(std::ostream& os) const;
