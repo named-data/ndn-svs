@@ -37,39 +37,21 @@ Socket::Socket(const Name& syncPrefix,
   : m_syncPrefix(syncPrefix)
   , m_userPrefix(userPrefix)
   , m_signingId(signingId)
+  , m_id(m_userPrefix.toUri())
   , m_face(face)
   , m_validator(validator)
   , m_onUpdate(updateCallback)
-  , m_scheduler(m_face.getIoService())
+  , m_logic(face, syncPrefix, userPrefix, updateCallback, m_signingId, m_validator,
+            Logic::DEFAULT_ACK_FRESHNESS, m_id)
 {
-  if (m_userPrefix != DEFAULT_NAME)
-    m_registeredPrefixList[m_userPrefix] =
-      m_face.setInterestFilter(m_userPrefix,
-                               bind(&Socket::onDataInterest, this, _2),
-                               [] (const Name& prefix, const std::string& msg) {});
-
-  // Register sync interest filter
-  m_registeredPrefixList[syncPrefix] =
-    m_face.setInterestFilter(syncPrefix,
-                             bind(&Socket::onSyncInterest, this, _2),
-                             [] (const Name& prefix, const std::string& msg) {});
-
-  // Start with self only
-  m_id = m_userPrefix.toUri();
-  m_vv.set(m_id, 0);
-
-  // Start periodically send sync interest
-  retxSyncInterest();
-
-  // Start periodically send packets asynchronously
-  asyncSendPacket();
+  m_registeredDataPrefix =
+    m_face.setInterestFilter(m_userPrefix,
+                              bind(&Socket::onDataInterest, this, _2),
+                              [] (const Name& prefix, const std::string& msg) {});
 }
 
 Socket::~Socket()
 {
-  for (auto& itr : m_registeredPrefixList) {
-    itr.second.unregister();
-  }
 }
 
 void
@@ -92,7 +74,7 @@ Socket::publishData(const Block& content, const ndn::time::milliseconds& freshne
   data->setContent(content);
   data->setFreshnessPeriod(freshness);
 
-  SeqNo newSeq = m_vv.get(m_id) + 1;
+  SeqNo newSeq = m_logic.getSeqNo(m_id) + 1;
   Name dataName;
   dataName.append(m_id).appendNumber(newSeq);
   data->setName(dataName);
@@ -102,9 +84,8 @@ Socket::publishData(const Block& content, const ndn::time::milliseconds& freshne
   else
     m_keyChain.sign(*data, security::signingByIdentity(m_signingId));
 
-  m_vv.set(m_id, newSeq);
   m_ims.insert(*data);
-  sendSyncInterest();
+  m_logic.updateSeqNo(newSeq, m_id);
 }
 
 void
@@ -126,100 +107,7 @@ Socket::publishData(const Block& content, const ndn::time::milliseconds& freshne
     m_keyChain.sign(*data, security::signingByIdentity(m_signingId));
 
   m_ims.insert(*data);
-  sendSyncInterest();
-}
-
-/**
- * asyncSendPacket() - Send one pending packet with highest priority. Schedule
- * sending next packet with random delay.
- */
-void Socket::asyncSendPacket() {
-  std::shared_ptr<Packet> packet;
-  pending_sync_interest_mutex.lock();
-  if (pending_ack.size() > 0) {
-    packet = pending_ack.front();
-    pending_ack.pop_front();
-  } else if (pending_sync_interest.size() > 0) {
-    packet = pending_sync_interest.front();
-    pending_sync_interest.pop_front();
-  }
-  pending_sync_interest_mutex.unlock();
-
-  Interest interest;
-
-  if (packet != nullptr) {
-    // Send packet
-    switch (packet->packet_type) {
-      case Packet::INTEREST_TYPE:
-        interest = Interest(*packet->interest);
-        interest.setCanBePrefix(true);
-        interest.setMustBeFresh(true);
-
-        // Sync Interest
-        if (m_syncPrefix.isPrefixOf(interest.getName()))
-          m_face.expressInterest(interest,
-                                 std::bind(&Socket::onSyncAck, this, _2),
-                                 std::bind(&Socket::onSyncNack, this, _1, _2),
-                                 std::bind(&Socket::onSyncTimeout, this, _1));
-        else
-          NDN_THROW(Error("Invalid sync interest name"));
-
-        break;
-
-      case Packet::DATA_TYPE:
-        // Data Reply
-        if (m_syncPrefix.isPrefixOf(packet->data->getName()))
-          m_face.put(*packet->data);
-        else
-          NDN_THROW(Error("Invalid sync data name"));
-
-        break;
-
-      default:
-        NDN_THROW(Error("Invalid queued packet type"));
-    }
-  }
-
-  int delay = packet_dist(rengine_);
-  packet_event.cancel();
-  packet_event = m_scheduler.schedule(time::microseconds(delay),
-                                      [this] { asyncSendPacket(); });
-}
-
-void Socket::onSyncInterest(const Interest &interest) {
-  const auto &n = interest.getName();
-  NodeID nidOther = unescape(n.get(-3).toUri());
-
-  if (nidOther == m_id) return;
-
-  // Merge state vector
-  bool myVectorNew, otherVectorNew;
-  Name::Component encodedVV = n.get(-2);
-  VersionVector vvOther(encodedVV.value(), encodedVV.value_size());
-  std::tie(myVectorNew, otherVectorNew) = mergeStateVector(vvOther);
-
-  // If my vector newer, send ACK immediately. Otherwise send with random delay
-  if (myVectorNew) {
-    sendSyncAck(n);
-  } else {
-    int delay = packet_dist(rengine_);
-    m_scheduler.schedule(time::microseconds(delay),
-                         [this, n] { sendSyncAck(n); });
-  }
-
-  // If incoming state identical to local vector, reset timer to delay sending
-  //  next sync interest.
-  // If incoming state newer than local vector, send sync interest immediately.
-  // If local state newer than incoming state, do nothing.
-  if (!myVectorNew && !otherVectorNew) {
-    retx_event.cancel();
-    int delay = retx_dist(rengine_);
-    retx_event = m_scheduler.schedule(time::microseconds(delay),
-                                      [this] { retxSyncInterest(); });
-  } else if (otherVectorNew) {
-    retx_event.cancel();
-    retxSyncInterest();
-  }
+  m_logic.updateSeqNo(newSeq, m_id);
 }
 
 void Socket::onDataInterest(const Interest &interest) {
@@ -231,15 +119,6 @@ void Socket::onDataInterest(const Interest &interest) {
   else {
     // TODO
   }
-}
-
-/**
- * onSyncAck() - Decode version vector from data body, and merge vector.
- */
-void Socket::onSyncAck(const Data &data) {
-  auto content = data.getContent();
-  VersionVector vvOther(content.value(), content.value_size());
-  mergeStateVector(vvOther);
 }
 
 void
@@ -319,125 +198,6 @@ void
 Socket::onDataValidationFailed(const Data& data,
                                const ValidationError& error)
 {
-}
-
-void
-Socket::onSyncNack(const Interest &interest, const lp::Nack &nack)
-{
-}
-
-void
-Socket::onSyncTimeout(const Interest &interest)
-{
-}
-
-/**
- * retxSyncInterest() - Cancel and schedule new retxSyncInterest event.
- */
-void
-Socket::retxSyncInterest() {
-  sendSyncInterest();
-  int delay = retx_dist(rengine_);
-  retx_event = m_scheduler.schedule(time::microseconds(delay),
-                                    [this] { retxSyncInterest(); });
-}
-
-/**
- * sendSyncInterest() - Add one sync interest to queue. Called by
- *  Socket::retxSyncInterest(), or directly. Because this function is
- *  also called upon new msg via PublishMsg(), the shared data
- *  structures could cause race conditions.
- */
-void
-Socket::sendSyncInterest() {
-  using namespace std::chrono;
-
-  Name pending_sync_notify(m_syncPrefix);
-  pending_sync_notify.append(escape(m_id))
-                     .append(Name::Component(m_vv.encode()))
-                     .appendTimestamp();
-
-  // Wrap into Packet
-  Packet packet;
-  packet.packet_type = Packet::INTEREST_TYPE;
-  packet.interest =
-      std::make_shared<Interest>(pending_sync_notify, time::milliseconds(1000));
-
-  pending_sync_interest_mutex.lock();
-  pending_sync_interest.clear();  // Flush sync interest queue
-  pending_sync_interest.push_back(std::make_shared<Packet>(packet));
-  pending_sync_interest_mutex.unlock();
-}
-
-/**
- * sendSyncAck() - Add an ACK into queue
- */
-void
-Socket::sendSyncAck(const Name &n) {
-  std::shared_ptr<Data> data = std::make_shared<Data>(n);
-  Buffer encodedVV = m_vv.encode();
-  data->setContent(encodedVV.data(), encodedVV.size());
-
-  if (m_signingId.empty())
-    m_keyChain.sign(*data);
-  else
-    m_keyChain.sign(*data, security::signingByIdentity(m_signingId));
-
-  // TODO : this should not be hard-coded
-  data->setFreshnessPeriod(time::milliseconds(4000));
-
-  Packet packet;
-  packet.packet_type = Packet::DATA_TYPE;
-  packet.data = data;
-  pending_ack.push_back(std::make_shared<Packet>(packet));
-}
-
-/**
- * mergeStateVector() - Merge state vector, return a pair of boolean
- *  representing: <my_vector_new, other_vector_new>.
- * Then, add missing data interests to data interest queue.
- */
-std::pair<bool, bool>
-Socket::mergeStateVector(const VersionVector &vv_other) {
-  bool my_vector_new = false, other_vector_new = false;
-
-  // New data
-  std::vector<MissingDataInfo> v;
-
-  // Check if other vector has newer state
-  for (auto entry : vv_other) {
-    NodeID nidOther = entry.first;
-    SeqNo seqOther = entry.second;
-    SeqNo seqCurrent = m_vv.get(nidOther);
-
-    if (seqCurrent < seqOther) {
-      other_vector_new = true;
-
-      SeqNo startSeq = m_vv.get(nidOther) + 1;
-      v.push_back({nidOther, startSeq, seqOther});
-
-      m_vv.set(nidOther, seqOther);
-    }
-  }
-
-  // Callback if missing data found
-  if (!v.empty()) {
-    m_onUpdate(v);
-  }
-
-  // Check if I have newer state
-  for (auto entry : m_vv) {
-    NodeID nid = entry.first;
-    SeqNo seq = entry.second;
-    SeqNo seqOther = vv_other.get(nid);
-
-    if (seqOther < seq) {
-      my_vector_new = true;
-      break;
-    }
-  }
-
-  return std::make_pair(my_vector_new, other_vector_new);
 }
 
 }  // namespace svs

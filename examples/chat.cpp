@@ -74,7 +74,7 @@ private:
     {
       for (ndn::svs::SeqNo s = v[i].low; s <= v[i].high; ++s)
       {
-        ndn::svs::NodeID nid = v[i].nid;
+        ndn::svs::NodeID nid = v[i].session;
         m_svs.fetchData(nid, s, [nid] (const ndn::Data& data)
           {
             size_t data_size = data.getContent().value_size();
