@@ -287,14 +287,17 @@ Logic::reset(bool isOnInterest)
 SeqNo
 Logic::getSeqNo(const NodeID& nid) const
 {
-  return m_vv.get(nid);
+  NodeID t_nid = (nid == EMPTY_NODE_ID) ? m_id : nid;
+  return m_vv.get(t_nid);
 }
 
 void
 Logic::updateSeqNo(const SeqNo& seq, const NodeID& nid)
 {
-  SeqNo prev = m_vv.get(nid);
-  m_vv.set(nid, seq);
+  NodeID t_nid = (nid == EMPTY_NODE_ID) ? m_id : nid;
+
+  SeqNo prev = m_vv.get(t_nid);
+  m_vv.set(t_nid, seq);
 
   if (seq > prev)
     sendSyncInterest();
