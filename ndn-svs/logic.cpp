@@ -227,7 +227,7 @@ Logic::sendSyncAck(const Name &n)
     m_keyChain.sign(*data, security::signingByIdentity(m_signingId));
 
   // TODO : this should not be hard-coded
-  data->setFreshnessPeriod(time::milliseconds(4000));
+  data->setFreshnessPeriod(m_syncAckFreshness);
 
   Packet packet;
   packet.packet_type = Packet::DATA_TYPE;
