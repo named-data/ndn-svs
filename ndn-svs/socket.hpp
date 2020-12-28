@@ -185,8 +185,6 @@ public:
   static const std::shared_ptr<Validator> DEFAULT_VALIDATOR;
 
 private:
-  using RegisteredPrefixList = std::unordered_map<ndn::Name, ndn::RegisteredPrefixHandle>;
-
   void
   asyncSendPacket();
 
@@ -231,9 +229,9 @@ private:
   std::pair<bool, bool>
   mergeStateVector(const VersionVector &vv_other);
 
-  std::function<void(const std::string &)> onMsg;
+private:
+  using RegisteredPrefixList = std::unordered_map<ndn::Name, ndn::RegisteredPrefixHandle>;
 
-  // State
   NodeID m_id;
   Name m_syncPrefix;
   Name m_userPrefix;
@@ -242,13 +240,10 @@ private:
   KeyChain m_keyChain;
   VersionVector m_vv;
 
-  // Validator
   std::shared_ptr<Validator> m_validator;
 
-  // Callback
   UpdateCallback m_onUpdate;
 
-  // Mult-level queues
   std::deque<std::shared_ptr<Packet>> pending_ack;
   std::deque<std::shared_ptr<Packet>> pending_sync_interest;
   std::mutex pending_sync_interest_mutex;
@@ -271,8 +266,8 @@ private:
   RegisteredPrefixList m_registeredPrefixList;
   ndn::InMemoryStoragePersistent m_ims;
 
-  scheduler::EventId retx_event;    // will send retx next sync intrest
-  scheduler::EventId packet_event;  // Will send next packet async
+  scheduler::ScopedEventId retx_event;
+  scheduler::ScopedEventId packet_event;
 };
 
 }  // namespace svs
