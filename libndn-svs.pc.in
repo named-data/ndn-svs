@@ -1,0 +1,10 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+
+Name: libndn-svs
+Description: NDN SVS library
+Version: @VERSION@
+Libs: -L${libdir} @EXTRA_LINKFLAGS@ @EXTRA_LDFLAGS@ -lndn-svs @EXTRA_LIBS@ @EXTRA_FRAMEWORKS@
+Cflags: -I${includedir} @EXTRA_CXXFLAGS@ @EXTRA_INCLUDES@

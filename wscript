@@ -93,7 +93,8 @@ def build(bld):
         source=bld.path.ant_glob('ndn-svs/**/*.cpp'),
         use='NDN_CXX BOOST',
         includes='ndn-svs .',
-        export_includes='ndn-svs .')
+        export_includes='ndn-svs .',
+        install_path='${LIBDIR}')
 
     if bld.env.enable_shared:
         bld.shlib(name='ndn-svs',
@@ -122,8 +123,8 @@ def build(bld):
         relative_trick = False)
 
     bld(features='subst',
-        source='ndn-svs.pc.in',
-        target='ndn-svs.pc',
+        source='libndn-svs.pc.in',
+        target='libndn-svs.pc',
         install_path='${LIBDIR}/pkgconfig',
         VERSION=VERSION)
 

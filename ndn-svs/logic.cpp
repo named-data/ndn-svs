@@ -29,7 +29,7 @@ int Logic::s_instanceCounter = 0;
 const ndn::Name Logic::DEFAULT_NAME;
 const ndn::Name DEFAULT_NAME;
 const std::shared_ptr<Validator> DEFAULT_VALIDATOR;
-const NodeID EMPTY_NODE_ID;
+const NodeID Logic::EMPTY_NODE_ID;
 const time::milliseconds Logic::DEFAULT_ACK_FRESHNESS = time::milliseconds(4000);
 
 Logic::Logic(ndn::Face& face,

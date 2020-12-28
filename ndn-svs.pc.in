@@ -1,9 +1,0 @@
-prefix=@PREFIX@
-libdir=@LIBDIR@
-includedir=@INCLUDEDIR@
-
-Name: ndn-svs
-Description: NDN SVS library
-Version: @VERSION@
-Libs: -L${libdir} -lndn-svs
-Cflags: -I${includedir}
