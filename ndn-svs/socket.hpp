@@ -84,16 +84,12 @@ public:
    * The packet name is the local session + seqNo.
    * The seqNo is automatically maintained by internal Logic.
    *
-   * @throws It will throw error, if the prefix does not exist
-   *
    * @param buf Pointer to the bytes in content
    * @param len size of the bytes in content
    * @param freshness FreshnessPeriod of the data packet.
-   * @param prefix The user prefix that will be used to publish the data.
    */
   void
-  publishData(const uint8_t* buf, size_t len, const ndn::time::milliseconds& freshness,
-              const Name& prefix = DEFAULT_PREFIX);
+  publishData(const uint8_t* buf, size_t len, const ndn::time::milliseconds& freshness);
 
   /**
    * @brief Publish a data packet in the session and trigger synchronization updates
@@ -102,17 +98,14 @@ public:
    * The packet name is the local session + seqNo.
    * The seqNo is set by the application.
    *
-   * @throws It will throw error, if the prefix does not exist in m_logic
-   *
    * @param buf Pointer to the bytes in content
    * @param len size of the bytes in content
    * @param freshness FreshnessPeriod of the data packet.
    * @param seqNo Sequence number of the data
-   * @param prefix The user prefix that will be used to publish the data.
    */
   void
   publishData(const uint8_t* buf, size_t len, const ndn::time::milliseconds& freshness,
-              const uint64_t& seqNo, const Name& prefix = DEFAULT_PREFIX);
+              const uint64_t& seqNo);
 
   /**
    * @brief Publish a data packet in the session and trigger synchronization updates
@@ -121,15 +114,11 @@ public:
    * The packet name is the local session + seqNo.
    * The seqNo is automatically maintained by internal Logic.
    *
-   * @throws It will throw error, if the prefix does not exist in m_logic
-   *
    * @param content Block that will be set as the content of the data packet.
    * @param freshness FreshnessPeriod of the data packet.
-   * @param prefix The user prefix that will be used to publish the data.
    */
   void
-  publishData(const Block& content, const ndn::time::milliseconds& freshness,
-              const Name& prefix = DEFAULT_PREFIX);
+  publishData(const Block& content, const ndn::time::milliseconds& freshness);
 
   /**
    * @brief Publish a data packet in the session and trigger synchronization updates
@@ -138,16 +127,13 @@ public:
    * The packet name is the local session + seqNo.
    * The seqNo is set by the application.
    *
-   * @throws It will throw error, if the prefix does not exist in m_logic
-   *
    * @param content Block that will be set as the content of the data packet.
    * @param freshness FreshnessPeriod of the data packet.
    * @param seqNo Sequence number of the data
-   * @param prefix The user prefix that will be used to publish the data.
    */
   void
   publishData(const Block& content, const ndn::time::milliseconds& freshness,
-              const uint64_t& seqNo, const Name& prefix = DEFAULT_PREFIX);
+              const uint64_t& seqNo);
 
   /**
    * @brief Retrive a data packet with a particular seqNo from a session
@@ -181,7 +167,6 @@ public:
 
 public:
   static const ndn::Name DEFAULT_NAME;
-  static const ndn::Name DEFAULT_PREFIX;
   static const std::shared_ptr<Validator> DEFAULT_VALIDATOR;
 
 private:

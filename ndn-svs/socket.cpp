@@ -26,7 +26,6 @@ namespace ndn {
 namespace svs {
 
 const ndn::Name Socket::DEFAULT_NAME;
-const ndn::Name Socket::DEFAULT_PREFIX;
 const std::shared_ptr<Validator> Socket::DEFAULT_VALIDATOR;
 
 Socket::Socket(const Name& syncPrefix,
@@ -74,22 +73,20 @@ Socket::~Socket()
 }
 
 void
-Socket::publishData(const uint8_t* buf, size_t len, const ndn::time::milliseconds& freshness,
-                    const Name& prefix)
+Socket::publishData(const uint8_t* buf, size_t len, const ndn::time::milliseconds& freshness)
 {
-  publishData(ndn::encoding::makeBinaryBlock(ndn::tlv::Content, buf, len), freshness, prefix);
+  publishData(ndn::encoding::makeBinaryBlock(ndn::tlv::Content, buf, len), freshness);
 }
 
 void
 Socket::publishData(const uint8_t* buf, size_t len, const ndn::time::milliseconds& freshness,
-                    const uint64_t& seqNo, const Name& prefix)
+                    const uint64_t& seqNo)
 {
-  publishData(ndn::encoding::makeBinaryBlock(ndn::tlv::Content, buf, len), freshness, seqNo, prefix);
+  publishData(ndn::encoding::makeBinaryBlock(ndn::tlv::Content, buf, len), freshness, seqNo);
 }
 
 void
-Socket::publishData(const Block& content, const ndn::time::milliseconds& freshness,
-                    const Name& prefix)
+Socket::publishData(const Block& content, const ndn::time::milliseconds& freshness)
 {
   shared_ptr<Data> data = make_shared<Data>();
   data->setContent(content);
@@ -112,7 +109,7 @@ Socket::publishData(const Block& content, const ndn::time::milliseconds& freshne
 
 void
 Socket::publishData(const Block& content, const ndn::time::milliseconds& freshness,
-                    const uint64_t& seqNo, const Name& prefix)
+                    const uint64_t& seqNo)
 {
   shared_ptr<Data> data = make_shared<Data>();
   data->setContent(content);
