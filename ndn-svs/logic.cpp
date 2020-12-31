@@ -153,12 +153,15 @@ Logic::onSyncInterest(const Interest &interest)
   //  next sync interest.
   // If incoming state newer than local vector, send sync interest immediately.
   // If local state newer than incoming state, do nothing.
-  if (!myVectorNew && !otherVectorNew) {
+  if (!myVectorNew && !otherVectorNew)
+  {
     retx_event.cancel();
     int delay = retx_dist(rengine_);
     retx_event = m_scheduler.schedule(time::microseconds(delay),
                                       [this] { retxSyncInterest(); });
-  } else if (otherVectorNew) {
+  }
+  else if (otherVectorNew)
+  {
     retx_event.cancel();
     retxSyncInterest();
   }
@@ -244,12 +247,14 @@ Logic::mergeStateVector(const VersionVector &vv_other)
   std::vector<MissingDataInfo> v;
 
   // Check if other vector has newer state
-  for (auto entry : vv_other) {
+  for (auto entry : vv_other)
+  {
     NodeID nidOther = entry.first;
     SeqNo seqOther = entry.second;
     SeqNo seqCurrent = m_vv.get(nidOther);
 
-    if (seqCurrent < seqOther) {
+    if (seqCurrent < seqOther)
+    {
       other_vector_new = true;
 
       SeqNo startSeq = m_vv.get(nidOther) + 1;
@@ -260,17 +265,20 @@ Logic::mergeStateVector(const VersionVector &vv_other)
   }
 
   // Callback if missing data found
-  if (!v.empty()) {
+  if (!v.empty())
+  {
     m_onUpdate(v);
   }
 
   // Check if I have newer state
-  for (auto entry : m_vv) {
+  for (auto entry : m_vv)
+  {
     NodeID nid = entry.first;
     SeqNo seq = entry.second;
     SeqNo seqOther = vv_other.get(nid);
 
-    if (seqOther < seq) {
+    if (seqOther < seq)
+    {
       my_vector_new = true;
       break;
     }
@@ -307,7 +315,8 @@ std::set<NodeID>
 Logic::getSessionNames() const
 {
   std::set<NodeID> sessionNames;
-  for (const auto& nid : m_vv) {
+  for (const auto& nid : m_vv)
+  {
     sessionNames.insert(nid.first);
   }
   return sessionNames;

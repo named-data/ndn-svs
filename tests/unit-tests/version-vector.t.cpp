@@ -25,8 +25,10 @@ namespace ndn {
 namespace svs {
 namespace test {
 
-struct TestVersionVectorFixture {
-  TestVersionVectorFixture() {
+struct TestVersionVectorFixture
+{
+  TestVersionVectorFixture()
+  {
     v.set("one", 1);
     v.set("two", 2);
   }
@@ -52,7 +54,8 @@ BOOST_AUTO_TEST_CASE(Set)
 BOOST_AUTO_TEST_CASE(Iterate)
 {
   std::unordered_map<NodeID, SeqNo> umap;
-  for (auto elem : v) {
+  for (auto elem : v)
+  {
     umap[elem.first] = elem.second;
   }
 

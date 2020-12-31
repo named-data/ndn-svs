@@ -50,7 +50,8 @@ std::string
 VersionVector::toStr() const
 {
   std::ostringstream stream;
-  for (auto &elem : m_umap) {
+  for (auto &elem : m_umap)
+  {
     stream << elem.first << ":" << elem.second << " ";
   }
   return stream.str();
