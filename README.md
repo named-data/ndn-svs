@@ -34,7 +34,7 @@ To try out the demo CLI chat application:
 ## Contributing
 
 We greatly appreciate contributions to the ndn-svs code base, provided that they are
-licensed under the GPL 3.0+ or a compatible license (see below).
+licensed under the LGPL 2.1+ or a compatible license (see below).
 If you are new to the NDN software community, please read the
 [Contributor's Guide](https://github.com/named-data/.github/blob/master/CONTRIBUTING.md)
 to get started.
