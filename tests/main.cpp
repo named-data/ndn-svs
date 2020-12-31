@@ -14,5 +14,5 @@
  * PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
  */
 
-#define BOOST_TEST_MODULE ChronoSync
+#define BOOST_TEST_MODULE ndnsvs
 #include "tests/boost-test.hpp"

@@ -45,7 +45,7 @@ public:
 using UpdateCallback = function<void(const std::vector<MissingDataInfo>&)>;
 
 /**
- * @brief Logic of ChronoSync
+ * @brief Logic of SVS
  */
 class Logic : noncopyable
 {
