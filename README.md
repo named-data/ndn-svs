@@ -43,5 +43,5 @@ Since ndn-svs is an unofficial implementation, contributions are welcome through
 
 ## License
 
-ndn-svs is an open source project licensed under the GPL version 3.
+ndn-svs is an open source project licensed under the LGPL version 2.1.
 See [`COPYING.md`](COPYING.md) for more information.
