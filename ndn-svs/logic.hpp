@@ -21,6 +21,7 @@
 #include "version-vector.hpp"
 
 #include <random>
+#include <mutex>
 
 namespace ndn {
 namespace svs {

@@ -1,0 +1,64 @@
+name: Build
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  linux:
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [Ubuntu-18.04, Ubuntu-20.04]
+
+    env:
+      NODE_LABELS: "Linux Ubuntu ${{ matrix.os }}"
+      WAF_JOBS: 4
+      JOB_NAME: limited-build
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Run build script
+      run: |
+        ./.jenkins
+
+  ubuntu-ppa:
+    runs-on: ubuntu-latest
+    name: Ubuntu PPA build
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Run build script
+      run: |
+        sudo apt-get -qy install software-properties-common
+        sudo add-apt-repository ppa:named-data/ppa -y
+        sudo apt-get -qq update
+        sudo apt-get -qy install nfd libndn-cxx-dev libboost-all-dev
+        ./waf --color=yes configure --debug
+        ./waf --color=yes build -j$(nproc)
+
+  macos:
+    runs-on: ${{ matrix.os }}
+    continue-on-error: false
+    name: Xcode ${{ matrix.xcode }}
+
+    strategy:
+      matrix:
+        os: [macos-latest]
+        xcode: [11.3.1, 11.7, 12.2]
+
+    env:
+      WAF_JOBS: 4
+      JOB_NAME: limited-build
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Run build script
+      run: |
+        sudo xcode-select -s /Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer
+        export NODE_LABELS="OSX OSX-$(sw_vers -productVersion | cut -d . -f -2)"
+        ./.jenkins
