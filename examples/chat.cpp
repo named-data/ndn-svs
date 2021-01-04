@@ -19,6 +19,8 @@
 #include <thread>
 #include <vector>
 
+#include <ndn-cxx/security/validator-config.hpp>
+
 #include <ndn-svs/socket.hpp>
 
 class Options
@@ -35,14 +37,19 @@ class Program
 {
 public:
   Program(const Options &options)
-    : m_options(options),
-      m_svs(
-        ndn::Name(m_options.prefix),
-        ndn::Name(m_options.m_id),
-        face,
-        std::bind(&Program::onMissingData, this, _1),
-        ndn::Name(m_options.m_id))
+    : m_options(options)
   {
+    m_validator = std::make_shared<ndn::security::ValidatorConfig>(face);
+    m_validator->load("example-security/validation.conf");
+
+    m_svs = std::make_shared<ndn::svs::Socket>(
+      ndn::Name(m_options.prefix),
+      ndn::Name(m_options.m_id),
+      face,
+      std::bind(&Program::onMissingData, this, _1),
+      ndn::Name(m_options.m_id),
+      m_validator);
+
     std::cout << "SVS client stared:" << m_options.m_id << std::endl;
   }
 
@@ -73,7 +80,7 @@ private:
       for (ndn::svs::SeqNo s = v[i].low; s <= v[i].high; ++s)
       {
         ndn::svs::NodeID nid = v[i].session;
-        m_svs.fetchData(nid, s, [nid] (const ndn::Data& data)
+        m_svs->fetchData(nid, s, [nid] (const ndn::Data& data)
           {
             size_t data_size = data.getContent().value_size();
             std::string content_str((char *)data.getContent().value(), data_size);
@@ -87,15 +94,16 @@ private:
   void
   publishMsg(std::string msg)
   {
-    m_svs.publishData(reinterpret_cast<const uint8_t*>(msg.c_str()),
-                      msg.size(),
-                      ndn::time::milliseconds(1000));
+    m_svs->publishData(reinterpret_cast<const uint8_t*>(msg.c_str()),
+                       msg.size(),
+                       ndn::time::milliseconds(1000));
   }
 
 public:
   const Options m_options;
   ndn::Face face;
-  ndn::svs::Socket m_svs;
+  std::shared_ptr<ndn::svs::Socket> m_svs;
+  std::shared_ptr<ndn::security::ValidatorConfig> m_validator;
 };
 
 int

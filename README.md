@@ -31,6 +31,10 @@ To try out the demo CLI chat application:
     ./waf
     ./build/examples/chat <prefix>
 
+You will need to create certificates for the prefixes first:
+
+    ndnsec cert-dump `ndnsec get-default -c -i <prefix>` > example-security/<name>.cert
+
 ## Contributing
 
 We greatly appreciate contributions to the ndn-svs code base, provided that they are

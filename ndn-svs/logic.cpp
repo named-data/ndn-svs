@@ -16,6 +16,8 @@
 
 #include "logic.hpp"
 
+#include <ndn-cxx/signature-info.hpp>
+#include <ndn-cxx/util/random.hpp>
 #include <ndn-cxx/security/signing-helpers.hpp>
 #include <ndn-cxx/security/signing-info.hpp>
 
@@ -55,7 +57,17 @@ Logic::Logic(ndn::Face& face,
   // Register sync interest filter
   m_syncRegisteredPrefix =
     m_face.setInterestFilter(syncPrefix,
-                             bind(&Logic::onSyncInterest, this, _2),
+                             [&] (const Name& prefix, const Interest& interest) {
+                                if (!interest.isSigned()) return;
+
+                                if (static_cast<bool>(m_validator))
+                                  m_validator->validate(
+                                    interest,
+                                    bind(&Logic::onSyncInterest, this, _1),
+                                    [] (const Interest& interest, const ValidationError& error) {});
+                                else
+                                  onSyncInterest(interest);
+                             },
                              [] (const Name& prefix, const std::string& msg) {});
 
   // Start periodically send sync interest
@@ -83,10 +95,12 @@ Logic::asyncSendPacket()
   }
   pending_sync_interest_mutex.unlock();
 
-  Interest interest;
-  security::SigningInfo signingInfo;
-
   if (packet != nullptr) {
+    Interest interest;
+    security::SigningInfo signingInfo = signingByIdentity(m_signingId);
+    std::vector<uint8_t> nonce(8);
+    SignatureInfo signatureInfo;
+
     // Send packet
     switch (packet->packet_type) {
       case Packet::INTEREST_TYPE:
@@ -94,8 +108,12 @@ Logic::asyncSendPacket()
         interest.setCanBePrefix(true);
         interest.setMustBeFresh(true);
 
+        random::generateSecureBytes(nonce.data(), nonce.size());
+        signatureInfo.setTime();
+        signatureInfo.setNonce(nonce);
+
         signingInfo.setSignedInterestFormat(security::SignedInterestFormat::V03);
-        signingInfo.setSigningIdentity(m_signingId);
+        signingInfo.setSignatureInfo(signatureInfo);
         m_keyChain.sign(interest, signingInfo);
 
         // Sync Interest
@@ -132,8 +150,6 @@ Logic::asyncSendPacket()
 void
 Logic::onSyncInterest(const Interest &interest)
 {
-  if (!interest.isSigned()) return;
-
   const auto &n = interest.getName();
   NodeID nidOther = unescape(n.get(-4).toUri());
 
