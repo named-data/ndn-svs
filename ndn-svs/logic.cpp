@@ -17,6 +17,7 @@
 #include "logic.hpp"
 
 #include <ndn-cxx/security/signing-helpers.hpp>
+#include <ndn-cxx/security/signing-info.hpp>
 
 namespace ndn {
 namespace svs {
@@ -83,6 +84,7 @@ Logic::asyncSendPacket()
   pending_sync_interest_mutex.unlock();
 
   Interest interest;
+  security::SigningInfo signingInfo;
 
   if (packet != nullptr) {
     // Send packet
@@ -91,6 +93,10 @@ Logic::asyncSendPacket()
         interest = Interest(*packet->interest);
         interest.setCanBePrefix(true);
         interest.setMustBeFresh(true);
+
+        signingInfo.setSignedInterestFormat(security::SignedInterestFormat::V03);
+        signingInfo.setSigningIdentity(m_signingId);
+        m_keyChain.sign(interest, signingInfo);
 
         // Sync Interest
         if (m_syncPrefix.isPrefixOf(interest.getName()))
@@ -126,14 +132,16 @@ Logic::asyncSendPacket()
 void
 Logic::onSyncInterest(const Interest &interest)
 {
+  if (!interest.isSigned()) return;
+
   const auto &n = interest.getName();
-  NodeID nidOther = unescape(n.get(-3).toUri());
+  NodeID nidOther = unescape(n.get(-4).toUri());
 
   if (nidOther == m_id) return;
 
   // Merge state vector
   bool myVectorNew, otherVectorNew;
-  Name::Component encodedVV = n.get(-2);
+  Name::Component encodedVV = n.get(-3);
   VersionVector vvOther(encodedVV.value(), encodedVV.value_size());
   std::tie(myVectorNew, otherVectorNew) = mergeStateVector(vvOther);
 
@@ -224,7 +232,7 @@ Logic::sendSyncAck(const Name &n)
   if (m_signingId.empty())
     m_keyChain.sign(*data);
   else
-    m_keyChain.sign(*data, security::signingByIdentity(m_signingId));
+    m_keyChain.sign(*data, signingByIdentity(m_signingId));
 
   // TODO : this should not be hard-coded
   data->setFreshnessPeriod(m_syncAckFreshness);

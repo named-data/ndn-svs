@@ -35,6 +35,8 @@ namespace svs {
  * into this interface without handling the SVS specific details, such
  * as sequence number and session id.
  *
+ * The socket will throw if signingId does not exist.
+ *
  * This interface also simplifies data fetching.  Client only needs to provide a
  * data fetching strategy (through a updateCallback).
  */

@@ -79,7 +79,7 @@ Socket::publishData(const Block& content, const ndn::time::milliseconds& freshne
   if (m_signingId.empty())
     m_keyChain.sign(*data);
   else
-    m_keyChain.sign(*data, security::signingByIdentity(m_signingId));
+    m_keyChain.sign(*data, signingByIdentity(m_signingId));
 
   m_ims.insert(*data);
   m_logic.updateSeqNo(newSeq, m_id);
@@ -101,7 +101,7 @@ Socket::publishData(const Block& content, const ndn::time::milliseconds& freshne
   if (m_signingId.empty())
     m_keyChain.sign(*data);
   else
-    m_keyChain.sign(*data, security::signingByIdentity(m_signingId));
+    m_keyChain.sign(*data, signingByIdentity(m_signingId));
 
   m_ims.insert(*data);
   m_logic.updateSeqNo(newSeq, m_id);

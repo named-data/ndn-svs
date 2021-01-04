@@ -40,7 +40,8 @@ public:
         ndn::Name(m_options.prefix),
         ndn::Name(m_options.m_id),
         face,
-        std::bind(&Program::onMissingData, this, _1))
+        std::bind(&Program::onMissingData, this, _1),
+        ndn::Name(m_options.m_id))
   {
     std::cout << "SVS client stared:" << m_options.m_id << std::endl;
   }
