@@ -69,7 +69,6 @@ public:
    *
    * @param face The face used to communication, will be shutdown in destructor
    * @param syncPrefix The prefix of the sync group
-   * @param defaultUserPrefix The prefix of the first user added to this session
    * @param onUpdate The callback function to handle state updates
    * @param defaultSigningId The signing Id of the default user
    * @param validator The validator for packet validation
@@ -78,7 +77,6 @@ public:
    */
   Logic(ndn::Face& face,
         const Name& syncPrefix,
-        const Name& defaultUserPrefix,
         const UpdateCallback& onUpdate,
         const Name& signingId = DEFAULT_NAME,
         std::shared_ptr<Validator> validator = DEFAULT_VALIDATOR,
@@ -94,13 +92,6 @@ public:
    */
   void
   reset(bool isOnInterest = false);
-
-  /// @brief Get the name of default user.
-  const Name&
-  getUserPrefix() const
-  {
-    return m_userPrefix;
-  }
 
   /**
    * @brief Get the node ID of the local session.
@@ -227,8 +218,6 @@ private:
   // Communication
   ndn::Face& m_face;
   Name m_syncPrefix;
-  Name m_syncReset;
-  Name m_userPrefix;
   Name m_signingId;
   NodeID m_id;
   ndn::ScopedRegisteredPrefixHandle m_syncRegisteredPrefix;

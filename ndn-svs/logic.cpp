@@ -34,7 +34,6 @@ const time::milliseconds Logic::DEFAULT_ACK_FRESHNESS = time::milliseconds(4000)
 
 Logic::Logic(ndn::Face& face,
              const Name& syncPrefix,
-             const Name& userPrefix,
              const UpdateCallback& onUpdate,
              const Name& signingId,
              std::shared_ptr<Validator> validator,
@@ -42,8 +41,6 @@ Logic::Logic(ndn::Face& face,
              const NodeID session)
   : m_face(face)
   , m_syncPrefix(syncPrefix)
-  , m_syncReset(Name(syncPrefix).append("reset"))
-  , m_userPrefix(userPrefix)
   , m_signingId(signingId)
   , m_id(session)
   , m_onUpdate(onUpdate)
@@ -151,7 +148,7 @@ void
 Logic::onSyncInterest(const Interest &interest)
 {
   const auto &n = interest.getName();
-  NodeID nidOther = unescape(n.get(-4).toUri());
+  NodeID nidOther = n.get(-4).toUri();
 
   if (nidOther == m_id) return;
 
@@ -222,7 +219,7 @@ Logic::sendSyncInterest()
   using namespace std::chrono;
 
   Name pending_sync_notify(m_syncPrefix);
-  pending_sync_notify.append(escape(m_id))
+  pending_sync_notify.append(m_id)
                      .append(Name::Component(m_vv.encode()))
                      .appendTimestamp();
 

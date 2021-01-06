@@ -44,7 +44,7 @@ public:
 
     m_svs = std::make_shared<ndn::svs::Socket>(
       ndn::Name(m_options.prefix),
-      ndn::Name(m_options.m_id),
+      ndn::Name(m_options.m_id).get(-1).toUri(),
       face,
       std::bind(&Program::onMissingData, this, _1),
       ndn::Name(m_options.m_id),

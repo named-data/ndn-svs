@@ -44,7 +44,7 @@ class Socket : noncopyable
 {
 public:
   Socket(const Name& syncPrefix,
-         const Name& userPrefix,
+         const NodeID& id,
          ndn::Face& face,
          const UpdateCallback& updateCallback,
          const Name& signingId = DEFAULT_NAME,
@@ -174,7 +174,7 @@ private:
 
 private:
   Name m_syncPrefix;
-  Name m_userPrefix;
+  Name m_dataPrefix;
   Name m_signingId;
   NodeID m_id;
   Face& m_face;

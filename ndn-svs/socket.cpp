@@ -26,23 +26,23 @@ const ndn::Name Socket::DEFAULT_NAME;
 const std::shared_ptr<Validator> Socket::DEFAULT_VALIDATOR;
 
 Socket::Socket(const Name& syncPrefix,
-               const Name& userPrefix,
+               const NodeID& id,
                ndn::Face& face,
                const UpdateCallback& updateCallback,
                const Name& signingId,
                std::shared_ptr<Validator> validator)
-  : m_syncPrefix(syncPrefix)
-  , m_userPrefix(userPrefix)
+  : m_syncPrefix(Name(syncPrefix).append("s"))
+  , m_dataPrefix(Name(syncPrefix).append("d"))
   , m_signingId(signingId)
-  , m_id(m_userPrefix.toUri())
+  , m_id(escape(id))
   , m_face(face)
   , m_validator(validator)
   , m_onUpdate(updateCallback)
-  , m_logic(face, syncPrefix, userPrefix, updateCallback, m_signingId, m_validator,
+  , m_logic(face, m_syncPrefix, updateCallback, m_signingId, m_validator,
             Logic::DEFAULT_ACK_FRESHNESS, m_id)
 {
   m_registeredDataPrefix =
-    m_face.setInterestFilter(m_userPrefix,
+    m_face.setInterestFilter(m_dataPrefix,
                               bind(&Socket::onDataInterest, this, _2),
                               [] (const Name& prefix, const std::string& msg) {});
 }
@@ -72,7 +72,7 @@ Socket::publishData(const Block& content, const ndn::time::milliseconds& freshne
   data->setFreshnessPeriod(freshness);
 
   SeqNo newSeq = m_logic.getSeqNo(m_id) + 1;
-  Name dataName;
+  Name dataName(m_dataPrefix);
   dataName.append(m_id).appendNumber(newSeq);
   data->setName(dataName);
 
@@ -94,7 +94,7 @@ Socket::publishData(const Block& content, const ndn::time::milliseconds& freshne
   data->setFreshnessPeriod(freshness);
 
   SeqNo newSeq = seqNo;
-  Name dataName;
+  Name dataName(m_dataPrefix);
   dataName.append(m_id).appendNumber(newSeq);
   data->setName(dataName);
 
@@ -123,7 +123,7 @@ Socket::fetchData(const NodeID& nid, const SeqNo& seqNo,
                   const DataValidatedCallback& dataCallback,
                   int nRetries)
 {
-  Name interestName;
+  Name interestName(m_dataPrefix);
   interestName.append(nid).appendNumber(seqNo);
 
   Interest interest(interestName);
@@ -148,7 +148,7 @@ Socket::fetchData(const NodeID& nid, const SeqNo& seqNo,
                   const ndn::TimeoutCallback& onTimeout,
                   int nRetries)
 {
-  Name interestName;
+  Name interestName(m_dataPrefix);
   interestName.append(nid).appendNumber(seqNo);
 
   Interest interest(interestName);
