@@ -17,7 +17,6 @@
 #include "logic.hpp"
 
 #include <ndn-cxx/signature-info.hpp>
-#include <ndn-cxx/util/random.hpp>
 #include <ndn-cxx/security/signing-helpers.hpp>
 #include <ndn-cxx/security/signing-info.hpp>
 
@@ -44,6 +43,9 @@ Logic::Logic(ndn::Face& face,
   , m_signingId(signingId)
   , m_id(session)
   , m_onUpdate(onUpdate)
+  , m_rng(ndn::random::getRandomNumberEngine())
+  , m_packetDist(10000, 15000)
+  , m_retxDist(1000000 * 0.9, 1000000 * 1.1)
   , m_syncAckFreshness(syncAckFreshness)
   , m_validator(validator)
   , m_scheduler(m_face.getIoService())
@@ -138,7 +140,7 @@ Logic::asyncSendPacket()
     }
   }
 
-  int delay = packet_dist(rengine_);
+  int delay = m_packetDist(m_rng);
   packet_event.cancel();
   packet_event = m_scheduler.schedule(time::microseconds(delay),
                                       [this] { asyncSendPacket(); });
@@ -162,7 +164,7 @@ Logic::onSyncInterest(const Interest &interest)
   if (myVectorNew) {
     sendSyncAck(n);
   } else {
-    int delay = packet_dist(rengine_);
+    int delay = m_packetDist(m_rng);
     m_scheduler.schedule(time::microseconds(delay),
                          [this, n] { sendSyncAck(n); });
   }
@@ -174,7 +176,7 @@ Logic::onSyncInterest(const Interest &interest)
   if (!myVectorNew && !otherVectorNew)
   {
     retx_event.cancel();
-    int delay = retx_dist(rengine_);
+    int delay = m_retxDist(m_rng);
     retx_event = m_scheduler.schedule(time::microseconds(delay),
                                       [this] { retxSyncInterest(); });
   }
@@ -208,7 +210,7 @@ void
 Logic::retxSyncInterest()
 {
   sendSyncInterest();
-  int delay = retx_dist(rengine_);
+  int delay = m_retxDist(m_rng);
   retx_event = m_scheduler.schedule(time::microseconds(delay),
                                     [this] { retxSyncInterest(); });
 }

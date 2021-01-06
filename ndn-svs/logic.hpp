@@ -20,7 +20,8 @@
 #include "common.hpp"
 #include "version-vector.hpp"
 
-#include <random>
+#include <ndn-cxx/util/random.hpp>
+
 #include <mutex>
 
 namespace ndn {
@@ -231,21 +232,14 @@ private:
   std::deque<std::shared_ptr<Packet>> pending_sync_interest;
   std::mutex pending_sync_interest_mutex;
 
+  // Random Engine
+  ndn::random::RandomNumberEngine& m_rng;
   // Microseconds between sending two packets in the queues
-  std::uniform_int_distribution<> packet_dist =
-      std::uniform_int_distribution<>(10000, 15000);
+  std::uniform_int_distribution<> m_packetDist;
   // Microseconds between sending two sync interests
-  std::uniform_int_distribution<> retx_dist =
-      std::uniform_int_distribution<>(1000000 * 0.9, 1000000 * 1.1);
-  // Microseconds for sending ACK if local vector isn't newer
-  std::uniform_int_distribution<> ack_dist =
-      std::uniform_int_distribution<>(20000, 40000);
+  std::uniform_int_distribution<> m_retxDist;
 
-  // Random engine
-  std::random_device rdevice_;
-  std::mt19937 rengine_;
-
-  /// @brief Freshness of sync ack
+  // Freshness of sync ack
   time::milliseconds m_syncAckFreshness;
 
   // Security
