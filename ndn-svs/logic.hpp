@@ -183,13 +183,13 @@ private:
    *
    * Also adds missing data interests to data interest queue.
    *
-   * @param vv_other state vector to merge in
+   * @param vvOther state vector to merge in
    *
    * @returns a pair of boolean representing:
-   *    <my_vector_new, other_vector_new>.
+   *    <my vector new, other vector new>.
    */
   std::pair<bool, bool>
-  mergeStateVector(const VersionVector &vv_other);
+  mergeStateVector(const VersionVector &vvOther);
 
   /// @brief Reference to scheduler
   ndn::Scheduler&

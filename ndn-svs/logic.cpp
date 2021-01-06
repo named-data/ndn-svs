@@ -226,7 +226,7 @@ Logic::sendSyncInterest()
   Packet packet;
   packet.packet_type = Packet::INTEREST_TYPE;
   packet.interest =
-      std::make_shared<Interest>(pending_sync_notify, time::milliseconds(1000));
+    std::make_shared<Interest>(pending_sync_notify, time::milliseconds(1000));
 
   pending_sync_interest_mutex.lock();
   pending_sync_interest.clear();  // Flush sync interest queue
@@ -246,7 +246,6 @@ Logic::sendSyncAck(const Name &n)
   else
     m_keyChain.sign(*data, signingByIdentity(m_signingId));
 
-  // TODO : this should not be hard-coded
   data->setFreshnessPeriod(m_syncAckFreshness);
 
   Packet packet;
@@ -256,15 +255,16 @@ Logic::sendSyncAck(const Name &n)
 }
 
 std::pair<bool, bool>
-Logic::mergeStateVector(const VersionVector &vv_other)
+Logic::mergeStateVector(const VersionVector &vvOther)
 {
-  bool my_vector_new = false, other_vector_new = false;
+  bool myVectorNew = false,
+       otherVectorNew = false;
 
-  // New data
+  // New data found in vvOther
   std::vector<MissingDataInfo> v;
 
   // Check if other vector has newer state
-  for (auto entry : vv_other)
+  for (auto entry : vvOther)
   {
     NodeID nidOther = entry.first;
     SeqNo seqOther = entry.second;
@@ -272,7 +272,7 @@ Logic::mergeStateVector(const VersionVector &vv_other)
 
     if (seqCurrent < seqOther)
     {
-      other_vector_new = true;
+      otherVectorNew = true;
 
       SeqNo startSeq = m_vv.get(nidOther) + 1;
       v.push_back({nidOther, startSeq, seqOther});
@@ -292,16 +292,16 @@ Logic::mergeStateVector(const VersionVector &vv_other)
   {
     NodeID nid = entry.first;
     SeqNo seq = entry.second;
-    SeqNo seqOther = vv_other.get(nid);
+    SeqNo seqOther = vvOther.get(nid);
 
     if (seqOther < seq)
     {
-      my_vector_new = true;
+      myVectorNew = true;
       break;
     }
   }
 
-  return std::make_pair(my_vector_new, other_vector_new);
+  return std::make_pair(myVectorNew, otherVectorNew);
 }
 
 void
