@@ -247,8 +247,8 @@ private:
   std::shared_ptr<security::Validator> m_validator;
 
   ndn::Scheduler m_scheduler;
-  scheduler::ScopedEventId retx_event;
-  scheduler::ScopedEventId packet_event;
+  scheduler::ScopedEventId m_retxEvent;
+  scheduler::ScopedEventId m_packetEvent;
 
   int m_instanceId;
   static int s_instanceCounter;

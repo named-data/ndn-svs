@@ -141,9 +141,8 @@ Logic::asyncSendPacket()
   }
 
   int delay = m_packetDist(m_rng);
-  packet_event.cancel();
-  packet_event = m_scheduler.schedule(time::microseconds(delay),
-                                      [this] { asyncSendPacket(); });
+  m_packetEvent = m_scheduler.schedule(time::microseconds(delay),
+                                       [this] { asyncSendPacket(); });
 }
 
 void
@@ -175,14 +174,12 @@ Logic::onSyncInterest(const Interest &interest)
   // If local state newer than incoming state, do nothing.
   if (!myVectorNew && !otherVectorNew)
   {
-    retx_event.cancel();
     int delay = m_retxDist(m_rng);
-    retx_event = m_scheduler.schedule(time::microseconds(delay),
-                                      [this] { retxSyncInterest(); });
+    m_retxEvent = m_scheduler.schedule(time::microseconds(delay),
+                                       [this] { retxSyncInterest(); });
   }
   else if (otherVectorNew)
   {
-    retx_event.cancel();
     retxSyncInterest();
   }
 }
@@ -211,15 +208,13 @@ Logic::retxSyncInterest()
 {
   sendSyncInterest();
   int delay = m_retxDist(m_rng);
-  retx_event = m_scheduler.schedule(time::microseconds(delay),
-                                    [this] { retxSyncInterest(); });
+  m_retxEvent = m_scheduler.schedule(time::microseconds(delay),
+                                     [this] { retxSyncInterest(); });
 }
 
 void
 Logic::sendSyncInterest()
 {
-  using namespace std::chrono;
-
   Name pending_sync_notify(m_syncPrefix);
   pending_sync_notify.append(m_id)
                      .append(Name::Component(m_vv.encode()))
