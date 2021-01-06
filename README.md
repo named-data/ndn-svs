@@ -35,6 +35,10 @@ You will need to create certificates for the prefixes first:
 
     ndnsec cert-dump `ndnsec get-default -c -i <prefix>` > example-security/<name>.cert
 
+Configure NFD to be multicast:
+
+    nfdc strategy set / /localhost/nfd/strategy/multicast/%FD%03
+
 ## Contributing
 
 We greatly appreciate contributions to the ndn-svs code base, provided that they are
