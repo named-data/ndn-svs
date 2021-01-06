@@ -161,9 +161,7 @@ private:
   void
   onSyncTimeout(const Interest &interest);
 
-  /**
-   * @brief Cancel and schedule new retxSyncInterest event.
-   */
+  /// @brief sendSyncInterest and schedule a new retxSyncInterest event.
   void
   retxSyncInterest();
 
