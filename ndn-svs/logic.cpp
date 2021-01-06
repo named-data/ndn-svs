@@ -32,6 +32,7 @@ const NodeID Logic::EMPTY_NODE_ID;
 const time::milliseconds Logic::DEFAULT_ACK_FRESHNESS = time::milliseconds(4000);
 
 Logic::Logic(ndn::Face& face,
+             ndn::KeyChain& keyChain,
              const Name& syncPrefix,
              const UpdateCallback& onUpdate,
              const Name& signingId,
@@ -47,6 +48,7 @@ Logic::Logic(ndn::Face& face,
   , m_packetDist(10000, 15000)
   , m_retxDist(1000000 * 0.9, 1000000 * 1.1)
   , m_syncAckFreshness(syncAckFreshness)
+  , m_keyChain(keyChain)
   , m_validator(validator)
   , m_scheduler(m_face.getIoService())
   , m_instanceId(s_instanceCounter++)

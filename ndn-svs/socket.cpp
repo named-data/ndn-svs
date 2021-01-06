@@ -38,8 +38,8 @@ Socket::Socket(const Name& syncPrefix,
   , m_face(face)
   , m_validator(validator)
   , m_onUpdate(updateCallback)
-  , m_logic(face, m_syncPrefix, updateCallback, m_signingId, m_validator,
-            Logic::DEFAULT_ACK_FRESHNESS, m_id)
+  , m_logic(face, m_keyChain, m_syncPrefix, updateCallback, m_signingId,
+            m_validator, Logic::DEFAULT_ACK_FRESHNESS, m_id)
 {
   m_registeredDataPrefix =
     m_face.setInterestFilter(m_dataPrefix,

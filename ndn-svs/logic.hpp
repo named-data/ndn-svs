@@ -77,6 +77,7 @@ public:
    * @param nid ID for the node
    */
   Logic(ndn::Face& face,
+        ndn::KeyChain& keyChain,
         const Name& syncPrefix,
         const UpdateCallback& onUpdate,
         const Name& signingId = DEFAULT_NAME,
@@ -245,7 +246,7 @@ private:
   time::milliseconds m_syncAckFreshness;
 
   // Security
-  ndn::KeyChain m_keyChain;
+  ndn::KeyChain& m_keyChain;
   std::shared_ptr<security::Validator> m_validator;
 
   ndn::Scheduler m_scheduler;
