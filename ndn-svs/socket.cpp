@@ -43,8 +43,8 @@ Socket::Socket(const Name& syncPrefix,
 {
   m_registeredDataPrefix =
     m_face.setInterestFilter(m_dataPrefix,
-                              bind(&Socket::onDataInterest, this, _2),
-                              [] (const Name& prefix, const std::string& msg) {});
+                             bind(&Socket::onDataInterest, this, _2),
+                             [] (const Name& prefix, const std::string& msg) {});
 }
 
 Socket::~Socket()
@@ -110,10 +110,12 @@ Socket::publishData(const Block& content, const ndn::time::milliseconds& freshne
 void Socket::onDataInterest(const Interest &interest) {
   // If have data, reply. Otherwise forward with probability (?)
   shared_ptr<const Data> data = m_ims.find(interest);
-  if (data != nullptr) {
+  if (data != nullptr)
+  {
     m_face.put(*data);
   }
-  else {
+  else
+  {
     // TODO
   }
 }
