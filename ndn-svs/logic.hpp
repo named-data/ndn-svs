@@ -68,13 +68,13 @@ public:
   /**
    * @brief Constructor
    *
-   * @param face The face used to communication, will be shutdown in destructor
+   * @param face The face used to communication
    * @param syncPrefix The prefix of the sync group
    * @param onUpdate The callback function to handle state updates
-   * @param defaultSigningId The signing Id of the default user
+   * @param signingId The signing Id of the default user
    * @param validator The validator for packet validation
    * @param ackFreshness Freshness of the sync ack
-   * @param session Manually defined session ID
+   * @param nid ID for the node
    */
   Logic(ndn::Face& face,
         const Name& syncPrefix,
@@ -82,7 +82,7 @@ public:
         const Name& signingId = DEFAULT_NAME,
         std::shared_ptr<Validator> validator = DEFAULT_VALIDATOR,
         const time::milliseconds& syncAckFreshness = DEFAULT_ACK_FRESHNESS,
-        const NodeID session = EMPTY_NODE_ID);
+        const NodeID nid = EMPTY_NODE_ID);
 
   ~Logic();
 
@@ -131,6 +131,7 @@ public:
   std::set<NodeID>
   getSessionNames() const;
 
+  /// @brief Get human-readable representation of version vector
   std::string
   getStateStr() const
   {
@@ -138,12 +139,10 @@ public:
   }
 
 private:
-  void
-  printState(std::ostream& os) const;
-
   /**
-   * asyncSendPacket() - Send one pending packet with highest priority. Schedule
-   * sending next packet with random delay.
+   * @brief Send one pending packet with highest priority.
+   *
+   * Schedule sending next packet with random delay.
    */
   void
   asyncSendPacket();
@@ -151,9 +150,7 @@ private:
   void
   onSyncInterest(const Interest &interest);
 
-  /**
-   * onSyncAck() - Decode version vector from data body, and merge vector.
-   */
+  /// @brief Decode version vector from data body, and merge vector.
   void
   onSyncAck(const Data &data);
 
@@ -164,40 +161,45 @@ private:
   onSyncTimeout(const Interest &interest);
 
   /**
-   * retxSyncInterest() - Cancel and schedule new retxSyncInterest event.
+   * @brief Cancel and schedule new retxSyncInterest event.
    */
   void
   retxSyncInterest();
 
   /**
-   * sendSyncInterest() - Add one sync interest to queue. Called by
-   *  Socket::retxSyncInterest(), or directly. Because this function is
-   *  also called upon new msg via PublishMsg(), the shared data
-   *  structures could cause race conditions.
+   * @brief Add one sync interest to queue.
+   *
+   * Called by retxSyncInterest(), or after increasing a sequence
+   * number with updateSeqNo()
    */
   void
   sendSyncInterest();
 
-  /**
-   * sendSyncAck() - Add an ACK into queue
-   */
+  /// @brief Add an ACK into queue
   void
   sendSyncAck(const Name &n);
 
   /**
-   * mergeStateVector() - Merge state vector, return a pair of boolean
-   *  representing: <my_vector_new, other_vector_new>.
-   * Then, add missing data interests to data interest queue.
+   * @brief Merge state vector into the current
+   *
+   * Also adds missing data interests to data interest queue.
+   *
+   * @param vv_other state vector to merge in
+   *
+   * @returns a pair of boolean representing:
+   *    <my_vector_new, other_vector_new>.
    */
   std::pair<bool, bool>
   mergeStateVector(const VersionVector &vv_other);
 
+  /// @brief Reference to scheduler
   ndn::Scheduler&
   getScheduler()
   {
     return m_scheduler;
   }
 
+  /// @brief Get current version vector
   VersionVector&
   getState()
   {

@@ -37,11 +37,11 @@ Logic::Logic(ndn::Face& face,
              const Name& signingId,
              std::shared_ptr<Validator> validator,
              const time::milliseconds& syncAckFreshness,
-             const NodeID session)
+             const NodeID nid)
   : m_face(face)
   , m_syncPrefix(syncPrefix)
   , m_signingId(signingId)
-  , m_id(session)
+  , m_id(nid)
   , m_onUpdate(onUpdate)
   , m_rng(ndn::random::getRandomNumberEngine())
   , m_packetDist(10000, 15000)
