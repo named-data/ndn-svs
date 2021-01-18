@@ -17,9 +17,17 @@
 #ifndef NDN_SVS_COMMON_HPP
 #define NDN_SVS_COMMON_HPP
 
+#include "config.hpp"
+
 #include <ndn-cxx/util/scheduler.hpp>
 #include <ndn-cxx/security/validator.hpp>
 #include <ndn-cxx/face.hpp>
+
+#ifdef NDN_SVS_HAVE_TESTS
+#define NDN_SVS_PUBLIC_WITH_TESTS_ELSE_PRIVATE public
+#else
+#define NDN_SVS_PUBLIC_WITH_TESTS_ELSE_PRIVATE private
+#endif
 
 namespace ndn {
 namespace svs {

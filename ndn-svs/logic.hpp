@@ -139,7 +139,7 @@ public:
     return m_vv.toStr();
   }
 
-private:
+NDN_SVS_PUBLIC_WITH_TESTS_ELSE_PRIVATE:
   /**
    * @brief Send one pending packet with highest priority.
    *

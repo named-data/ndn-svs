@@ -26,8 +26,7 @@ namespace svs {
 int Logic::s_instanceCounter = 0;
 
 const ndn::Name Logic::DEFAULT_NAME;
-const ndn::Name DEFAULT_NAME;
-const std::shared_ptr<Validator> DEFAULT_VALIDATOR;
+const std::shared_ptr<Validator> Logic::DEFAULT_VALIDATOR;
 const NodeID Logic::EMPTY_NODE_ID;
 const time::milliseconds Logic::DEFAULT_ACK_FRESHNESS = time::milliseconds(4000);
 
@@ -54,6 +53,10 @@ Logic::Logic(ndn::Face& face,
   , m_instanceId(s_instanceCounter++)
 {
   m_vv.set(m_id, 0);
+
+  // Use default identity if not specified
+  if (m_signingId == Logic::DEFAULT_NAME)
+    m_signingId = m_keyChain.getPib().getDefaultIdentity().getName();
 
   // Register sync interest filter
   m_syncRegisteredPrefix =
