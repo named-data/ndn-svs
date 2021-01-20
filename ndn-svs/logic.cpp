@@ -76,78 +76,10 @@ Logic::Logic(ndn::Face& face,
 
   // Start periodically send sync interest
   retxSyncInterest();
-
-  // Start periodically send packets asynchronously
-  asyncSendPacket();
 }
 
 Logic::~Logic()
 {
-}
-
-void
-Logic::asyncSendPacket()
-{
-  std::shared_ptr<Packet> packet;
-  pending_sync_interest_mutex.lock();
-  if (pending_ack.size() > 0) {
-    packet = pending_ack.front();
-    pending_ack.pop_front();
-  } else if (pending_sync_interest.size() > 0) {
-    packet = pending_sync_interest.front();
-    pending_sync_interest.pop_front();
-  }
-  pending_sync_interest_mutex.unlock();
-
-  if (packet != nullptr) {
-    Interest interest;
-    security::SigningInfo signingInfo = signingByIdentity(m_signingId);
-    std::vector<uint8_t> nonce(8);
-    SignatureInfo signatureInfo;
-
-    // Send packet
-    switch (packet->packet_type) {
-      case Packet::INTEREST_TYPE:
-        interest = Interest(*packet->interest);
-        interest.setCanBePrefix(true);
-        interest.setMustBeFresh(true);
-
-        random::generateSecureBytes(nonce.data(), nonce.size());
-        signatureInfo.setTime();
-        signatureInfo.setNonce(nonce);
-
-        signingInfo.setSignedInterestFormat(security::SignedInterestFormat::V03);
-        signingInfo.setSignatureInfo(signatureInfo);
-        m_keyChain.sign(interest, signingInfo);
-
-        // Sync Interest
-        if (m_syncPrefix.isPrefixOf(interest.getName()))
-          m_face.expressInterest(interest,
-                                 std::bind(&Logic::onSyncAck, this, _2),
-                                 std::bind(&Logic::onSyncNack, this, _1, _2),
-                                 std::bind(&Logic::onSyncTimeout, this, _1));
-        else
-          NDN_THROW(Error("Invalid sync interest name"));
-
-        break;
-
-      case Packet::DATA_TYPE:
-        // Data Reply
-        if (m_syncPrefix.isPrefixOf(packet->data->getName()))
-          m_face.put(*packet->data);
-        else
-          NDN_THROW(Error("Invalid sync data name"));
-
-        break;
-
-      default:
-        NDN_THROW(Error("Invalid queued packet type"));
-    }
-  }
-
-  int delay = m_packetDist(m_rng);
-  m_packetEvent = m_scheduler.schedule(time::microseconds(delay),
-                                       [this] { asyncSendPacket(); });
 }
 
 void
@@ -220,21 +152,31 @@ Logic::retxSyncInterest()
 void
 Logic::sendSyncInterest()
 {
-  Name pending_sync_notify(m_syncPrefix);
-  pending_sync_notify.append(m_id)
-                     .append(Name::Component(m_vv.encode()))
-                     .appendTimestamp();
+  Name syncName(m_syncPrefix);
+  syncName.append(m_id)
+          .append(Name::Component(m_vv.encode()))
+          .appendTimestamp();
 
-  // Wrap into Packet
-  Packet packet;
-  packet.packet_type = Packet::INTEREST_TYPE;
-  packet.interest =
-    std::make_shared<Interest>(pending_sync_notify, time::milliseconds(1000));
+  Interest interest(syncName, time::milliseconds(1000));
+  interest.setCanBePrefix(true);
+  interest.setMustBeFresh(true);
 
-  pending_sync_interest_mutex.lock();
-  pending_sync_interest.clear();  // Flush sync interest queue
-  pending_sync_interest.push_back(std::make_shared<Packet>(packet));
-  pending_sync_interest_mutex.unlock();
+  security::SigningInfo signingInfo = signingByIdentity(m_signingId);
+  std::vector<uint8_t> nonce(8);
+  random::generateSecureBytes(nonce.data(), nonce.size());
+
+  SignatureInfo signatureInfo;
+  signatureInfo.setTime();
+  signatureInfo.setNonce(nonce);
+
+  signingInfo.setSignedInterestFormat(security::SignedInterestFormat::V03);
+  signingInfo.setSignatureInfo(signatureInfo);
+  m_keyChain.sign(interest, signingInfo);
+
+  m_face.expressInterest(interest,
+                         std::bind(&Logic::onSyncAck, this, _2),
+                         std::bind(&Logic::onSyncNack, this, _1, _2),
+                         std::bind(&Logic::onSyncTimeout, this, _1));
 }
 
 void
@@ -251,10 +193,9 @@ Logic::sendSyncAck(const Name &n)
 
   data->setFreshnessPeriod(m_syncAckFreshness);
 
-  Packet packet;
-  packet.packet_type = Packet::DATA_TYPE;
-  packet.data = data;
-  pending_ack.push_back(std::make_shared<Packet>(packet));
+  int delay = m_packetDist(m_rng);
+  m_scheduler.schedule(time::microseconds(delay),
+                       [this, data] { m_face.put(*data); });
 }
 
 std::pair<bool, bool>

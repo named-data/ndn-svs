@@ -39,14 +39,6 @@ using SeqNo = uint64_t;
 using ndn::security::ValidationError;
 using ndn::security::Validator;
 
-typedef struct Packet_
-{
-  std::shared_ptr<const Interest> interest;
-  std::shared_ptr<const Data> data;
-
-  enum PacketType { INTEREST_TYPE, DATA_TYPE } packet_type;
-} Packet;
-
 }  // namespace svs
 }  // namespace ndn
 

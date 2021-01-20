@@ -140,14 +140,6 @@ public:
   }
 
 NDN_SVS_PUBLIC_WITH_TESTS_ELSE_PRIVATE:
-  /**
-   * @brief Send one pending packet with highest priority.
-   *
-   * Schedule sending next packet with random delay.
-   */
-  void
-  asyncSendPacket();
-
   void
   onSyncInterest(const Interest &interest);
 
@@ -228,10 +220,6 @@ private:
 
   // State
   VersionVector m_vv;
-
-  std::deque<std::shared_ptr<Packet>> pending_ack;
-  std::deque<std::shared_ptr<Packet>> pending_sync_interest;
-  std::mutex pending_sync_interest_mutex;
 
   // Random Engine
   ndn::random::RandomNumberEngine& m_rng;
