@@ -63,13 +63,13 @@ BOOST_AUTO_TEST_CASE(Iterate)
 
 BOOST_AUTO_TEST_CASE(EncodeDecode)
 {
-  ndn::Buffer buf = v.encode();
-  BOOST_CHECK_GT(buf.size(), 0);
+  ndn::Block block = v.encode();
+  BOOST_CHECK_GT(block.value_size(), 0);
 
   // 100 bytes is too big
-  BOOST_CHECK_LT(buf.size(), 100);
+  BOOST_CHECK_LT(block.value_size(), 100);
 
-  VersionVector dv(buf);
+  VersionVector dv(block);
   BOOST_CHECK_EQUAL(dv.get("one"), 1);
   BOOST_CHECK_EQUAL(dv.get("two"), 2);
 }

@@ -15,32 +15,48 @@
  */
 
 #include "version-vector.hpp"
-
-#include <boost/archive/binary_oarchive.hpp>
-#include <boost/archive/binary_iarchive.hpp>
-#include <boost/serialization/unordered_map.hpp>
+#include "tlv.hpp"
 
 namespace ndn {
 namespace svs {
 
-VersionVector::VersionVector(const ndn::Buffer buf)
-  : VersionVector::VersionVector(buf.data(), buf.size()) {}
+VersionVector::VersionVector(const ndn::Block& block) {
+  block.parse();
 
-VersionVector::VersionVector(const uint8_t* buf, const std::size_t size) {
-  std::stringstream stream;
-  stream.write(reinterpret_cast<const char*>(buf), size);
-  boost::archive::binary_iarchive ar(stream, boost::archive::no_header);
-  ar >> m_umap;
+  for (auto it = block.elements_begin(); it < block.elements_end(); it += 2) {
+    auto key = it, val = it + 1;
+
+    if (key->type() != tlv::VersionVectorKey)
+      NDN_THROW(Error("Expected VersionVectorKey"));
+    if (val->type() != tlv::VersionVectorValue)
+      NDN_THROW(Error("Expected VersionVectorValue"));
+
+    m_umap[NodeID(reinterpret_cast<const char*>(it->value()), it->value_size())] =
+      SeqNo(ndn::encoding::readNonNegativeInteger(*val));
+  }
 }
 
-ndn::Buffer
+ndn::Block
 VersionVector::encode() const
 {
-  std::ostringstream stream;
-  boost::archive::binary_oarchive oa(stream, boost::archive::no_header);
-  oa << m_umap;
-  std::string serialized = stream.str();
-  return Buffer(serialized.data(), serialized.size());
+  ndn::encoding::Encoder enc;
+
+  size_t totalLength = 0;
+
+  for (auto it = m_umap.begin(); it != m_umap.end(); it++) {
+    size_t valLength = enc.prependNonNegativeInteger(it->second);
+    totalLength += enc.prependVarNumber(valLength);
+    totalLength += enc.prependVarNumber(tlv::VersionVectorValue);
+    totalLength += valLength;
+
+    totalLength += enc.prependByteArrayBlock(tlv::VersionVectorKey,
+                                             reinterpret_cast<const uint8_t*>(it->first.c_str()), it->first.size());
+  }
+
+  totalLength += enc.prependVarNumber(totalLength);
+  totalLength += enc.prependVarNumber(tlv::VersionVector);
+
+  return enc.block();
 }
 
 std::string

@@ -92,8 +92,7 @@ Logic::onSyncInterest(const Interest &interest)
 
   // Merge state vector
   bool myVectorNew, otherVectorNew;
-  Name::Component encodedVV = n.get(-3);
-  VersionVector vvOther(encodedVV.value(), encodedVV.value_size());
+  VersionVector vvOther(n.get(-3));
   std::tie(myVectorNew, otherVectorNew) = mergeStateVector(vvOther);
 
   // If my vector newer, send ACK immediately. Otherwise send with random delay
@@ -124,8 +123,7 @@ Logic::onSyncInterest(const Interest &interest)
 void
 Logic::onSyncAck(const Data &data)
 {
-  auto content = data.getContent();
-  VersionVector vvOther(content.value(), content.value_size());
+  VersionVector vvOther(data.getContent().blockFromValue());
   mergeStateVector(vvOther);
 }
 
@@ -183,8 +181,7 @@ void
 Logic::sendSyncAck(const Name &n)
 {
   std::shared_ptr<Data> data = std::make_shared<Data>(n);
-  Buffer encodedVV = m_vv.encode();
-  data->setContent(encodedVV.data(), encodedVV.size());
+  data->setContent(m_vv.encode());
 
   if (m_signingId.empty())
     m_keyChain.sign(*data);

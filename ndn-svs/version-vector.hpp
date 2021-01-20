@@ -28,6 +28,18 @@ namespace svs {
 
 class VersionVector
 {
+
+public:
+  class Error : public std::runtime_error
+  {
+  public:
+    explicit
+    Error(const std::string& what)
+      : std::runtime_error(what)
+    {
+    }
+  };
+
 public:
   using const_iterator = std::unordered_map<NodeID, SeqNo>::const_iterator;
 
@@ -36,13 +48,10 @@ public:
   VersionVector(const VersionVector&) = default;
 
   /** Decode a version vector from ndn::buffer */
-  VersionVector(const ndn::Buffer encoded);
-
-  /** Decode a version vector from raw buffer */
-  VersionVector(const uint8_t* buf, const size_t size);
+  VersionVector(const ndn::Block& encoded);
 
   /** Encode the version vector to a string */
-  ndn::Buffer
+  ndn::Block
   encode() const;
 
   /** Get a human-readable representation */
