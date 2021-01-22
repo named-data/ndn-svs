@@ -98,8 +98,6 @@ Logic::onSyncInterest(const Interest &interest)
   // If my vector newer, send ACK
   if (myVectorNew)
     sendSyncAck(n);
-  else
-    m_face.put(lp::Nack(interest));
 
   // If incoming state identical to local vector, reset timer to delay sending
   //  next sync interest.
