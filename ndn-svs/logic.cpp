@@ -95,14 +95,11 @@ Logic::onSyncInterest(const Interest &interest)
   VersionVector vvOther(n.get(-3));
   std::tie(myVectorNew, otherVectorNew) = mergeStateVector(vvOther);
 
-  // If my vector newer, send ACK immediately. Otherwise send with random delay
-  if (myVectorNew) {
+  // If my vector newer, send ACK
+  if (myVectorNew)
     sendSyncAck(n);
-  } else {
-    int delay = m_packetDist(m_rng);
-    m_scheduler.schedule(time::microseconds(delay),
-                         [this, n] { sendSyncAck(n); });
-  }
+  else
+    m_face.put(lp::Nack(interest));
 
   // If incoming state identical to local vector, reset timer to delay sending
   //  next sync interest.
