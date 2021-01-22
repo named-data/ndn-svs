@@ -31,7 +31,7 @@ VersionVector::VersionVector(const ndn::Block& block) {
     if (val->type() != tlv::VersionVectorValue)
       NDN_THROW(Error("Expected VersionVectorValue"));
 
-    m_umap[NodeID(reinterpret_cast<const char*>(it->value()), it->value_size())] =
+    m_map[NodeID(reinterpret_cast<const char*>(it->value()), it->value_size())] =
       SeqNo(ndn::encoding::readNonNegativeInteger(*val));
   }
 }
@@ -43,14 +43,15 @@ VersionVector::encode() const
 
   size_t totalLength = 0;
 
-  for (auto it = m_umap.begin(); it != m_umap.end(); it++) {
-    size_t valLength = enc.prependNonNegativeInteger(it->second);
+  for (auto &elem : m_map)
+  {
+    size_t valLength = enc.prependNonNegativeInteger(elem.second);
     totalLength += enc.prependVarNumber(valLength);
     totalLength += enc.prependVarNumber(tlv::VersionVectorValue);
     totalLength += valLength;
 
     totalLength += enc.prependByteArrayBlock(tlv::VersionVectorKey,
-                                             reinterpret_cast<const uint8_t*>(it->first.c_str()), it->first.size());
+                                             reinterpret_cast<const uint8_t*>(elem.first.c_str()), elem.first.size());
   }
 
   totalLength += enc.prependVarNumber(totalLength);
@@ -63,7 +64,7 @@ std::string
 VersionVector::toStr() const
 {
   std::ostringstream stream;
-  for (auto &elem : m_umap)
+  for (auto &elem : m_map)
   {
     stream << elem.first << ":" << elem.second << " ";
   }
