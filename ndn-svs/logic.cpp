@@ -146,9 +146,13 @@ void
 Logic::sendSyncInterest()
 {
   Name syncName(m_syncPrefix);
-  syncName.append(m_id)
-          .append(Name::Component(m_vv.encode()))
-          .appendTimestamp();
+
+  {
+    std::lock_guard<std::mutex> lock(m_vvMutex);
+    syncName.append(m_id)
+            .append(Name::Component(m_vv.encode()))
+            .appendTimestamp();
+  }
 
   Interest interest(syncName, time::milliseconds(1000));
   interest.setCanBePrefix(true);
@@ -176,7 +180,10 @@ void
 Logic::sendSyncAck(const Name &n)
 {
   std::shared_ptr<Data> data = std::make_shared<Data>(n);
-  data->setContent(m_vv.encode());
+  {
+    std::lock_guard<std::mutex> lock(m_vvMutex);
+    data->setContent(m_vv.encode());
+  }
 
   if (m_signingId.empty())
     m_keyChain.sign(*data);
@@ -250,6 +257,7 @@ Logic::reset(bool isOnInterest)
 SeqNo
 Logic::getSeqNo(const NodeID& nid) const
 {
+  std::lock_guard<std::mutex> lock(m_vvMutex);
   NodeID t_nid = (nid == EMPTY_NODE_ID) ? m_id : nid;
   return m_vv.get(t_nid);
 }
@@ -259,8 +267,12 @@ Logic::updateSeqNo(const SeqNo& seq, const NodeID& nid)
 {
   NodeID t_nid = (nid == EMPTY_NODE_ID) ? m_id : nid;
 
-  SeqNo prev = m_vv.get(t_nid);
-  m_vv.set(t_nid, seq);
+  SeqNo prev;
+  {
+    std::lock_guard<std::mutex> lock(m_vvMutex);
+    prev = m_vv.get(t_nid);
+    m_vv.set(t_nid, seq);
+  }
 
   if (seq > prev)
     sendSyncInterest();
@@ -269,6 +281,7 @@ Logic::updateSeqNo(const SeqNo& seq, const NodeID& nid)
 std::set<NodeID>
 Logic::getSessionNames() const
 {
+  std::lock_guard<std::mutex> lock(m_vvMutex);
   std::set<NodeID> sessionNames;
   for (const auto& nid : m_vv)
   {

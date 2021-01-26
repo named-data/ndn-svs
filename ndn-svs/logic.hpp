@@ -220,7 +220,7 @@ private:
 
   // State
   VersionVector m_vv;
-  std::mutex m_vvMutex;
+  mutable std::mutex m_vvMutex;
 
   // Random Engine
   ndn::random::RandomNumberEngine& m_rng;
