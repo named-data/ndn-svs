@@ -193,6 +193,8 @@ Logic::sendSyncAck(const Name &n)
 std::pair<bool, bool>
 Logic::mergeStateVector(const VersionVector &vvOther)
 {
+  std::lock_guard<std::mutex> lock(m_vvMutex);
+
   bool myVectorNew = false,
        otherVectorNew = false;
 
