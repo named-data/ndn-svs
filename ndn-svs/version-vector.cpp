@@ -43,15 +43,15 @@ VersionVector::encode() const
 
   size_t totalLength = 0;
 
-  for (auto &elem : m_map)
+  for (auto it = m_map.rbegin(); it != m_map.rend(); it++)
   {
-    size_t valLength = enc.prependNonNegativeInteger(elem.second);
+    size_t valLength = enc.prependNonNegativeInteger(it->second);
     totalLength += enc.prependVarNumber(valLength);
     totalLength += enc.prependVarNumber(tlv::VersionVectorValue);
     totalLength += valLength;
 
     totalLength += enc.prependByteArrayBlock(tlv::VersionVectorKey,
-                                             reinterpret_cast<const uint8_t*>(elem.first.c_str()), elem.first.size());
+                                             reinterpret_cast<const uint8_t*>(it->first.c_str()), it->first.size());
   }
 
   totalLength += enc.prependVarNumber(totalLength);
