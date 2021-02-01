@@ -153,22 +153,24 @@ Logic::sendSyncInterest()
 void
 Logic::sendSyncAck(const Name &n)
 {
-  std::shared_ptr<Data> data = std::make_shared<Data>(n);
-  {
-    std::lock_guard<std::mutex> lock(m_vvMutex);
-    data->setContent(m_vv.encode());
-  }
-
-  if (m_signingId.empty())
-    m_keyChain.sign(*data);
-  else
-    m_keyChain.sign(*data, signingByIdentity(m_signingId));
-
-  data->setFreshnessPeriod(m_syncAckFreshness);
-
   int delay = m_packetDist(m_rng);
-  m_scheduler.schedule(time::microseconds(delay),
-                       [this, data] { m_face.put(*data); });
+  m_scheduler.schedule(time::microseconds(delay), [this, n]
+  {
+    std::shared_ptr<Data> data = std::make_shared<Data>(n);
+    {
+      std::lock_guard<std::mutex> lock(m_vvMutex);
+      data->setContent(m_vv.encode());
+    }
+
+    if (m_signingId.empty())
+      m_keyChain.sign(*data);
+    else
+      m_keyChain.sign(*data, signingByIdentity(m_signingId));
+
+    data->setFreshnessPeriod(m_syncAckFreshness);
+
+    m_face.put(*data);
+  });
 }
 
 std::pair<bool, bool>
