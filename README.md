@@ -37,7 +37,9 @@ You will need to create certificates for the prefixes first:
 
 Configure NFD to be multicast:
 
-    nfdc strategy set / /localhost/nfd/strategy/multicast/%FD%03
+    nfdc strategy set <sync-prefix> /localhost/nfd/strategy/multicast/%FD%03
+
+where `sync-prefix` is `/ndn/svs` for the example application.
 
 ## Contributing
 
