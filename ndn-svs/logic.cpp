@@ -42,8 +42,8 @@ Logic::Logic(ndn::Face& face,
   , m_id(nid)
   , m_onUpdate(onUpdate)
   , m_rng(ndn::random::getRandomNumberEngine())
-  , m_packetDist(10000, 15000)
-  , m_retxDist(1000000 * 0.9, 1000000 * 1.1)
+  , m_packetDist(10, 15)
+  , m_retxDist(5000 * 0.9, 5000 * 1.1)
   , m_syncAckFreshness(syncAckFreshness)
   , m_keyChain(keyChain)
   , m_validator(validator)
@@ -94,7 +94,7 @@ Logic::onSyncInterest(const Interest &interest)
   if (!myVectorNew && !otherVectorNew)
   {
     int delay = m_retxDist(m_rng);
-    m_retxEvent = m_scheduler.schedule(time::microseconds(delay),
+    m_retxEvent = m_scheduler.schedule(time::milliseconds(delay),
                                        [this] { retxSyncInterest(); });
   }
   else if (otherVectorNew)
@@ -126,7 +126,7 @@ Logic::retxSyncInterest()
 {
   sendSyncInterest();
   int delay = m_retxDist(m_rng);
-  m_retxEvent = m_scheduler.schedule(time::microseconds(delay),
+  m_retxEvent = m_scheduler.schedule(time::milliseconds(delay),
                                      [this] { retxSyncInterest(); });
 }
 
@@ -154,7 +154,7 @@ void
 Logic::sendSyncAck(const Name &n)
 {
   int delay = m_packetDist(m_rng);
-  m_scheduler.schedule(time::microseconds(delay), [this, n]
+  m_scheduler.schedule(time::milliseconds(delay), [this, n]
   {
     std::shared_ptr<Data> data = std::make_shared<Data>(n);
     {
