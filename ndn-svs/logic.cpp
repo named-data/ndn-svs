@@ -77,13 +77,10 @@ void
 Logic::onSyncInterest(const Interest &interest)
 {
   const auto &n = interest.getName();
-  NodeID nidOther = n.get(-4).toUri();
-
-  if (nidOther == m_id) return;
 
   // Merge state vector
   bool myVectorNew, otherVectorNew;
-  VersionVector vvOther(n.get(-3));
+  VersionVector vvOther(n.get(-1));
   std::tie(myVectorNew, otherVectorNew) = mergeStateVector(vvOther);
 
   // If my vector newer, send ACK
@@ -140,9 +137,7 @@ Logic::sendSyncInterest()
 
   {
     std::lock_guard<std::mutex> lock(m_vvMutex);
-    syncName.append(m_id)
-            .append(Name::Component(m_vv.encode()))
-            .appendTimestamp();
+    syncName.append(Name::Component(m_vv.encode()));
   }
 
   Interest interest(syncName, time::milliseconds(1000));
