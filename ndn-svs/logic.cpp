@@ -16,9 +16,7 @@
 
 #include "logic.hpp"
 
-#include <ndn-cxx/signature-info.hpp>
 #include <ndn-cxx/security/signing-helpers.hpp>
-#include <ndn-cxx/security/signing-info.hpp>
 
 namespace ndn {
 namespace svs {
@@ -62,15 +60,8 @@ Logic::Logic(ndn::Face& face,
   m_syncRegisteredPrefix =
     m_face.setInterestFilter(syncPrefix,
                              [&] (const Name& prefix, const Interest& interest) {
-                                if (!interest.isSigned()) return;
-
-                                if (static_cast<bool>(m_validator))
-                                  m_validator->validate(
-                                    interest,
-                                    bind(&Logic::onSyncInterest, this, _1),
-                                    [] (const Interest& interest, const ValidationError& error) {});
-                                else
-                                  onSyncInterest(interest);
+                                // TODO: verify the sync interest (pseudo-)signature
+                                onSyncInterest(interest);
                              },
                              [] (const Name& prefix, const std::string& msg) {});
 
@@ -157,18 +148,6 @@ Logic::sendSyncInterest()
   Interest interest(syncName, time::milliseconds(1000));
   interest.setCanBePrefix(true);
   interest.setMustBeFresh(true);
-
-  security::SigningInfo signingInfo = signingByIdentity(m_signingId);
-  std::vector<uint8_t> nonce(8);
-  random::generateSecureBytes(nonce.data(), nonce.size());
-
-  SignatureInfo signatureInfo;
-  signatureInfo.setTime();
-  signatureInfo.setNonce(nonce);
-
-  signingInfo.setSignedInterestFormat(security::SignedInterestFormat::V03);
-  signingInfo.setSignatureInfo(signatureInfo);
-  m_keyChain.sign(interest, signingInfo);
 
   m_face.expressInterest(interest,
                          std::bind(&Logic::onSyncAck, this, _2),
