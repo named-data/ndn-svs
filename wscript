@@ -33,6 +33,9 @@ def options(opt):
     optgrp.add_option('--with-examples', action='store_true', default=False,
                       help='Build examples')
 
+    optgrp.add_option('--with-sync-ack', action='store_true', default=False,
+                      help='Use sync ack replies')
+
 def configure(conf):
     conf.start_msg('Building static library')
     if conf.options.enable_static:
@@ -79,6 +82,8 @@ def configure(conf):
     conf.env.prepend_value('STLIBPATH', ['.'])
 
     conf.define_cond('NDN_SVS_HAVE_TESTS', conf.env.WITH_TESTS)
+    conf.define_cond('NDN_SVS_WITH_SYNC_ACK', conf.options.with_sync_ack)
+
     # The config header will contain all defines that were added using conf.define()
     # or conf.define_cond().  Everything that was added directly to conf.env.DEFINES
     # will not appear in the config header, but will instead be passed directly to the

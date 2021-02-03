@@ -83,21 +83,26 @@ Logic::onSyncInterest(const Interest &interest)
   VersionVector vvOther(n.get(-1));
   std::tie(myVectorNew, otherVectorNew) = mergeStateVector(vvOther);
 
+#ifdef NDN_SVS_WITH_SYNC_ACK
   // If my vector newer, send ACK
   if (myVectorNew)
     sendSyncAck(n);
+#endif
 
   // If incoming state identical to local vector, reset timer to delay sending
   //  next sync interest.
-  // If incoming state newer than local vector, send sync interest immediately.
-  // If local state newer than incoming state, do nothing.
+  // If incoming state different from local vector, send sync interest immediately.
+  // If ACK enabled, do not send interest when local is newer.
   if (!myVectorNew && !otherVectorNew)
   {
     int delay = m_retxDist(m_rng);
     m_retxEvent = m_scheduler.schedule(time::milliseconds(delay),
                                        [this] { retxSyncInterest(); });
   }
-  else if (otherVectorNew)
+  else
+#ifdef NDN_SVS_WITH_SYNC_ACK
+  if (otherVectorNew)
+#endif
   {
     retxSyncInterest();
   }
