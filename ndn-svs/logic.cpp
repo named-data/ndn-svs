@@ -43,7 +43,7 @@ Logic::Logic(ndn::Face& face,
   , m_onUpdate(onUpdate)
   , m_rng(ndn::random::getRandomNumberEngine())
   , m_packetDist(10, 15)
-  , m_retxDist(5000 * 0.9, 5000 * 1.1)
+  , m_retxDist(30000 * 0.9, 30000 * 1.1)
   , m_syncAckFreshness(syncAckFreshness)
   , m_keyChain(keyChain)
   , m_validator(validator)
