@@ -22,6 +22,8 @@
 
 #include <ndn-cxx/util/random.hpp>
 
+#include <atomic>
+#include <chrono>
 #include <mutex>
 
 namespace ndn {
@@ -155,7 +157,7 @@ NDN_SVS_PUBLIC_WITH_TESTS_ELSE_PRIVATE:
 
   /// @brief sendSyncInterest and schedule a new retxSyncInterest event.
   void
-  retxSyncInterest();
+  retxSyncInterest(const bool send = true, int delay = -1);
 
   /**
    * @brief Add one sync interest to queue.
@@ -197,7 +199,9 @@ NDN_SVS_PUBLIC_WITH_TESTS_ELSE_PRIVATE:
     return m_vv;
   }
 
-private:
+  /// @brief Get the current time in microseconds with arbitrary reference
+  long
+  getCurrentTime() const;
 
 public:
   static const ndn::Name DEFAULT_NAME;
@@ -228,6 +232,8 @@ private:
   std::uniform_int_distribution<> m_packetDist;
   // Milliseconds between sending two sync interests
   std::uniform_int_distribution<> m_retxDist;
+  // Milliseconds to send sync interest reply after
+  std::uniform_int_distribution<> m_intrReplyDist;
 
   // Freshness of sync ack
   time::milliseconds m_syncAckFreshness;
@@ -239,6 +245,11 @@ private:
   ndn::Scheduler m_scheduler;
   scheduler::ScopedEventId m_retxEvent;
   scheduler::ScopedEventId m_packetEvent;
+
+  std::chrono::steady_clock m_steadyClock;
+
+  // Time at which the next sync interest will be sent
+  std::atomic_long m_nextSyncInterest;
 
   int m_instanceId;
   static int s_instanceCounter;

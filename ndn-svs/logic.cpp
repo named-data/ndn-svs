@@ -44,6 +44,7 @@ Logic::Logic(ndn::Face& face,
   , m_rng(ndn::random::getRandomNumberEngine())
   , m_packetDist(10, 15)
   , m_retxDist(30000 * 0.9, 30000 * 1.1)
+  , m_intrReplyDist(50 * 0.9, 50 * 1.1)
   , m_syncAckFreshness(syncAckFreshness)
   , m_keyChain(keyChain)
   , m_validator(validator)
@@ -95,13 +96,17 @@ Logic::onSyncInterest(const Interest &interest)
   // If ACK enabled, do not send interest when local is newer.
   if (!myVectorNew && !otherVectorNew)
   {
-    int delay = m_retxDist(m_rng);
-    m_retxEvent = m_scheduler.schedule(time::milliseconds(delay),
-                                       [this] { retxSyncInterest(); });
+    retxSyncInterest(false);
   }
   else if (otherVectorNew)
   {
-    retxSyncInterest();
+    // Check how much time is left on the timer,
+    // reset to ~m_intrReplyDist if more than that.
+    int delay = m_intrReplyDist(m_rng);
+    if (getCurrentTime() + delay * 1000 < m_nextSyncInterest)
+    {
+      retxSyncInterest(false, delay);
+    }
   }
 #ifndef NDN_SVS_WITH_SYNC_ACK
   else if (myVectorNew)
@@ -130,10 +135,17 @@ Logic::onSyncTimeout(const Interest &interest)
 }
 
 void
-Logic::retxSyncInterest()
+Logic::retxSyncInterest(const bool send, int delay)
 {
-  sendSyncInterest();
-  int delay = m_retxDist(m_rng);
+  if (send)
+    sendSyncInterest();
+
+  if (delay < 0)
+    delay = m_retxDist(m_rng);
+
+  // Store the scheduled time
+  m_nextSyncInterest = getCurrentTime() + 1000 * delay;
+
   m_retxEvent = m_scheduler.schedule(time::milliseconds(delay),
                                      [this] { retxSyncInterest(); });
 }
@@ -272,6 +284,13 @@ Logic::getSessionNames() const
     sessionNames.insert(nid.first);
   }
   return sessionNames;
+}
+
+long
+Logic::getCurrentTime() const
+{
+  return std::chrono::duration_cast<std::chrono::microseconds>(
+    m_steadyClock.now().time_since_epoch()).count();
 }
 
 }  // namespace svs
