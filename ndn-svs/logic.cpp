@@ -99,13 +99,16 @@ Logic::onSyncInterest(const Interest &interest)
     m_retxEvent = m_scheduler.schedule(time::milliseconds(delay),
                                        [this] { retxSyncInterest(); });
   }
-  else
-#ifdef NDN_SVS_WITH_SYNC_ACK
-  if (otherVectorNew)
-#endif
+  else if (otherVectorNew)
   {
     retxSyncInterest();
   }
+#ifndef NDN_SVS_WITH_SYNC_ACK
+  else if (myVectorNew)
+  {
+    sendSyncInterest();
+  }
+#endif
 }
 
 void
