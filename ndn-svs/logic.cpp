@@ -98,7 +98,10 @@ Logic::onSyncInterest(const Interest &interest)
   {
     retxSyncInterest(false);
   }
-  else if (otherVectorNew)
+  else
+#ifdef NDN_SVS_WITH_SYNC_ACK
+  if (otherVectorNew)
+#endif
   {
     // Check how much time is left on the timer,
     // reset to ~m_intrReplyDist if more than that.
@@ -108,12 +111,6 @@ Logic::onSyncInterest(const Interest &interest)
       retxSyncInterest(false, delay);
     }
   }
-#ifndef NDN_SVS_WITH_SYNC_ACK
-  else if (myVectorNew)
-  {
-    sendSyncInterest();
-  }
-#endif
 }
 
 void
