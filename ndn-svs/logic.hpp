@@ -224,9 +224,9 @@ private:
 
   // Random Engine
   ndn::random::RandomNumberEngine& m_rng;
-  // Microseconds between sending two packets in the queues
+  // Milliseconds between sending two packets in the queues
   std::uniform_int_distribution<> m_packetDist;
-  // Microseconds between sending two sync interests
+  // Milliseconds between sending two sync interests
   std::uniform_int_distribution<> m_retxDist;
 
   // Freshness of sync ack
