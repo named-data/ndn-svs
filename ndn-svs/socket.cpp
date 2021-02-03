@@ -122,7 +122,7 @@ void Socket::onDataInterest(const Interest &interest) {
 
 void
 Socket::fetchData(const NodeID& nid, const SeqNo& seqNo,
-                  const DataValidatedCallback& dataCallback,
+                  const DataValidatedCallback& onValidated,
                   int nRetries)
 {
   Name interestName(m_dataPrefix);
@@ -132,22 +132,24 @@ Socket::fetchData(const NodeID& nid, const SeqNo& seqNo,
   interest.setMustBeFresh(true);
   interest.setCanBePrefix(false);
 
-  DataValidationErrorCallback failureCallback =
+  DataValidationErrorCallback onValidationFailed =
     bind(&Socket::onDataValidationFailed, this, _1, _2);
+  TimeoutCallback onTimeout =
+    [] (const Interest& interest) {};
 
   m_face.expressInterest(interest,
-                         bind(&Socket::onData, this, _1, _2, dataCallback, failureCallback),
+                         bind(&Socket::onData, this, _1, _2, onValidated, onValidationFailed),
                          bind(&Socket::onDataTimeout, this, _1, nRetries,
-                              dataCallback, failureCallback), // Nack
+                              onValidated, onValidationFailed, onTimeout), // Nack
                          bind(&Socket::onDataTimeout, this, _1, nRetries,
-                              dataCallback, failureCallback));
+                              onValidated, onValidationFailed, onTimeout));
 }
 
 void
 Socket::fetchData(const NodeID& nid, const SeqNo& seqNo,
-                  const DataValidatedCallback& dataCallback,
-                  const DataValidationErrorCallback& failureCallback,
-                  const ndn::TimeoutCallback& onTimeout,
+                  const DataValidatedCallback& onValidated,
+                  const DataValidationErrorCallback& onValidationFailed,
+                  const TimeoutCallback& onTimeout,
                   int nRetries)
 {
   Name interestName(m_dataPrefix);
@@ -158,9 +160,11 @@ Socket::fetchData(const NodeID& nid, const SeqNo& seqNo,
   interest.setCanBePrefix(false);
 
   m_face.expressInterest(interest,
-                         bind(&Socket::onData, this, _1, _2, dataCallback, failureCallback),
-                         bind(onTimeout, _1), // Nack
-                         onTimeout);
+                         bind(&Socket::onData, this, _1, _2, onValidated, onValidationFailed),
+                         bind(&Socket::onDataTimeout, this, _1, nRetries,
+                              onValidated, onValidationFailed, onTimeout), // Nack
+                         bind(&Socket::onDataTimeout, this, _1, nRetries,
+                              onValidated, onValidationFailed, onTimeout));
 }
 
 void
@@ -176,21 +180,22 @@ Socket::onData(const Interest& interest, const Data& data,
 
 void
 Socket::onDataTimeout(const Interest& interest, int nRetries,
-                      const DataValidatedCallback& onValidated,
-                      const DataValidationErrorCallback& onFailed)
+                      const DataValidatedCallback& dataCallback,
+                      const DataValidationErrorCallback& failCallback,
+                      const TimeoutCallback& timeoutCallback)
 {
   if (nRetries <= 0)
-    return;
+    return timeoutCallback(interest);
 
   Interest newNonceInterest(interest);
   newNonceInterest.refreshNonce();
 
   m_face.expressInterest(newNonceInterest,
-                         bind(&Socket::onData, this, _1, _2, onValidated, onFailed),
+                         bind(&Socket::onData, this, _1, _2, dataCallback, failCallback),
                          bind(&Socket::onDataTimeout, this, _1, nRetries - 1,
-                              onValidated, onFailed), // Nack
+                              dataCallback, failCallback, timeoutCallback), // Nack
                          bind(&Socket::onDataTimeout, this, _1, nRetries - 1,
-                              onValidated, onFailed));
+                              dataCallback, failCallback, timeoutCallback));
 }
 
 void

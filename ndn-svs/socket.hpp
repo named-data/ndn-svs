@@ -141,7 +141,7 @@ public:
   fetchData(const NodeID& nid, const SeqNo& seq,
             const DataValidatedCallback& onValidated,
             const DataValidationErrorCallback& onValidationFailed,
-            const ndn::TimeoutCallback& onTimeout,
+            const TimeoutCallback& onTimeout,
             int nRetries = 0);
 
   Logic&
@@ -166,7 +166,8 @@ private:
   void
   onDataTimeout(const Interest& interest, int nRetries,
                 const DataValidatedCallback& dataCallback,
-                const DataValidationErrorCallback& failCallback);
+                const DataValidationErrorCallback& failCallback,
+                const TimeoutCallback& timeoutCallback);
 
   void
   onDataValidationFailed(const Data& data,
