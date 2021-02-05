@@ -42,7 +42,7 @@ Socket::Socket(const Name& syncPrefix,
             m_validator, Logic::DEFAULT_ACK_FRESHNESS, m_id)
 {
   m_registeredDataPrefix =
-    m_face.setInterestFilter(m_dataPrefix,
+    m_face.setInterestFilter(Name(m_dataPrefix).append(m_id),
                              bind(&Socket::onDataInterest, this, _2),
                              [] (const Name& prefix, const std::string& msg) {});
 }
