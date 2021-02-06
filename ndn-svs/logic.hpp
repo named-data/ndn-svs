@@ -155,9 +155,14 @@ NDN_SVS_PUBLIC_WITH_TESTS_ELSE_PRIVATE:
   void
   onSyncTimeout(const Interest &interest);
 
-  /// @brief sendSyncInterest and schedule a new retxSyncInterest event.
+  /**
+   * @brief sendSyncInterest and schedule a new retxSyncInterest event.
+   *
+   * @param send Send a sync interest immediately
+   * @param delay Delay in milliseconds to schedule next interest (0 for default).
+   */
   void
-  retxSyncInterest(const bool send = true, int delay = -1);
+  retxSyncInterest(const bool send, unsigned int delay);
 
   /**
    * @brief Add one sync interest to queue.

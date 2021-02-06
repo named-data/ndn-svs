@@ -67,7 +67,7 @@ Logic::Logic(ndn::Face& face,
                              [] (const Name& prefix, const std::string& msg) {});
 
   // Start periodically send sync interest
-  retxSyncInterest();
+  retxSyncInterest(true, 0);
 }
 
 Logic::~Logic()
@@ -96,7 +96,7 @@ Logic::onSyncInterest(const Interest &interest)
   // If ACK enabled, do not send interest when local is newer.
   if (!myVectorNew && !otherVectorNew)
   {
-    retxSyncInterest(false);
+    retxSyncInterest(false, 0);
   }
   else
 #ifdef NDN_SVS_WITH_SYNC_ACK
@@ -132,19 +132,19 @@ Logic::onSyncTimeout(const Interest &interest)
 }
 
 void
-Logic::retxSyncInterest(const bool send, int delay)
+Logic::retxSyncInterest(const bool send, unsigned int delay)
 {
   if (send)
     sendSyncInterest();
 
-  if (delay < 0)
+  if (delay == 0)
     delay = m_retxDist(m_rng);
 
   // Store the scheduled time
   m_nextSyncInterest = getCurrentTime() + 1000 * delay;
 
   m_retxEvent = m_scheduler.schedule(time::milliseconds(delay),
-                                     [this] { retxSyncInterest(); });
+                                     [this] { retxSyncInterest(true, 0); });
 }
 
 void
