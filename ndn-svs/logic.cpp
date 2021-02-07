@@ -60,14 +60,9 @@ Logic::Logic(ndn::Face& face,
   // Register sync interest filter
   m_syncRegisteredPrefix =
     m_face.setInterestFilter(syncPrefix,
-                             [&] (const Name& prefix, const Interest& interest) {
-                                // TODO: verify the sync interest (pseudo-)signature
-                                onSyncInterest(interest);
-                             },
+                             bind(&Logic::onSyncInterest, this, _2),
+                             bind(&Logic::retxSyncInterest, this, true, 0),
                              [] (const Name& prefix, const std::string& msg) {});
-
-  // Start periodically send sync interest
-  retxSyncInterest(true, 0);
 }
 
 Logic::~Logic()
