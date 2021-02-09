@@ -61,43 +61,17 @@ public:
    *
    * This method will create a data packet with the supplied content.
    * The packet name is the local session + seqNo.
-   * The seqNo is automatically maintained by internal Logic.
-   *
-   * @param buf Pointer to the bytes in content
-   * @param len size of the bytes in content
-   * @param freshness FreshnessPeriod of the data packet.
-   */
-  void
-  publishData(const uint8_t* buf, size_t len, const ndn::time::milliseconds& freshness);
-
-  /**
-   * @brief Publish a data packet in the session and trigger synchronization updates
-   *
-   * This method will create a data packet with the supplied content.
-   * The packet name is the local session + seqNo.
    * The seqNo is set by the application.
    *
    * @param buf Pointer to the bytes in content
    * @param len size of the bytes in content
    * @param freshness FreshnessPeriod of the data packet.
    * @param seqNo Sequence number of the data
+   * @param id NodeID to publish the data under
    */
   void
   publishData(const uint8_t* buf, size_t len, const ndn::time::milliseconds& freshness,
-              const uint64_t& seqNo);
-
-  /**
-   * @brief Publish a data packet in the session and trigger synchronization updates
-   *
-   * This method will create a data packet with the supplied content.
-   * The packet name is the local session + seqNo.
-   * The seqNo is automatically maintained by internal Logic.
-   *
-   * @param content Block that will be set as the content of the data packet.
-   * @param freshness FreshnessPeriod of the data packet.
-   */
-  void
-  publishData(const Block& content, const ndn::time::milliseconds& freshness);
+              const uint64_t& seqNo = 0, const NodeID id = EMPTY_NODE_ID);
 
   /**
    * @brief Publish a data packet in the session and trigger synchronization updates
@@ -109,10 +83,11 @@ public:
    * @param content Block that will be set as the content of the data packet.
    * @param freshness FreshnessPeriod of the data packet.
    * @param seqNo Sequence number of the data
+   * @param id NodeID to publish the data under
    */
   void
   publishData(const Block& content, const ndn::time::milliseconds& freshness,
-              const uint64_t& seqNo);
+              const uint64_t& seqNo = 0, const NodeID id = EMPTY_NODE_ID);
 
   /**
    * @brief Retrive a data packet with a particular seqNo from a session
@@ -153,6 +128,7 @@ public:
 public:
   static const ndn::Name DEFAULT_NAME;
   static const std::shared_ptr<Validator> DEFAULT_VALIDATOR;
+  static const NodeID EMPTY_NODE_ID;
 
 private:
   void
