@@ -85,11 +85,10 @@ Logic::onSyncInterest(const Interest &interest)
     sendSyncAck(n);
 #endif
 
-  // If incoming state identical to local vector, reset timer to delay sending
-  //  next sync interest.
-  // If incoming state different from local vector, send sync interest immediately.
-  // If ACK enabled, do not send interest when local is newer.
-  if (!myVectorNew && !otherVectorNew)
+  // If incoming state identical/newer to local vector, reset timer
+  // If incoming state is older, send sync interest immediately
+  // If ACK enabled, do not send interest when local is newer
+  if (!myVectorNew)
   {
     retxSyncInterest(false, 0);
   }
