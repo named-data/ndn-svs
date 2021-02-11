@@ -80,7 +80,8 @@ Logic::~Logic()
 void
 Logic::onSyncInterest(const Interest &interest)
 {
-  if (!security::verifySignature(interest, m_keyChainMem.getTpm(),
+  if (m_syncKey != Logic::DEFAULT_SYNC_KEY &&
+      !security::verifySignature(interest, m_keyChainMem.getTpm(),
                                  m_interestSigningInfo.getSignerName(),
                                  DigestAlgorithm::SHA256))
   {
