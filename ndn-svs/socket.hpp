@@ -161,7 +161,6 @@ private:
 private:
   Name m_syncPrefix;
   Name m_dataPrefix;
-  std::string m_syncKey;
   Name m_signingId;
   NodeID m_id;
   Face& m_face;

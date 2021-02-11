@@ -35,13 +35,12 @@ Socket::Socket(const Name& syncPrefix,
                std::shared_ptr<Validator> validator)
   : m_syncPrefix(Name(syncPrefix).append("s"))
   , m_dataPrefix(Name(syncPrefix).append("d"))
-  , m_syncKey(syncKey)
   , m_signingId(signingId)
   , m_id(escape(id))
   , m_face(face)
   , m_validator(validator)
   , m_onUpdate(updateCallback)
-  , m_logic(face, m_keyChain, m_syncPrefix, updateCallback, m_syncKey,
+  , m_logic(face, m_keyChain, m_syncPrefix, updateCallback, syncKey,
             m_signingId, m_validator, Logic::DEFAULT_ACK_FRESHNESS, m_id)
 {
   m_registeredDataPrefix =
