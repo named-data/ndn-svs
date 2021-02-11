@@ -17,6 +17,7 @@
 #include "logic.hpp"
 
 #include <ndn-cxx/security/signing-helpers.hpp>
+#include <ndn-cxx/security/verification-helpers.hpp>
 
 namespace ndn {
 namespace svs {
@@ -26,18 +27,21 @@ int Logic::s_instanceCounter = 0;
 const ndn::Name Logic::DEFAULT_NAME;
 const std::shared_ptr<Validator> Logic::DEFAULT_VALIDATOR;
 const NodeID Logic::EMPTY_NODE_ID;
+const std::string Logic::DEFAULT_SYNC_KEY;
 const time::milliseconds Logic::DEFAULT_ACK_FRESHNESS = time::milliseconds(4000);
 
 Logic::Logic(ndn::Face& face,
              ndn::KeyChain& keyChain,
              const Name& syncPrefix,
              const UpdateCallback& onUpdate,
+             const std::string& syncKey,
              const Name& signingId,
              std::shared_ptr<Validator> validator,
              const time::milliseconds& syncAckFreshness,
              const NodeID nid)
   : m_face(face)
   , m_syncPrefix(syncPrefix)
+  , m_syncKey(syncKey)
   , m_signingId(signingId)
   , m_id(nid)
   , m_onUpdate(onUpdate)
@@ -47,6 +51,7 @@ Logic::Logic(ndn::Face& face,
   , m_intrReplyDist(50 * 0.9, 50 * 1.1)
   , m_syncAckFreshness(syncAckFreshness)
   , m_keyChain(keyChain)
+  , m_keyChainMem("pib-memory:", "tpm-memory:")
   , m_validator(validator)
   , m_scheduler(m_face.getIoService())
   , m_instanceId(s_instanceCounter++)
@@ -63,6 +68,11 @@ Logic::Logic(ndn::Face& face,
                              bind(&Logic::onSyncInterest, this, _2),
                              bind(&Logic::retxSyncInterest, this, true, 0),
                              [] (const Name& prefix, const std::string& msg) {});
+
+  // Interest signing info
+  m_interestSigningInfo.setSigningHmacKey(m_syncKey);
+  m_interestSigningInfo.setDigestAlgorithm(DigestAlgorithm::SHA256);
+  m_interestSigningInfo.setSignedInterestFormat(security::SignedInterestFormat::V03);
 }
 
 Logic::~Logic()
@@ -72,11 +82,18 @@ Logic::~Logic()
 void
 Logic::onSyncInterest(const Interest &interest)
 {
+  if (!security::verifySignature(interest, m_keyChainMem.getTpm(),
+                                 m_interestSigningInfo.getSignerName(),
+                                 DigestAlgorithm::SHA256))
+  {
+    return;
+  }
+
   const auto &n = interest.getName();
 
   // Merge state vector
   bool myVectorNew, otherVectorNew;
-  VersionVector vvOther(n.get(-1));
+  VersionVector vvOther(n.get(-2));
   std::tie(myVectorNew, otherVectorNew) = mergeStateVector(vvOther);
 
 #ifdef NDN_SVS_WITH_SYNC_ACK
@@ -154,6 +171,8 @@ Logic::sendSyncInterest()
   Interest interest(syncName, time::milliseconds(1000));
   interest.setCanBePrefix(true);
   interest.setMustBeFresh(true);
+
+  m_keyChainMem.sign(interest, m_interestSigningInfo);
 
   m_face.expressInterest(interest,
                          std::bind(&Logic::onSyncAck, this, _2),

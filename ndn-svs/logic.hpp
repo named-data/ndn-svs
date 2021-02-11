@@ -73,6 +73,7 @@ public:
    * @param face The face used to communication
    * @param syncPrefix The prefix of the sync group
    * @param onUpdate The callback function to handle state updates
+   * @param syncKey Base64 encoded key to sign sync interests
    * @param signingId The signing Id of the default user
    * @param validator The validator for packet validation
    * @param ackFreshness Freshness of the sync ack
@@ -82,6 +83,7 @@ public:
         ndn::KeyChain& keyChain,
         const Name& syncPrefix,
         const UpdateCallback& onUpdate,
+        const std::string& syncKey = DEFAULT_SYNC_KEY,
         const Name& signingId = DEFAULT_NAME,
         std::shared_ptr<Validator> validator = DEFAULT_VALIDATOR,
         const time::milliseconds& syncAckFreshness = DEFAULT_ACK_FRESHNESS,
@@ -212,6 +214,7 @@ public:
   static const ndn::Name DEFAULT_NAME;
   static const std::shared_ptr<Validator> DEFAULT_VALIDATOR;
   static const NodeID EMPTY_NODE_ID;
+  static const std::string DEFAULT_SYNC_KEY;
 
 private:
   static const ConstBufferPtr EMPTY_DIGEST;
@@ -221,6 +224,7 @@ private:
   // Communication
   ndn::Face& m_face;
   Name m_syncPrefix;
+  std::string m_syncKey;
   Name m_signingId;
   NodeID m_id;
   ndn::ScopedRegisteredPrefixHandle m_syncRegisteredPrefix;
@@ -245,6 +249,8 @@ private:
 
   // Security
   ndn::KeyChain& m_keyChain;
+  ndn::KeyChain m_keyChainMem;
+  security::SigningInfo m_interestSigningInfo;
   std::shared_ptr<security::Validator> m_validator;
 
   ndn::Scheduler m_scheduler;

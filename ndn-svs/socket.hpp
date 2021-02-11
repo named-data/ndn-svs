@@ -47,6 +47,7 @@ public:
          const NodeID& id,
          ndn::Face& face,
          const UpdateCallback& updateCallback,
+         const std::string& syncKey = Logic::DEFAULT_SYNC_KEY,
          const Name& signingId = DEFAULT_NAME,
          std::shared_ptr<Validator> validator = DEFAULT_VALIDATOR);
 
@@ -152,6 +153,7 @@ private:
 private:
   Name m_syncPrefix;
   Name m_dataPrefix;
+  std::string m_syncKey;
   Name m_signingId;
   NodeID m_id;
   Face& m_face;

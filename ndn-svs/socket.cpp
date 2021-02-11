@@ -30,17 +30,19 @@ Socket::Socket(const Name& syncPrefix,
                const NodeID& id,
                ndn::Face& face,
                const UpdateCallback& updateCallback,
+               const std::string& syncKey,
                const Name& signingId,
                std::shared_ptr<Validator> validator)
   : m_syncPrefix(Name(syncPrefix).append("s"))
   , m_dataPrefix(Name(syncPrefix).append("d"))
+  , m_syncKey(syncKey)
   , m_signingId(signingId)
   , m_id(escape(id))
   , m_face(face)
   , m_validator(validator)
   , m_onUpdate(updateCallback)
-  , m_logic(face, m_keyChain, m_syncPrefix, updateCallback, m_signingId,
-            m_validator, Logic::DEFAULT_ACK_FRESHNESS, m_id)
+  , m_logic(face, m_keyChain, m_syncPrefix, updateCallback, m_syncKey,
+            m_signingId, m_validator, Logic::DEFAULT_ACK_FRESHNESS, m_id)
 {
   m_registeredDataPrefix =
     m_face.setInterestFilter(Name(m_dataPrefix).append(m_id),

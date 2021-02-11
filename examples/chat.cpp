@@ -47,6 +47,7 @@ public:
       ndn::Name(m_options.m_id).get(-1).toUri(),
       face,
       std::bind(&Program::onMissingData, this, _1),
+      "dGhpcyBpcyBhIHNlY3JldCBtZXNzYWdl",
       ndn::Name(m_options.m_id),
       m_validator);
 
