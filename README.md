@@ -31,10 +31,6 @@ To try out the demo CLI chat application:
     ./waf
     ./build/examples/chat <prefix>
 
-You will need to create certificates for the prefixes first:
-
-    ndnsec cert-dump `ndnsec get-default -c -i <prefix>` > example-security/<name>.cert
-
 Configure NFD to be multicast:
 
     nfdc strategy set <sync-prefix> /localhost/nfd/strategy/multicast/%FD%03

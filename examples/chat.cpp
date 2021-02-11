@@ -19,8 +19,6 @@
 #include <thread>
 #include <vector>
 
-#include <ndn-cxx/security/validator-config.hpp>
-
 #include <ndn-svs/socket.hpp>
 
 class Options
@@ -39,17 +37,13 @@ public:
   Program(const Options &options)
     : m_options(options)
   {
-    m_validator = std::make_shared<ndn::security::ValidatorConfig>(face);
-    m_validator->load("example-security/validation.conf");
-
     m_svs = std::make_shared<ndn::svs::Socket>(
       ndn::Name(m_options.prefix),
       ndn::Name(m_options.m_id).get(-1).toUri(),
       face,
       std::bind(&Program::onMissingData, this, _1),
       "dGhpcyBpcyBhIHNlY3JldCBtZXNzYWdl",
-      ndn::Name(m_options.m_id),
-      m_validator);
+      ndn::Name(m_options.m_id));
 
     std::cout << "SVS client stared:" << m_options.m_id << std::endl;
   }
@@ -104,7 +98,6 @@ public:
   const Options m_options;
   ndn::Face face;
   std::shared_ptr<ndn::svs::Socket> m_svs;
-  std::shared_ptr<ndn::security::ValidatorConfig> m_validator;
 };
 
 int
