@@ -39,6 +39,14 @@ namespace svs {
  *
  * This interface also simplifies data fetching.  Client only needs to provide a
  * data fetching strategy (through a updateCallback).
+ *
+ * @param syncPrefix The prefix of the sync group
+ * @param id ID for the node
+ * @param face The face used to communication
+ * @param updateCallback The callback function to handle state updates
+ * @param syncKey Base64 encoded key to sign sync interests
+ * @param signingId The signing Id used to sign data packets
+ * @param validator The validator for packet validation
  */
 class Socket : noncopyable
 {
