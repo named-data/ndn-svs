@@ -90,10 +90,20 @@ Logic::onSyncInterest(const Interest &interest)
 
   const auto &n = interest.getName();
 
+  // Get state vector
+  std::shared_ptr<VersionVector> vvOther;
+  try
+  {
+    vvOther = make_shared<VersionVector>(n.get(-2));
+  }
+  catch (ndn::tlv::Error&)
+  {
+    return;
+  }
+
   // Merge state vector
   bool myVectorNew, otherVectorNew;
-  VersionVector vvOther(n.get(-2));
-  std::tie(myVectorNew, otherVectorNew) = mergeStateVector(vvOther);
+  std::tie(myVectorNew, otherVectorNew) = mergeStateVector(*vvOther);
 
 #ifdef NDN_SVS_WITH_SYNC_ACK
   // If my vector newer, send ACK
