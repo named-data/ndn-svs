@@ -132,6 +132,14 @@ public:
   void
   updateSeqNo(const SeqNo& seq, const NodeID& nid = EMPTY_NODE_ID);
 
+  /// @brief Set the sync interest signing key (base64)
+  void
+  setSyncKey(const std::string key);
+
+  /// @brief Get the sync interest signing key (base64)
+  std::string
+  getSyncKey();
+
   /// @brief Get the name of all sessions
   std::set<NodeID>
   getSessionNames() const;

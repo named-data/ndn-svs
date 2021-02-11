@@ -69,10 +69,8 @@ Logic::Logic(ndn::Face& face,
                              bind(&Logic::retxSyncInterest, this, true, 0),
                              [] (const Name& prefix, const std::string& msg) {});
 
-  // Interest signing info
-  m_interestSigningInfo.setSigningHmacKey(m_syncKey);
-  m_interestSigningInfo.setDigestAlgorithm(DigestAlgorithm::SHA256);
-  m_interestSigningInfo.setSignedInterestFormat(security::SignedInterestFormat::V03);
+  // Setup interest signing
+  setSyncKey(m_syncKey);
 }
 
 Logic::~Logic()
@@ -282,6 +280,21 @@ Logic::updateSeqNo(const SeqNo& seq, const NodeID& nid)
 
   if (seq > prev)
     sendSyncInterest();
+}
+
+void
+Logic::setSyncKey(const std::string key)
+{
+  m_syncKey = key;
+  m_interestSigningInfo.setSigningHmacKey(m_syncKey);
+  m_interestSigningInfo.setDigestAlgorithm(DigestAlgorithm::SHA256);
+  m_interestSigningInfo.setSignedInterestFormat(security::SignedInterestFormat::V03);
+}
+
+std::string
+Logic::getSyncKey()
+{
+  return m_syncKey;
 }
 
 std::set<NodeID>
