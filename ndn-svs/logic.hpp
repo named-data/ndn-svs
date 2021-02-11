@@ -75,7 +75,6 @@ public:
    * @param onUpdate The callback function to handle state updates
    * @param syncKey Base64 encoded key to sign sync interests
    * @param signingId The signing Id of the default user
-   * @param validator The validator for packet validation
    * @param ackFreshness Freshness of the sync ack
    * @param nid ID for the node
    */
@@ -85,7 +84,6 @@ public:
         const UpdateCallback& onUpdate,
         const std::string& syncKey = DEFAULT_SYNC_KEY,
         const Name& signingId = DEFAULT_NAME,
-        std::shared_ptr<Validator> validator = DEFAULT_VALIDATOR,
         const time::milliseconds& syncAckFreshness = DEFAULT_ACK_FRESHNESS,
         const NodeID nid = EMPTY_NODE_ID);
 
@@ -155,16 +153,6 @@ NDN_SVS_PUBLIC_WITH_TESTS_ELSE_PRIVATE:
   void
   onSyncInterest(const Interest &interest);
 
-  /// @brief Decode version vector from data body, and merge vector.
-  void
-  onSyncAck(const Data &data);
-
-  void
-  onSyncNack(const Interest &interest, const lp::Nack &nack);
-
-  void
-  onSyncTimeout(const Interest &interest);
-
   /**
    * @brief sendSyncInterest and schedule a new retxSyncInterest event.
    *
@@ -182,10 +170,6 @@ NDN_SVS_PUBLIC_WITH_TESTS_ELSE_PRIVATE:
    */
   void
   sendSyncInterest();
-
-  /// @brief Add an ACK into queue
-  void
-  sendSyncAck(const Name &n);
 
   /**
    * @brief Merge state vector into the current
@@ -220,7 +204,6 @@ NDN_SVS_PUBLIC_WITH_TESTS_ELSE_PRIVATE:
 
 public:
   static const ndn::Name DEFAULT_NAME;
-  static const std::shared_ptr<Validator> DEFAULT_VALIDATOR;
   static const NodeID EMPTY_NODE_ID;
   static const std::string DEFAULT_SYNC_KEY;
 
@@ -259,7 +242,6 @@ private:
   ndn::KeyChain& m_keyChain;
   ndn::KeyChain m_keyChainMem;
   security::SigningInfo m_interestSigningInfo;
-  std::shared_ptr<security::Validator> m_validator;
 
   ndn::Scheduler m_scheduler;
   scheduler::ScopedEventId m_retxEvent;

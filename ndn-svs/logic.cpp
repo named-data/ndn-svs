@@ -25,7 +25,6 @@ namespace svs {
 int Logic::s_instanceCounter = 0;
 
 const ndn::Name Logic::DEFAULT_NAME;
-const std::shared_ptr<Validator> Logic::DEFAULT_VALIDATOR;
 const NodeID Logic::EMPTY_NODE_ID;
 const std::string Logic::DEFAULT_SYNC_KEY;
 const time::milliseconds Logic::DEFAULT_ACK_FRESHNESS = time::milliseconds(4000);
@@ -36,7 +35,6 @@ Logic::Logic(ndn::Face& face,
              const UpdateCallback& onUpdate,
              const std::string& syncKey,
              const Name& signingId,
-             std::shared_ptr<Validator> validator,
              const time::milliseconds& syncAckFreshness,
              const NodeID nid)
   : m_face(face)
@@ -52,7 +50,6 @@ Logic::Logic(ndn::Face& face,
   , m_syncAckFreshness(syncAckFreshness)
   , m_keyChain(keyChain)
   , m_keyChainMem("pib-memory:", "tpm-memory:")
-  , m_validator(validator)
   , m_scheduler(m_face.getIoService())
   , m_instanceId(s_instanceCounter++)
 {
@@ -105,23 +102,13 @@ Logic::onSyncInterest(const Interest &interest)
   bool myVectorNew, otherVectorNew;
   std::tie(myVectorNew, otherVectorNew) = mergeStateVector(*vvOther);
 
-#ifdef NDN_SVS_WITH_SYNC_ACK
-  // If my vector newer, send ACK
-  if (myVectorNew)
-    sendSyncAck(n);
-#endif
-
   // If incoming state identical/newer to local vector, reset timer
   // If incoming state is older, send sync interest immediately
-  // If ACK enabled, do not send interest when local is newer
   if (!myVectorNew)
   {
     retxSyncInterest(false, 0);
   }
   else
-#ifdef NDN_SVS_WITH_SYNC_ACK
-  if (otherVectorNew)
-#endif
   {
     // Check how much time is left on the timer,
     // reset to ~m_intrReplyDist if more than that.
@@ -131,24 +118,6 @@ Logic::onSyncInterest(const Interest &interest)
       retxSyncInterest(false, delay);
     }
   }
-}
-
-void
-Logic::onSyncAck(const Data &data)
-{
-  VersionVector vvOther(data.getContent().blockFromValue());
-  mergeStateVector(vvOther);
-}
-
-
-void
-Logic::onSyncNack(const Interest &interest, const lp::Nack &nack)
-{
-}
-
-void
-Logic::onSyncTimeout(const Interest &interest)
-{
 }
 
 void
@@ -183,33 +152,7 @@ Logic::sendSyncInterest()
 
   m_keyChainMem.sign(interest, m_interestSigningInfo);
 
-  m_face.expressInterest(interest,
-                         std::bind(&Logic::onSyncAck, this, _2),
-                         std::bind(&Logic::onSyncNack, this, _1, _2),
-                         std::bind(&Logic::onSyncTimeout, this, _1));
-}
-
-void
-Logic::sendSyncAck(const Name &n)
-{
-  int delay = m_packetDist(m_rng);
-  m_scheduler.schedule(time::milliseconds(delay), [this, n]
-  {
-    std::shared_ptr<Data> data = std::make_shared<Data>(n);
-    {
-      std::lock_guard<std::mutex> lock(m_vvMutex);
-      data->setContent(m_vv.encode());
-    }
-
-    if (m_signingId.empty())
-      m_keyChain.sign(*data);
-    else
-      m_keyChain.sign(*data, signingByIdentity(m_signingId));
-
-    data->setFreshnessPeriod(m_syncAckFreshness);
-
-    m_face.put(*data);
-  });
+  m_face.expressInterest(interest, nullptr, nullptr, nullptr);
 }
 
 std::pair<bool, bool>
