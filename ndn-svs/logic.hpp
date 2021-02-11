@@ -65,8 +65,6 @@ public:
   };
 
 public:
-  static const time::milliseconds DEFAULT_ACK_FRESHNESS;
-
   /**
    * @brief Constructor
    *
@@ -75,7 +73,6 @@ public:
    * @param onUpdate The callback function to handle state updates
    * @param syncKey Base64 encoded key to sign sync interests
    * @param signingId The signing Id of the default user
-   * @param ackFreshness Freshness of the sync ack
    * @param nid ID for the node
    */
   Logic(ndn::Face& face,
@@ -84,7 +81,6 @@ public:
         const UpdateCallback& onUpdate,
         const std::string& syncKey = DEFAULT_SYNC_KEY,
         const Name& signingId = DEFAULT_NAME,
-        const time::milliseconds& syncAckFreshness = DEFAULT_ACK_FRESHNESS,
         const NodeID nid = EMPTY_NODE_ID);
 
   ~Logic();
@@ -234,9 +230,6 @@ private:
   std::uniform_int_distribution<> m_retxDist;
   // Milliseconds to send sync interest reply after
   std::uniform_int_distribution<> m_intrReplyDist;
-
-  // Freshness of sync ack
-  time::milliseconds m_syncAckFreshness;
 
   // Security
   ndn::KeyChain& m_keyChain;

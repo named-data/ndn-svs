@@ -27,7 +27,6 @@ int Logic::s_instanceCounter = 0;
 const ndn::Name Logic::DEFAULT_NAME;
 const NodeID Logic::EMPTY_NODE_ID;
 const std::string Logic::DEFAULT_SYNC_KEY;
-const time::milliseconds Logic::DEFAULT_ACK_FRESHNESS = time::milliseconds(4000);
 
 Logic::Logic(ndn::Face& face,
              ndn::KeyChain& keyChain,
@@ -35,7 +34,6 @@ Logic::Logic(ndn::Face& face,
              const UpdateCallback& onUpdate,
              const std::string& syncKey,
              const Name& signingId,
-             const time::milliseconds& syncAckFreshness,
              const NodeID nid)
   : m_face(face)
   , m_syncPrefix(syncPrefix)
@@ -47,7 +45,6 @@ Logic::Logic(ndn::Face& face,
   , m_packetDist(10, 15)
   , m_retxDist(30000 * 0.9, 30000 * 1.1)
   , m_intrReplyDist(50 * 0.9, 50 * 1.1)
-  , m_syncAckFreshness(syncAckFreshness)
   , m_keyChain(keyChain)
   , m_keyChainMem("pib-memory:", "tpm-memory:")
   , m_scheduler(m_face.getIoService())
