@@ -15,6 +15,7 @@
  */
 
 #include "socket.hpp"
+#include "store-memory.hpp"
 
 #include <ndn-cxx/util/string-helper.hpp>
 #include <ndn-cxx/security/signing-helpers.hpp>
@@ -32,7 +33,8 @@ Socket::Socket(const Name& syncPrefix,
                const UpdateCallback& updateCallback,
                const std::string& syncKey,
                const Name& signingId,
-               std::shared_ptr<Validator> validator)
+               std::shared_ptr<Validator> validator,
+               std::shared_ptr<DataStore> dataStore)
   : m_syncPrefix(Name(syncPrefix).append("s"))
   , m_dataPrefix(Name(syncPrefix).append("d"))
   , m_signingId(signingId)
@@ -40,9 +42,15 @@ Socket::Socket(const Name& syncPrefix,
   , m_face(face)
   , m_validator(validator)
   , m_onUpdate(updateCallback)
+  , m_dataStore(dataStore)
   , m_logic(face, m_keyChain, m_syncPrefix, updateCallback,
             syncKey, m_signingId, m_id)
 {
+  if (m_dataStore == nullptr)
+  {
+    m_dataStore = make_shared<MemoryDataStore>();
+  }
+
   m_registeredDataPrefix =
     m_face.setInterestFilter(Name(m_dataPrefix),
                              bind(&Socket::onDataInterest, this, _2),
@@ -80,13 +88,13 @@ Socket::publishData(const Block& content, const ndn::time::milliseconds& freshne
   else
     m_keyChain.sign(*data, signingByIdentity(m_signingId));
 
-  m_ims.insert(*data);
+  m_dataStore->insert(*data);
   m_logic.updateSeqNo(newSeq, pubId);
 }
 
 void Socket::onDataInterest(const Interest &interest) {
   // If have data, reply. Otherwise forward with probability (?)
-  shared_ptr<const Data> data = m_ims.find(interest);
+  shared_ptr<const Data> data = m_dataStore->find(interest);
   if (data != nullptr)
   {
     m_face.put(*data);

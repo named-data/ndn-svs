@@ -19,8 +19,7 @@
 
 #include "common.hpp"
 #include "logic.hpp"
-
-#include <ndn-cxx/ims/in-memory-storage-persistent.hpp>
+#include "store.hpp"
 
 namespace ndn {
 namespace svs {
@@ -47,6 +46,7 @@ namespace svs {
  * @param syncKey Base64 encoded key to sign sync interests
  * @param signingId The signing Id used to sign data packets
  * @param validator The validator for packet validation
+ * @param dataStore Interface to store data packets
  */
 class Socket : noncopyable
 {
@@ -57,7 +57,8 @@ public:
          const UpdateCallback& updateCallback,
          const std::string& syncKey = Logic::DEFAULT_SYNC_KEY,
          const Name& signingId = DEFAULT_NAME,
-         std::shared_ptr<Validator> validator = DEFAULT_VALIDATOR);
+         std::shared_ptr<Validator> validator = DEFAULT_VALIDATOR,
+         std::shared_ptr<DataStore> dataStore = nullptr);
 
   ~Socket();
 
@@ -172,7 +173,7 @@ private:
 
   UpdateCallback m_onUpdate;
 
-  ndn::InMemoryStoragePersistent m_ims;
+  std::shared_ptr<DataStore> m_dataStore;
 
   Logic m_logic;
 };
