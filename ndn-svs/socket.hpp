@@ -129,6 +129,21 @@ public:
             const TimeoutCallback& onTimeout,
             int nRetries = 0);
 
+  /*** @brief Get the underlying data store */
+  DataStore&
+  getDataStore()
+  {
+    return *m_dataStore;
+  }
+
+  /*** @brief Set whether data of other nodes is also cached and served */
+  void
+  setCacheAll(bool val)
+  {
+    m_cacheAll = val;
+  }
+
+  /*** @brief Get the underlying SVS logic */
   Logic&
   getLogic()
   {
@@ -156,6 +171,10 @@ private:
                 const TimeoutCallback& timeoutCallback);
 
   void
+  onDataValidated(const Data& data,
+                  const DataValidatedCallback& dataCallback);
+
+  void
   onDataValidationFailed(const Data& data,
                          const ValidationError& error);
 
@@ -174,6 +193,7 @@ private:
   UpdateCallback m_onUpdate;
 
   std::shared_ptr<DataStore> m_dataStore;
+  bool m_cacheAll = false;
 
   Logic m_logic;
 };

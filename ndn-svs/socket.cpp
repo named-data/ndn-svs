@@ -151,9 +151,11 @@ Socket::onData(const Interest& interest, const Data& data,
                const DataValidationErrorCallback& onFailed)
 {
   if (static_cast<bool>(m_validator))
-    m_validator->validate(data, onValidated, onFailed);
+    m_validator->validate(data,
+                          bind(&Socket::onDataValidated, this, _1, onValidated),
+                          onFailed);
   else
-    onValidated(data);
+    onDataValidated(data, onValidated);
 }
 
 void
@@ -174,6 +176,16 @@ Socket::onDataTimeout(const Interest& interest, int nRetries,
                               dataCallback, failCallback, timeoutCallback), // Nack
                          bind(&Socket::onDataTimeout, this, _1, nRetries - 1,
                               dataCallback, failCallback, timeoutCallback));
+}
+
+void
+Socket::onDataValidated(const Data& data,
+                        const DataValidatedCallback& dataCallback)
+{
+  if (m_cacheAll)
+    m_dataStore->insert(data);
+
+  dataCallback(data);
 }
 
 void
