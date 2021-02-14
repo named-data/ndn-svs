@@ -93,15 +93,10 @@ Socket::publishData(const Block& content, const ndn::time::milliseconds& freshne
 }
 
 void Socket::onDataInterest(const Interest &interest) {
-  // If have data, reply. Otherwise forward with probability (?)
   shared_ptr<const Data> data = m_dataStore->find(interest);
   if (data != nullptr)
   {
     m_face.put(*data);
-  }
-  else
-  {
-    // TODO
   }
 }
 
