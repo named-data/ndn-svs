@@ -45,6 +45,8 @@ public:
       "dGhpcyBpcyBhIHNlY3JldCBtZXNzYWdl",
       ndn::Name(m_options.m_id));
 
+    m_svs->setCacheAll(true);
+
     std::cout << "SVS client stared:" << m_options.m_id << std::endl;
   }
 
