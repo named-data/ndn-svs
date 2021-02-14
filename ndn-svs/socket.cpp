@@ -93,11 +93,9 @@ Socket::publishData(const Block& content, const ndn::time::milliseconds& freshne
 }
 
 void Socket::onDataInterest(const Interest &interest) {
-  shared_ptr<const Data> data = m_dataStore->find(interest);
+  auto data = m_dataStore->find(interest);
   if (data != nullptr)
-  {
     m_face.put(*data);
-  }
 }
 
 void
