@@ -99,6 +99,13 @@ Logic::onSyncInterest(const Interest &interest)
   bool myVectorNew, otherVectorNew;
   std::tie(myVectorNew, otherVectorNew) = mergeStateVector(*vvOther);
 
+  // Only record while in suppression state
+  if (m_recording)
+  {
+    recordVector(*vvOther);
+    return;
+  }
+
   // If incoming state identical/newer to local vector, reset timer
   // If incoming state is older, send sync interest immediately
   if (!myVectorNew)
@@ -107,6 +114,7 @@ Logic::onSyncInterest(const Interest &interest)
   }
   else
   {
+    enterSuppressionState(*vvOther);
     // Check how much time is left on the timer,
     // reset to ~m_intrReplyDist if more than that.
     int delay = m_intrReplyDist(m_rng);
@@ -121,7 +129,15 @@ void
 Logic::retxSyncInterest(const bool send, unsigned int delay)
 {
   if (send)
-    sendSyncInterest();
+  {
+    // Only send interest if in steady state or local vector has newer state
+    // than recorded interests
+    bool myVectorNew, otherVectorNew;
+    std::tie(myVectorNew, otherVectorNew) = mergeStateVector(m_recordedVv);
+    if (!m_recording || myVectorNew)
+      sendSyncInterest();
+    m_recording = false;
+  }
 
   if (delay == 0)
     delay = m_retxDist(m_rng);
@@ -230,7 +246,7 @@ Logic::updateSeqNo(const SeqNo& seq, const NodeID& nid)
   }
 
   if (seq > prev)
-    sendSyncInterest();
+    retxSyncInterest(true, 0);
 }
 
 void
@@ -265,6 +281,34 @@ Logic::getCurrentTime() const
 {
   return std::chrono::duration_cast<std::chrono::microseconds>(
     m_steadyClock.now().time_since_epoch()).count();
+}
+
+void
+Logic::recordVector(const VersionVector &vvOther)
+{
+  std::lock_guard<std::mutex> lock(m_vvMutex);
+
+  for (auto entry : vvOther)
+  {
+    NodeID nidOther = entry.first;
+    SeqNo seqOther = entry.second;
+    SeqNo seqCurrent = m_recordedVv.get(nidOther);
+
+    if (seqCurrent < seqOther)
+    {
+      m_recordedVv.set(nidOther, seqOther);
+    }
+  }
+}
+
+void
+Logic::enterSuppressionState(const VersionVector &vvOther) {
+  std::lock_guard<std::mutex> lock(m_vvMutex);
+
+  if (!m_recording) {
+    m_recording = true;
+    m_recordedVv = vvOther;
+  }
 }
 
 }  // namespace svs

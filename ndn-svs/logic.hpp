@@ -180,6 +180,25 @@ NDN_SVS_PUBLIC_WITH_TESTS_ELSE_PRIVATE:
   std::pair<bool, bool>
   mergeStateVector(const VersionVector &vvOther);
 
+  /**
+   * @brief Record vector by merging it into m_recordedVv
+   *
+   * @param vvOther state vector to merge in
+   */
+  void
+  recordVector(const VersionVector &vvOther);
+
+  /**
+   * @brief Enter suppression state by setting
+   * m_recording to True and initializing m_recordedVv to vvOther
+   *
+   * Does nothing if already in suppression state
+   *
+   * @param vvOther first vector to record
+   */
+  void
+  enterSuppressionState(const VersionVector &vvOther);  
+
   /// @brief Reference to scheduler
   ndn::Scheduler&
   getScheduler()
@@ -221,6 +240,10 @@ private:
   // State
   VersionVector m_vv;
   mutable std::mutex m_vvMutex;
+  // If recording (in suppression state)
+  bool m_recording = false;
+  // aggregates incoming vectors while in suppression state
+  VersionVector m_recordedVv;
 
   // Random Engine
   ndn::random::RandomNumberEngine& m_rng;
