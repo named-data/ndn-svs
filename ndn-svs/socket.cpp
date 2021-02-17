@@ -43,8 +43,7 @@ Socket::Socket(const Name& syncPrefix,
   , m_validator(validator)
   , m_onUpdate(updateCallback)
   , m_dataStore(dataStore)
-  , m_logic(face, m_keyChain, m_syncPrefix, updateCallback,
-            syncKey, m_signingId, m_id)
+  , m_logic(face, m_keyChain, m_syncPrefix, updateCallback, syncKey, m_id)
 {
   if (m_dataStore == nullptr)
   {

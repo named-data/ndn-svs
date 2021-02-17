@@ -24,7 +24,6 @@ namespace svs {
 
 int Logic::s_instanceCounter = 0;
 
-const ndn::Name Logic::DEFAULT_NAME;
 const NodeID Logic::EMPTY_NODE_ID;
 const std::string Logic::DEFAULT_SYNC_KEY;
 
@@ -33,12 +32,10 @@ Logic::Logic(ndn::Face& face,
              const Name& syncPrefix,
              const UpdateCallback& onUpdate,
              const std::string& syncKey,
-             const Name& signingId,
              const NodeID nid)
   : m_face(face)
   , m_syncPrefix(syncPrefix)
   , m_syncKey(syncKey)
-  , m_signingId(signingId)
   , m_id(nid)
   , m_onUpdate(onUpdate)
   , m_rng(ndn::random::getRandomNumberEngine())
@@ -50,12 +47,6 @@ Logic::Logic(ndn::Face& face,
   , m_scheduler(m_face.getIoService())
   , m_instanceId(s_instanceCounter++)
 {
-  m_vv.set(m_id, 0);
-
-  // Use default identity if not specified
-  if (m_signingId == Logic::DEFAULT_NAME)
-    m_signingId = m_keyChain.getPib().getDefaultIdentity().getName();
-
   // Register sync interest filter
   m_syncRegisteredPrefix =
     m_face.setInterestFilter(syncPrefix,

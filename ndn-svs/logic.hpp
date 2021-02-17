@@ -72,7 +72,6 @@ public:
    * @param syncPrefix The prefix of the sync group
    * @param onUpdate The callback function to handle state updates
    * @param syncKey Base64 encoded key to sign sync interests
-   * @param signingId The signing Id of the default user
    * @param nid ID for the node
    */
   Logic(ndn::Face& face,
@@ -80,7 +79,6 @@ public:
         const Name& syncPrefix,
         const UpdateCallback& onUpdate,
         const std::string& syncKey = DEFAULT_SYNC_KEY,
-        const Name& signingId = DEFAULT_NAME,
         const NodeID nid = EMPTY_NODE_ID);
 
   ~Logic();
@@ -199,7 +197,6 @@ NDN_SVS_PUBLIC_WITH_TESTS_ELSE_PRIVATE:
   getCurrentTime() const;
 
 public:
-  static const ndn::Name DEFAULT_NAME;
   static const NodeID EMPTY_NODE_ID;
   static const std::string DEFAULT_SYNC_KEY;
 
@@ -212,7 +209,6 @@ private:
   ndn::Face& m_face;
   Name m_syncPrefix;
   std::string m_syncKey;
-  Name m_signingId;
   NodeID m_id;
   ndn::ScopedRegisteredPrefixHandle m_syncRegisteredPrefix;
 
