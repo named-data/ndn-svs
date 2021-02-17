@@ -16,18 +16,19 @@
 
 #include "chat.hpp"
 
-#include <ndn-svs/socket-multicast.hpp>
+#include <ndn-svs/socket-shared.hpp>
 
-class ProgramMulticast : public Program
+class ProgramShared: public Program
 {
 public:
-  ProgramMulticast(const Options &options) : Program(options)
+  ProgramShared(const Options &options) : Program(options)
   {
-    auto svs = std::make_shared<ndn::svs::SocketMulticast>(
-      ndn::Name(m_options.prefix),
+    auto svs = std::make_shared<ndn::svs::SocketShared>(
+      ndn::Name(m_options.prefix).append("s"),
+      ndn::Name(m_options.prefix).append("d"),
       ndn::Name(m_options.m_id).get(-1).toUri(),
       face,
-      std::bind(&ProgramMulticast::onMissingData, this, _1),
+      std::bind(&ProgramShared::onMissingData, this, _1),
       "dGhpcyBpcyBhIHNlY3JldCBtZXNzYWdl",
       ndn::Name(m_options.m_id));
     svs->setCacheAll(true);
@@ -38,5 +39,5 @@ public:
 int
 main(int argc, char **argv)
 {
-  return callMain<ProgramMulticast>(argc, argv);
+  return callMain<ProgramShared>(argc, argv);
 }

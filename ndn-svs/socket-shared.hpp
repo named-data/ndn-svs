@@ -14,8 +14,8 @@
  * PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
  */
 
-#ifndef NDN_SVS_SOCKET_MULTICAST_HPP
-#define NDN_SVS_SOCKET_MULTICAST_HPP
+#ifndef NDN_SVS_SOCKET_SHARED_HPP
+#define NDN_SVS_SOCKET_SHARED_HPP
 
 #include "socket-base.hpp"
 
@@ -23,27 +23,28 @@ namespace ndn {
 namespace svs {
 
 /**
- * @brief Socket using multicast for data delivery
+ * @brief Socket using shared prefix for data delivery
  *
- * Sync logic runs under <base-prefix>/s
- * Data is produced as <base-prefix>/d/<node-id>/<seq>
+ * Sync logic runs under <sync-prefix>
+ * Data is produced as <data-prefix>/<node-id>/<seq>
+ * Both prefixes must use multicast strategy if the node should
+ * be able to cache/serve data for other nodes
  */
-class SocketMulticast : public SocketBase
+class SocketShared : public SocketBase
 {
 public:
-  SocketMulticast(const Name& basePrefix,
-         const NodeID& id,
-         ndn::Face& face,
-         const UpdateCallback& updateCallback,
-         const std::string& syncKey = Logic::DEFAULT_SYNC_KEY,
-         const Name& signingId = DEFAULT_NAME,
-         std::shared_ptr<Validator> validator = DEFAULT_VALIDATOR,
-         std::shared_ptr<DataStore> dataStore = DEFAULT_DATASTORE)
+  SocketShared(const Name& syncPrefix,
+               const Name& dataPrefix,
+               const NodeID& id,
+               ndn::Face& face,
+               const UpdateCallback& updateCallback,
+               const std::string& syncKey = Logic::DEFAULT_SYNC_KEY,
+               const Name& signingId = DEFAULT_NAME,
+               std::shared_ptr<Validator> validator = DEFAULT_VALIDATOR,
+               std::shared_ptr<DataStore> dataStore = DEFAULT_DATASTORE)
   : SocketBase(
-      Name(m_basePrefix).append("s"),
-      Name(m_basePrefix).append("d"),
+      syncPrefix, dataPrefix,
       id, face, updateCallback, syncKey, signingId, validator, dataStore)
-  , m_basePrefix(basePrefix)
   {}
 
   inline Name
@@ -67,11 +68,10 @@ private:
   }
 
 private:
-  const Name m_basePrefix;
   bool m_cacheAll = false;
 };
 
 }  // namespace svs
 }  // namespace ndn
 
-#endif // NDN_SVS_SOCKET_MULTICAST_HPP
+#endif // NDN_SVS_SOCKET_SHARED_HPP
