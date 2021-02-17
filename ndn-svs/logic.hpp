@@ -207,12 +207,12 @@ private:
 
   // Communication
   ndn::Face& m_face;
-  Name m_syncPrefix;
+  const Name m_syncPrefix;
   std::string m_syncKey;
-  NodeID m_id;
+  const NodeID m_id;
   ndn::ScopedRegisteredPrefixHandle m_syncRegisteredPrefix;
 
-  UpdateCallback m_onUpdate;
+  const UpdateCallback m_onUpdate;
 
   // State
   VersionVector m_vv;

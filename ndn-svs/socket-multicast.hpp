@@ -14,8 +14,8 @@
  * PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
  */
 
-#ifndef NDN_SVS_SOCKET_HPP
-#define NDN_SVS_SOCKET_HPP
+#ifndef NDN_SVS_SOCKET_MULTICAST_HPP
+#define NDN_SVS_SOCKET_MULTICAST_HPP
 
 #include "socket-base.hpp"
 
@@ -23,17 +23,16 @@ namespace ndn {
 namespace svs {
 
 /**
- * @brief Socket using arbitrary prefix for data delivery
+ * @brief Socket using multicast for data delivery
  *
- * The data prefix acts as the node ID in the version vector
- * Sync logic runs under <sync-prefix>
- * Data is produced as <data-prefix>/<sync-prefix>/<seq>
+ * Sync logic runs under <base-prefix>/s
+ * Data is produced as <base-prefix>/d/<node-id>/<seq>
  */
-class Socket : public SocketBase
+class SocketMulticast : public SocketBase
 {
 public:
-  Socket(const Name& syncPrefix,
-         const Name& dataPrefix,
+  SocketMulticast(const Name& basePrefix,
+         const NodeID& id,
          ndn::Face& face,
          const UpdateCallback& updateCallback,
          const std::string& syncKey = Logic::DEFAULT_SYNC_KEY,
@@ -41,19 +40,38 @@ public:
          std::shared_ptr<Validator> validator = DEFAULT_VALIDATOR,
          std::shared_ptr<DataStore> dataStore = DEFAULT_DATASTORE)
   : SocketBase(
-      syncPrefix,
-      Name(dataPrefix).append(syncPrefix),
-      dataPrefix.toUri(),
-      face, updateCallback, syncKey, signingId, validator, dataStore)
+      Name(m_basePrefix).append("s"),
+      Name(m_basePrefix).append("d"),
+      id, face, updateCallback, syncKey, signingId, validator, dataStore)
+  , m_basePrefix(basePrefix)
   {}
 
   inline Name
-  getDataName(const NodeID& nid, const SeqNo& seqNo) {
-    return Name(nid).append(m_syncPrefix).appendNumber(seqNo);
+  getDataName(const NodeID& nid, const SeqNo& seqNo)
+  {
+    return Name(m_dataPrefix).append(nid).appendNumber(seqNo);
   }
+
+  /*** @brief Set whether data of other nodes is also cached and served */
+  void
+  setCacheAll(bool val)
+  {
+    m_cacheAll = val;
+  }
+
+private:
+  bool
+  shouldCache(const Data& data)
+  {
+    return m_cacheAll;
+  }
+
+private:
+  const Name m_basePrefix;
+  bool m_cacheAll = false;
 };
 
 }  // namespace svs
 }  // namespace ndn
 
-#endif // NDN_SVS_SOCKET_HPP
+#endif // NDN_SVS_SOCKET_MULTICAST_HPP

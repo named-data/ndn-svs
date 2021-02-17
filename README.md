@@ -29,7 +29,7 @@ To try out the demo CLI chat application:
 
     ./waf configure --enable-static --disable-shared --with-examples
     ./waf
-    ./build/examples/chat <prefix>
+    ./build/examples/chat-multicast <prefix>
 
 Configure NFD to be multicast:
 

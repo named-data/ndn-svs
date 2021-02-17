@@ -19,12 +19,12 @@
 #include <thread>
 #include <vector>
 
-#include <ndn-svs/socket.hpp>
+#include <ndn-svs/socket-base.hpp>
 
 class Options
 {
 public:
-  Options() : prefix("/ndn/svs") {}
+  Options() {}
 
 public:
   std::string prefix;
@@ -37,17 +37,7 @@ public:
   Program(const Options &options)
     : m_options(options)
   {
-    m_svs = std::make_shared<ndn::svs::Socket>(
-      ndn::Name(m_options.prefix),
-      ndn::Name(m_options.m_id).get(-1).toUri(),
-      face,
-      std::bind(&Program::onMissingData, this, _1),
-      "dGhpcyBpcyBhIHNlY3JldCBtZXNzYWdl",
-      ndn::Name(m_options.m_id));
-
-    m_svs->setCacheAll(true);
-
-    std::cout << "SVS client stared:" << m_options.m_id << std::endl;
+    std::cout << "SVS client starting:" << m_options.m_id << std::endl;
   }
 
   void
@@ -68,7 +58,7 @@ public:
     thread_svs.join();
   }
 
-private:
+protected:
   void
   onMissingData(const std::vector<ndn::svs::MissingDataInfo>& v)
   {
@@ -99,21 +89,22 @@ private:
 public:
   const Options m_options;
   ndn::Face face;
-  std::shared_ptr<ndn::svs::Socket> m_svs;
+  std::shared_ptr<ndn::svs::SocketBase> m_svs;
 };
 
+template <typename T>
 int
-main(int argc, char **argv)
-{
+callMain(int argc, char **argv) {
   if (argc != 2) {
     std::cout << "Usage: client <prefix>" << std::endl;
     exit(1);
   }
 
   Options opt;
+  opt.prefix = "/ndn/svs";
   opt.m_id = argv[1];
 
-  Program program(opt);
+  T program(opt);
   program.run();
   return 0;
 }
