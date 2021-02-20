@@ -47,8 +47,9 @@ public:
       face, updateCallback, syncKey, signingId, validator, dataStore)
   {}
 
-  inline Name
-  getDataName(const NodeID& nid, const SeqNo& seqNo) {
+  Name
+  getDataName(const NodeID& nid, const SeqNo& seqNo)
+  {
     return Name(nid).append(m_syncPrefix).appendNumber(seqNo);
   }
 };

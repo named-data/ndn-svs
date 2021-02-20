@@ -139,7 +139,7 @@ public:
    * data prefix for proper functionality, or the application must
    * independently produce data under the prefix.
    */
-  virtual inline Name
+  virtual Name
   getDataName(const NodeID& nid, const SeqNo& seqNo) = 0;
 
   /*** @brief Get the underlying data store */
