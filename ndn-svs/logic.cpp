@@ -25,17 +25,16 @@ namespace svs {
 int Logic::s_instanceCounter = 0;
 
 const NodeID Logic::EMPTY_NODE_ID;
-const std::string Logic::DEFAULT_SYNC_KEY;
 
 Logic::Logic(ndn::Face& face,
              ndn::KeyChain& keyChain,
              const Name& syncPrefix,
              const UpdateCallback& onUpdate,
-             const std::string& syncKey,
+             const SecurityOptions& securityOptions,
              const NodeID nid)
   : m_face(face)
   , m_syncPrefix(syncPrefix)
-  , m_syncKey(syncKey)
+  , m_securityOptions(securityOptions)
   , m_id(nid)
   , m_onUpdate(onUpdate)
   , m_rng(ndn::random::getRandomNumberEngine())
@@ -54,8 +53,23 @@ Logic::Logic(ndn::Face& face,
                              bind(&Logic::retxSyncInterest, this, true, 0),
                              [] (const Name& prefix, const std::string& msg) {});
 
-  // Setup interest signing
-  setSyncKey(m_syncKey);
+  // Initialize security
+  m_interestSigningInfo.setSignedInterestFormat(security::SignedInterestFormat::V03);
+
+  switch (m_securityOptions.interestSignatureType)
+  {
+    case SecurityOptions::NONE:
+      break;
+
+    case SecurityOptions::HMAC:
+      m_interestSigningInfo.setSigningHmacKey(m_securityOptions.hmacKey);
+      m_interestSigningInfo.setDigestAlgorithm(DigestAlgorithm::SHA256);
+      break;
+
+    case SecurityOptions::IDENTITY:
+      m_interestSigningInfo.setSigningIdentity(m_securityOptions.interestSigningId);
+      break;
+  }
 }
 
 Logic::~Logic()
@@ -65,12 +79,21 @@ Logic::~Logic()
 void
 Logic::onSyncInterest(const Interest &interest)
 {
-  if (m_syncKey != Logic::DEFAULT_SYNC_KEY &&
-      !security::verifySignature(interest, m_keyChainMem.getTpm(),
-                                 m_interestSigningInfo.getSignerName(),
-                                 DigestAlgorithm::SHA256))
+  switch (m_securityOptions.interestSignatureType)
   {
-    return;
+    case SecurityOptions::NONE:
+      break;
+
+    case SecurityOptions::HMAC:
+      if (!security::verifySignature(interest, m_keyChainMem.getTpm(),
+                                     m_interestSigningInfo.getSignerName(),
+                                     DigestAlgorithm::SHA256))
+        return;
+      break;
+
+    case SecurityOptions::IDENTITY:
+      // TODO: validate with validator
+      break;
   }
 
   const auto &n = interest.getName();
@@ -154,7 +177,16 @@ Logic::sendSyncInterest()
   interest.setCanBePrefix(true);
   interest.setMustBeFresh(true);
 
-  m_keyChainMem.sign(interest, m_interestSigningInfo);
+  switch (m_securityOptions.interestSignatureType)
+  {
+    case SecurityOptions::NONE:
+      interest.setName(syncName.appendNumber(0));
+      break;
+
+    default:
+      m_keyChainMem.sign(interest, m_interestSigningInfo);
+      break;
+  }
 
   m_face.expressInterest(interest, nullptr, nullptr, nullptr);
 }
@@ -238,21 +270,6 @@ Logic::updateSeqNo(const SeqNo& seq, const NodeID& nid)
 
   if (seq > prev)
     retxSyncInterest(true, 0);
-}
-
-void
-Logic::setSyncKey(const std::string key)
-{
-  m_syncKey = key;
-  m_interestSigningInfo.setSigningHmacKey(m_syncKey);
-  m_interestSigningInfo.setDigestAlgorithm(DigestAlgorithm::SHA256);
-  m_interestSigningInfo.setSignedInterestFormat(security::SignedInterestFormat::V03);
-}
-
-std::string
-Logic::getSyncKey()
-{
-  return m_syncKey;
 }
 
 std::set<NodeID>

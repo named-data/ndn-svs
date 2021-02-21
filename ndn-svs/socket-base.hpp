@@ -20,6 +20,7 @@
 #include "common.hpp"
 #include "logic.hpp"
 #include "store.hpp"
+#include "security-options.hpp"
 
 namespace ndn {
 namespace svs {
@@ -44,9 +45,7 @@ namespace svs {
  * @param id ID for the node
  * @param face The face used to communication
  * @param updateCallback The callback function to handle state updates
- * @param syncKey Base64 encoded key to sign sync interests
- * @param signingId The signing Id used to sign data packets
- * @param validator The validator for packet validation
+ * @param securityOptions Signing and validation options for interests and data
  * @param dataStore Interface to store data packets
  */
 class SocketBase : noncopyable
@@ -57,9 +56,7 @@ public:
              const NodeID& id,
              ndn::Face& face,
              const UpdateCallback& updateCallback,
-             const std::string& syncKey = Logic::DEFAULT_SYNC_KEY,
-             const Name& signingId = DEFAULT_NAME,
-             std::shared_ptr<Validator> validator = DEFAULT_VALIDATOR,
+             const SecurityOptions& securityOptions = SecurityOptions::DEFAULT,
              std::shared_ptr<DataStore> dataStore = DEFAULT_DATASTORE);
 
   virtual ~SocketBase() = default;
@@ -157,8 +154,6 @@ public:
   }
 
 public:
-  static const ndn::Name DEFAULT_NAME;
-  static const std::shared_ptr<Validator> DEFAULT_VALIDATOR;
   static const NodeID EMPTY_NODE_ID;
   static const std::shared_ptr<DataStore> DEFAULT_DATASTORE;
 
@@ -199,7 +194,7 @@ private:
 protected:
   const Name m_syncPrefix;
   const Name m_dataPrefix;
-  const Name m_signingId;
+  const SecurityOptions m_securityOptions;
   const NodeID m_id;
 
 private:
@@ -207,8 +202,6 @@ private:
   KeyChain m_keyChain;
 
   ndn::ScopedRegisteredPrefixHandle m_registeredDataPrefix;
-
-  const std::shared_ptr<Validator> m_validator;
 
   const UpdateCallback m_onUpdate;
 

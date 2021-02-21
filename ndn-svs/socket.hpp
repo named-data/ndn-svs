@@ -36,15 +36,13 @@ public:
          const Name& dataPrefix,
          ndn::Face& face,
          const UpdateCallback& updateCallback,
-         const std::string& syncKey = Logic::DEFAULT_SYNC_KEY,
-         const Name& signingId = DEFAULT_NAME,
-         std::shared_ptr<Validator> validator = DEFAULT_VALIDATOR,
+         const SecurityOptions& securityOptions = SecurityOptions::DEFAULT,
          std::shared_ptr<DataStore> dataStore = DEFAULT_DATASTORE)
   : SocketBase(
       syncPrefix,
       Name(dataPrefix).append(syncPrefix),
       dataPrefix.toUri(),
-      face, updateCallback, syncKey, signingId, validator, dataStore)
+      face, updateCallback, securityOptions, dataStore)
   {}
 
   Name

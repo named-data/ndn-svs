@@ -38,13 +38,11 @@ public:
                const NodeID& id,
                ndn::Face& face,
                const UpdateCallback& updateCallback,
-               const std::string& syncKey = Logic::DEFAULT_SYNC_KEY,
-               const Name& signingId = DEFAULT_NAME,
-               std::shared_ptr<Validator> validator = DEFAULT_VALIDATOR,
+               const SecurityOptions& securityOptions = SecurityOptions::DEFAULT,
                std::shared_ptr<DataStore> dataStore = DEFAULT_DATASTORE)
   : SocketBase(
       syncPrefix, dataPrefix,
-      id, face, updateCallback, syncKey, signingId, validator, dataStore)
+      id, face, updateCallback, securityOptions, dataStore)
   {}
 
   Name

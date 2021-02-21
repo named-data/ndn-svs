@@ -23,14 +23,21 @@ class ProgramShared: public Program
 public:
   ProgramShared(const Options &options) : Program(options)
   {
+    // Use HMAC signing
+    ndn::svs::SecurityOptions securityOptions;
+    securityOptions.interestSignatureType = ndn::svs::SecurityOptions::HMAC;
+    securityOptions.hmacKey = "dGhpcyBpcyBhIHNlY3JldCBtZXNzYWdl";
+
+    // Create socket with shared prefix
     auto svs = std::make_shared<ndn::svs::SocketShared>(
       ndn::Name(m_options.prefix).append("s"),
       ndn::Name(m_options.prefix).append("d"),
       ndn::Name(m_options.m_id).get(-1).toUri(),
       face,
       std::bind(&ProgramShared::onMissingData, this, _1),
-      "dGhpcyBpcyBhIHNlY3JldCBtZXNzYWdl",
-      ndn::Name(m_options.m_id));
+      securityOptions);
+
+    // Cache data from all nodes
     svs->setCacheAll(true);
     m_svs = svs;
   }

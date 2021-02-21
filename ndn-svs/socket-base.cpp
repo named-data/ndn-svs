@@ -22,8 +22,6 @@
 namespace ndn {
 namespace svs {
 
-const ndn::Name SocketBase::DEFAULT_NAME;
-const std::shared_ptr<Validator> SocketBase::DEFAULT_VALIDATOR;
 const NodeID SocketBase::EMPTY_NODE_ID;
 const std::shared_ptr<DataStore> SocketBase::DEFAULT_DATASTORE;
 
@@ -32,19 +30,16 @@ SocketBase::SocketBase(const Name& syncPrefix,
                        const NodeID& id,
                        ndn::Face& face,
                        const UpdateCallback& updateCallback,
-                       const std::string& syncKey,
-                       const Name& signingId,
-                       std::shared_ptr<Validator> validator,
+                       const SecurityOptions& securityOptions,
                        std::shared_ptr<DataStore> dataStore)
   : m_syncPrefix(syncPrefix)
   , m_dataPrefix(dataPrefix)
-  , m_signingId(signingId)
+  , m_securityOptions(securityOptions)
   , m_id(id)
   , m_face(face)
-  , m_validator(validator)
   , m_onUpdate(updateCallback)
   , m_dataStore(dataStore)
-  , m_logic(m_face, m_keyChain, m_syncPrefix, m_onUpdate, syncKey, m_id)
+  , m_logic(m_face, m_keyChain, m_syncPrefix, m_onUpdate, securityOptions, m_id)
 {
   // Register new data store
   if (m_dataStore == DEFAULT_DATASTORE)
@@ -76,10 +71,10 @@ SocketBase::publishData(const Block& content, const ndn::time::milliseconds& fre
   data->setContent(content);
   data->setFreshnessPeriod(freshness);
 
-  if (m_signingId.empty())
+  if (m_securityOptions.dataSigningId.empty())
     m_keyChain.sign(*data);
   else
-    m_keyChain.sign(*data, signingByIdentity(m_signingId));
+    m_keyChain.sign(*data, signingByIdentity(m_securityOptions.dataSigningId));
 
   m_dataStore->insert(*data);
   m_logic.updateSeqNo(newSeq, pubId);
@@ -140,10 +135,10 @@ SocketBase::onData(const Interest& interest, const Data& data,
                    const DataValidatedCallback& onValidated,
                    const DataValidationErrorCallback& onFailed)
 {
-  if (static_cast<bool>(m_validator))
-    m_validator->validate(data,
-                          bind(&SocketBase::onDataValidated, this, _1, onValidated),
-                          onFailed);
+  if (static_cast<bool>(m_securityOptions.validator))
+    m_securityOptions.validator->validate(data,
+                                          bind(&SocketBase::onDataValidated, this, _1, onValidated),
+                                          onFailed);
   else
     onDataValidated(data, onValidated);
 }

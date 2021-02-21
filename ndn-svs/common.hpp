@@ -29,6 +29,7 @@
 #define NDN_SVS_PUBLIC_WITH_TESTS_ELSE_PRIVATE private
 #endif
 
+#include<iostream>
 namespace ndn {
 namespace svs {
 

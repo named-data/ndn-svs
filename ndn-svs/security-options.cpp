@@ -14,31 +14,13 @@
  * PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
  */
 
-#include "chat.hpp"
+#include "security-options.hpp"
 
-#include <ndn-svs/socket.hpp>
+namespace ndn {
+namespace svs {
 
-class ProgramPrefix : public Program
-{
-public:
-  ProgramPrefix(const Options &options) : Program(options)
-  {
-    // Use HMAC signing
-    ndn::svs::SecurityOptions securityOptions;
-    securityOptions.interestSignatureType = ndn::svs::SecurityOptions::HMAC;
-    securityOptions.hmacKey = "dGhpcyBpcyBhIHNlY3JldCBtZXNzYWdl";
+const SecurityOptions SecurityOptions::DEFAULT;
+const std::shared_ptr<Validator> SecurityOptions::DEFAULT_VALIDATOR;
 
-    m_svs = std::make_shared<ndn::svs::Socket>(
-      ndn::Name(m_options.prefix),
-      ndn::Name(m_options.m_id),
-      face,
-      std::bind(&ProgramPrefix::onMissingData, this, _1),
-      securityOptions);
-  }
-};
-
-int
-main(int argc, char **argv)
-{
-  return callMain<ProgramPrefix>(argc, argv);
-}
+}  // namespace svs
+}  // namespace ndn

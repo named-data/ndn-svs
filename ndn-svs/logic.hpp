@@ -19,6 +19,7 @@
 
 #include "common.hpp"
 #include "version-vector.hpp"
+#include "security-options.hpp"
 
 #include <ndn-cxx/util/random.hpp>
 
@@ -78,7 +79,7 @@ public:
         ndn::KeyChain& keyChain,
         const Name& syncPrefix,
         const UpdateCallback& onUpdate,
-        const std::string& syncKey = DEFAULT_SYNC_KEY,
+        const SecurityOptions& securityOptions = SecurityOptions::DEFAULT,
         const NodeID nid = EMPTY_NODE_ID);
 
   ~Logic();
@@ -123,14 +124,6 @@ public:
    */
   void
   updateSeqNo(const SeqNo& seq, const NodeID& nid = EMPTY_NODE_ID);
-
-  /// @brief Set the sync interest signing key (base64)
-  void
-  setSyncKey(const std::string key);
-
-  /// @brief Get the sync interest signing key (base64)
-  std::string
-  getSyncKey();
 
   /// @brief Get the name of all sessions
   std::set<NodeID>
@@ -195,7 +188,7 @@ NDN_SVS_PUBLIC_WITH_TESTS_ELSE_PRIVATE:
    * @param vvOther first vector to record
    */
   void
-  enterSuppressionState(const VersionVector &vvOther);  
+  enterSuppressionState(const VersionVector &vvOther);
 
   /// @brief Reference to scheduler
   ndn::Scheduler&
@@ -217,7 +210,6 @@ NDN_SVS_PUBLIC_WITH_TESTS_ELSE_PRIVATE:
 
 public:
   static const NodeID EMPTY_NODE_ID;
-  static const std::string DEFAULT_SYNC_KEY;
 
 private:
   static const ConstBufferPtr EMPTY_DIGEST;
@@ -227,7 +219,7 @@ private:
   // Communication
   ndn::Face& m_face;
   const Name m_syncPrefix;
-  std::string m_syncKey;
+  const SecurityOptions m_securityOptions;
   const NodeID m_id;
   ndn::ScopedRegisteredPrefixHandle m_syncRegisteredPrefix;
 
