@@ -82,20 +82,30 @@ Logic::onSyncInterest(const Interest &interest)
   switch (m_securityOptions.interestSignatureType)
   {
     case SecurityOptions::NONE:
-      break;
+      onSyncInterestValidated(interest);
+      return;
 
     case SecurityOptions::HMAC:
-      if (!security::verifySignature(interest, m_keyChainMem.getTpm(),
-                                     m_interestSigningInfo.getSignerName(),
-                                     DigestAlgorithm::SHA256))
-        return;
-      break;
+      if (security::verifySignature(interest, m_keyChainMem.getTpm(),
+                                    m_interestSigningInfo.getSignerName(),
+                                    DigestAlgorithm::SHA256))
+        onSyncInterestValidated(interest);
+      return;
 
     case SecurityOptions::IDENTITY:
-      // TODO: validate with validator
-      break;
+      if (static_cast<bool>(m_securityOptions.validator))
+        m_securityOptions.validator->validate(interest,
+                                              bind(&Logic::onSyncInterestValidated, this, _1),
+                                              nullptr);
+      else
+        onSyncInterestValidated(interest);
+      return;
   }
+}
 
+void
+Logic::onSyncInterestValidated(const Interest &interest)
+{
   const auto &n = interest.getName();
 
   // Get state vector
@@ -183,8 +193,12 @@ Logic::sendSyncInterest()
       interest.setName(syncName.appendNumber(0));
       break;
 
-    default:
+    case SecurityOptions::HMAC:
       m_keyChainMem.sign(interest, m_interestSigningInfo);
+      break;
+
+    default:
+      m_keyChain.sign(interest, m_interestSigningInfo);
       break;
   }
 

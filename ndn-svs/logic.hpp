@@ -140,6 +140,9 @@ NDN_SVS_PUBLIC_WITH_TESTS_ELSE_PRIVATE:
   void
   onSyncInterest(const Interest &interest);
 
+  void
+  onSyncInterestValidated(const Interest &interest);
+
   /**
    * @brief sendSyncInterest and schedule a new retxSyncInterest event.
    *
