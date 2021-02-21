@@ -123,12 +123,9 @@ Logic::onSyncInterestValidated(const Interest &interest)
   bool myVectorNew, otherVectorNew;
   std::tie(myVectorNew, otherVectorNew) = mergeStateVector(*vvOther);
 
-  // Only record while in suppression state
-  if (m_recording)
-  {
-    recordVector(*vvOther);
+  // Try to record; the call will check if in suppression state
+  if (recordVector(*vvOther))
     return;
-  }
 
   // If incoming state identical/newer to local vector, reset timer
   // If incoming state is older, send sync interest immediately
@@ -156,11 +153,9 @@ Logic::retxSyncInterest(const bool send, unsigned int delay)
   {
     // Only send interest if in steady state or local vector has newer state
     // than recorded interests
-    bool myVectorNew, otherVectorNew;
-    std::tie(myVectorNew, otherVectorNew) = mergeStateVector(m_recordedVv);
-    if (!m_recording || myVectorNew)
+    if (!m_recordedVv || mergeStateVector(*m_recordedVv).first)
       sendSyncInterest();
-    m_recording = false;
+    m_recordedVv = nullptr;
   }
 
   if (delay == 0)
@@ -305,22 +300,26 @@ Logic::getCurrentTime() const
     m_steadyClock.now().time_since_epoch()).count();
 }
 
-void
+bool
 Logic::recordVector(const VersionVector &vvOther)
 {
+  if (!m_recordedVv) return false;
+
   std::lock_guard<std::mutex> lock(m_vvMutex);
 
   for (auto entry : vvOther)
   {
     NodeID nidOther = entry.first;
     SeqNo seqOther = entry.second;
-    SeqNo seqCurrent = m_recordedVv.get(nidOther);
+    SeqNo seqCurrent = m_recordedVv->get(nidOther);
 
     if (seqCurrent < seqOther)
     {
-      m_recordedVv.set(nidOther, seqOther);
+      m_recordedVv->set(nidOther, seqOther);
     }
   }
+
+  return true;
 }
 
 void
@@ -328,11 +327,8 @@ Logic::enterSuppressionState(const VersionVector &vvOther)
 {
   std::lock_guard<std::mutex> lock(m_vvMutex);
 
-  if (!m_recording)
-  {
-    m_recording = true;
-    m_recordedVv = vvOther;
-  }
+  if (!m_recordedVv)
+    m_recordedVv = make_unique<VersionVector>(vvOther);
 }
 
 }  // namespace svs

@@ -178,8 +178,9 @@ NDN_SVS_PUBLIC_WITH_TESTS_ELSE_PRIVATE:
    * @brief Record vector by merging it into m_recordedVv
    *
    * @param vvOther state vector to merge in
+   * @returns if recorded successfully
    */
-  void
+  bool
   recordVector(const VersionVector &vvOther);
 
   /**
@@ -231,10 +232,8 @@ private:
   // State
   VersionVector m_vv;
   mutable std::mutex m_vvMutex;
-  // If recording (in suppression state)
-  bool m_recording = false;
-  // aggregates incoming vectors while in suppression state
-  VersionVector m_recordedVv;
+  // Aggregates incoming vectors while in suppression state
+  std::unique_ptr<VersionVector> m_recordedVv = nullptr;
 
   // Random Engine
   ndn::random::RandomNumberEngine& m_rng;
