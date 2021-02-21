@@ -293,10 +293,12 @@ Logic::recordVector(const VersionVector &vvOther)
 }
 
 void
-Logic::enterSuppressionState(const VersionVector &vvOther) {
+Logic::enterSuppressionState(const VersionVector &vvOther)
+{
   std::lock_guard<std::mutex> lock(m_vvMutex);
 
-  if (!m_recording) {
+  if (!m_recording)
+  {
     m_recording = true;
     m_recordedVv = vvOther;
   }
