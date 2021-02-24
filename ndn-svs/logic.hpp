@@ -129,6 +129,13 @@ public:
   std::set<NodeID>
   getSessionNames() const;
 
+  /// @brief Get current version vector
+  VersionVector&
+  getState()
+  {
+    return m_vv;
+  }
+
   /// @brief Get human-readable representation of version vector
   std::string
   getStateStr() const
@@ -199,13 +206,6 @@ NDN_SVS_PUBLIC_WITH_TESTS_ELSE_PRIVATE:
   getScheduler()
   {
     return m_scheduler;
-  }
-
-  /// @brief Get current version vector
-  VersionVector&
-  getState()
-  {
-    return m_vv;
   }
 
   /// @brief Get the current time in microseconds with arbitrary reference
