@@ -25,23 +25,23 @@ namespace svs {
 /**
  * @brief Socket using shared prefix for data delivery
  *
- * Sync logic runs under <sync-prefix>
- * Data is produced as <data-prefix>/<node-id>/<seq>
- * Both prefixes must use multicast strategy if the node should
- * be able to cache/serve data for other nodes
+ * Sync logic runs under <grp-prefix>/s/
+ * Data is produced as <grp-prefix>/d/<node-id>/<seq>
+ * Both prefixes use multicast strategy, so all nodes receive
+ * data interests for all other nodes.
  */
 class SocketShared : public SocketBase
 {
 public:
-  SocketShared(const Name& syncPrefix,
-               const Name& dataPrefix,
+  SocketShared(const Name& grpPrefix,
                const NodeID& id,
                ndn::Face& face,
                const UpdateCallback& updateCallback,
                const SecurityOptions& securityOptions = SecurityOptions::DEFAULT,
                std::shared_ptr<DataStore> dataStore = DEFAULT_DATASTORE)
   : SocketBase(
-      syncPrefix, dataPrefix,
+      Name(grpPrefix).append("s"),
+      Name(grpPrefix).append("d"),
       id, face, updateCallback, securityOptions, dataStore)
   {}
 

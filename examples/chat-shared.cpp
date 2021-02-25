@@ -29,8 +29,7 @@ public:
 
     // Create socket with shared prefix
     auto svs = std::make_shared<ndn::svs::SocketShared>(
-      ndn::Name(m_options.prefix).append("s"),
-      ndn::Name(m_options.prefix).append("d"),
+      ndn::Name(m_options.prefix),
       ndn::Name(m_options.m_id).get(-1).toUri(),
       face,
       std::bind(&ProgramShared::onMissingData, this, _1),
