@@ -71,10 +71,7 @@ SocketBase::publishData(const Block& content, const ndn::time::milliseconds& fre
   data->setContent(content);
   data->setFreshnessPeriod(freshness);
 
-  if (m_securityOptions.dataSigningId.empty())
-    m_keyChain.sign(*data);
-  else
-    m_keyChain.sign(*data, signingByIdentity(m_securityOptions.dataSigningId));
+  m_keyChain.sign(*data, m_securityOptions.dataSigningInfo);
 
   m_dataStore->insert(*data);
   m_logic.updateSeqNo(newSeq, pubId);

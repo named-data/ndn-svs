@@ -25,8 +25,7 @@ public:
   {
     // Use HMAC signing
     ndn::svs::SecurityOptions securityOptions;
-    securityOptions.interestSignatureType = ndn::svs::SecurityOptions::HMAC;
-    securityOptions.hmacKey = "dGhpcyBpcyBhIHNlY3JldCBtZXNzYWdl";
+    securityOptions.interestSigningInfo.setSigningHmacKey("dGhpcyBpcyBhIHNlY3JldCBtZXNzYWdl");
 
     // Create socket with shared prefix
     auto svs = std::make_shared<ndn::svs::SocketShared>(

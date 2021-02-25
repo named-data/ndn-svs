@@ -52,24 +52,6 @@ Logic::Logic(ndn::Face& face,
                              bind(&Logic::onSyncInterest, this, _2),
                              bind(&Logic::retxSyncInterest, this, true, 0),
                              [] (const Name& prefix, const std::string& msg) {});
-
-  // Initialize security
-  m_interestSigningInfo.setSignedInterestFormat(security::SignedInterestFormat::V03);
-
-  switch (m_securityOptions.interestSignatureType)
-  {
-    case SecurityOptions::NONE:
-      break;
-
-    case SecurityOptions::HMAC:
-      m_interestSigningInfo.setSigningHmacKey(m_securityOptions.hmacKey);
-      m_interestSigningInfo.setDigestAlgorithm(DigestAlgorithm::SHA256);
-      break;
-
-    case SecurityOptions::IDENTITY:
-      m_interestSigningInfo.setSigningIdentity(m_securityOptions.interestSigningId);
-      break;
-  }
 }
 
 Logic::~Logic()
@@ -79,20 +61,20 @@ Logic::~Logic()
 void
 Logic::onSyncInterest(const Interest &interest)
 {
-  switch (m_securityOptions.interestSignatureType)
+  switch (m_securityOptions.interestSigningInfo.getSignerType())
   {
-    case SecurityOptions::NONE:
+    case security::SigningInfo::SIGNER_TYPE_NULL:
       onSyncInterestValidated(interest);
       return;
 
-    case SecurityOptions::HMAC:
+    case security::SigningInfo::SIGNER_TYPE_HMAC:
       if (security::verifySignature(interest, m_keyChainMem.getTpm(),
-                                    m_interestSigningInfo.getSignerName(),
+                                    m_securityOptions.interestSigningInfo.getSignerName(),
                                     DigestAlgorithm::SHA256))
         onSyncInterestValidated(interest);
       return;
 
-    case SecurityOptions::IDENTITY:
+    default:
       if (static_cast<bool>(m_securityOptions.validator))
         m_securityOptions.validator->validate(interest,
                                               bind(&Logic::onSyncInterestValidated, this, _1),
@@ -182,18 +164,18 @@ Logic::sendSyncInterest()
   interest.setCanBePrefix(true);
   interest.setMustBeFresh(true);
 
-  switch (m_securityOptions.interestSignatureType)
+  switch (m_securityOptions.interestSigningInfo.getSignerType())
   {
-    case SecurityOptions::NONE:
+    case security::SigningInfo::SIGNER_TYPE_NULL:
       interest.setName(syncName.appendNumber(0));
       break;
 
-    case SecurityOptions::HMAC:
-      m_keyChainMem.sign(interest, m_interestSigningInfo);
+    case security::SigningInfo::SIGNER_TYPE_HMAC:
+      m_keyChainMem.sign(interest, m_securityOptions.interestSigningInfo);
       break;
 
     default:
-      m_keyChain.sign(interest, m_interestSigningInfo);
+      m_keyChain.sign(interest, m_securityOptions.interestSigningInfo);
       break;
   }
 

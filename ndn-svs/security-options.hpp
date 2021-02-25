@@ -24,24 +24,22 @@ namespace svs {
 
 struct SecurityOptions
 {
-  /** Types of signatures for interests */
-  enum InterestSignatureType { NONE, HMAC, IDENTITY };
+  /** Signing options for sync interests */
+  security::SigningInfo interestSigningInfo;
+  /** Signing options for data packets */
+  security::SigningInfo dataSigningInfo;
 
-  /** Type of signature on interests */
-  InterestSignatureType interestSignatureType = NONE;
-  /** Signing ID to use for signing interests (IDENTITY) */
-  Name interestSigningId;
-  /** HMAC key to use for signing interests in Base64 */
-  std::string hmacKey;
-
-  /** Signing ID to use for signing data packets */
-  Name dataSigningId;
-
-  /** Validator to validate data and interests (IDENTITY) */
+  /** Validator to validate data and interests (unless using HMAC) */
   const std::shared_ptr<Validator> validator = DEFAULT_VALIDATOR;
 
   static const SecurityOptions DEFAULT;
   static const std::shared_ptr<Validator> DEFAULT_VALIDATOR;
+
+  SecurityOptions()
+  {
+    // Set defaults
+    interestSigningInfo.setSignedInterestFormat(security::SignedInterestFormat::V03);
+  }
 };
 
 }  // namespace svs

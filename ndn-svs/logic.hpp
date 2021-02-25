@@ -247,7 +247,6 @@ private:
   // Security
   ndn::KeyChain& m_keyChain;
   ndn::KeyChain m_keyChainMem;
-  security::SigningInfo m_interestSigningInfo;
 
   ndn::Scheduler m_scheduler;
   scheduler::ScopedEventId m_retxEvent;
