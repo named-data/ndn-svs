@@ -54,17 +54,17 @@ SocketBase::SocketBase(const Name& syncPrefix,
 
 void
 SocketBase::publishData(const uint8_t* buf, size_t len, const ndn::time::milliseconds& freshness,
-                        const uint64_t& seqNo, const NodeID id)
+                        const NodeID id)
 {
-  publishData(ndn::encoding::makeBinaryBlock(ndn::tlv::Content, buf, len), freshness, seqNo, id);
+  publishData(ndn::encoding::makeBinaryBlock(ndn::tlv::Content, buf, len), freshness, id);
 }
 
 void
 SocketBase::publishData(const Block& content, const ndn::time::milliseconds& freshness,
-                        const uint64_t& seqNo, const NodeID id)
+                        const NodeID id)
 {
   NodeID pubId = id != EMPTY_NODE_ID ? id : m_id;
-  SeqNo newSeq = seqNo > 0 ? seqNo : m_logic.getSeqNo(pubId) + 1;
+  SeqNo newSeq = m_logic.getSeqNo(pubId) + 1;
 
   Name dataName = getDataName(pubId, newSeq);
   shared_ptr<Data> data = make_shared<Data>(dataName);
