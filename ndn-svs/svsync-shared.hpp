@@ -14,32 +14,32 @@
  * PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
  */
 
-#ifndef NDN_SVS_SOCKET_SHARED_HPP
-#define NDN_SVS_SOCKET_SHARED_HPP
+#ifndef NDN_SVS_SVSYNC_SHARED_HPP
+#define NDN_SVS_SVSYNC_SHARED_HPP
 
-#include "socket-base.hpp"
+#include "svsync-base.hpp"
 
 namespace ndn {
 namespace svs {
 
 /**
- * @brief Socket using shared prefix for data delivery
+ * @brief SVSync using shared prefix for data delivery
  *
- * Sync logic runs under <grp-prefix>/s/
+ * Sync core runs under <grp-prefix>/s/
  * Data is produced as <grp-prefix>/d/<node-id>/<seq>
  * Both prefixes use multicast strategy, so all nodes receive
  * data interests for all other nodes.
  */
-class SocketShared : public SocketBase
+class SVSyncShared : public SVSyncBase
 {
 public:
-  SocketShared(const Name& grpPrefix,
+  SVSyncShared(const Name& grpPrefix,
                const NodeID& id,
                ndn::Face& face,
                const UpdateCallback& updateCallback,
                const SecurityOptions& securityOptions = SecurityOptions::DEFAULT,
                std::shared_ptr<DataStore> dataStore = DEFAULT_DATASTORE)
-  : SocketBase(
+  : SVSyncBase(
       Name(grpPrefix).append("s"),
       Name(grpPrefix).append("d"),
       id, face, updateCallback, securityOptions, dataStore)
@@ -72,4 +72,4 @@ private:
 }  // namespace svs
 }  // namespace ndn
 
-#endif // NDN_SVS_SOCKET_SHARED_HPP
+#endif // NDN_SVS_SVSYNC_SHARED_HPP

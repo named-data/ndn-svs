@@ -19,7 +19,7 @@
 #include <thread>
 #include <vector>
 
-#include <ndn-svs/socket-base.hpp>
+#include <ndn-svs/svsync-base.hpp>
 
 class Options
 {
@@ -89,7 +89,7 @@ protected:
 public:
   const Options m_options;
   ndn::Face face;
-  std::shared_ptr<ndn::svs::SocketBase> m_svs;
+  std::shared_ptr<ndn::svs::SVSyncBase> m_svs;
 };
 
 template <typename T>

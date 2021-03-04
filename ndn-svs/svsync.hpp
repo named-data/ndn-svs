@@ -14,31 +14,31 @@
  * PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
  */
 
-#ifndef NDN_SVS_SOCKET_HPP
-#define NDN_SVS_SOCKET_HPP
+#ifndef NDN_SVS_SVSYNC_HPP
+#define NDN_SVS_SVSYNC_HPP
 
-#include "socket-base.hpp"
+#include "svsync-base.hpp"
 
 namespace ndn {
 namespace svs {
 
 /**
- * @brief Socket using arbitrary prefix for data delivery
+ * @brief SVSync using arbitrary prefix for data delivery
  *
  * The data prefix acts as the node ID in the version vector
- * Sync logic runs under <sync-prefix>
+ * Sync core runs under <sync-prefix>
  * Data is produced as <data-prefix>/<sync-prefix>/<seq>
  */
-class Socket : public SocketBase
+class SVSync : public SVSyncBase
 {
 public:
-  Socket(const Name& syncPrefix,
+  SVSync(const Name& syncPrefix,
          const Name& nodePrefix,
          ndn::Face& face,
          const UpdateCallback& updateCallback,
          const SecurityOptions& securityOptions = SecurityOptions::DEFAULT,
          std::shared_ptr<DataStore> dataStore = DEFAULT_DATASTORE)
-  : SocketBase(
+  : SVSyncBase(
       syncPrefix,
       Name(nodePrefix).append(syncPrefix),
       nodePrefix.toUri(),
@@ -91,4 +91,4 @@ public:
 }  // namespace svs
 }  // namespace ndn
 
-#endif // NDN_SVS_SOCKET_HPP
+#endif // NDN_SVS_SVSYNC_HPP

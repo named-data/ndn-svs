@@ -14,7 +14,7 @@
  * PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
  */
 
-#include "logic.hpp"
+#include "core.hpp"
 
 #include <ndn-cxx/security/signing-helpers.hpp>
 #include <ndn-cxx/security/verification-helpers.hpp>
@@ -22,16 +22,16 @@
 namespace ndn {
 namespace svs {
 
-int Logic::s_instanceCounter = 0;
+int SVSyncCore::s_instanceCounter = 0;
 
-const NodeID Logic::EMPTY_NODE_ID;
+const NodeID SVSyncCore::EMPTY_NODE_ID;
 
-Logic::Logic(ndn::Face& face,
-             ndn::KeyChain& keyChain,
-             const Name& syncPrefix,
-             const UpdateCallback& onUpdate,
-             const SecurityOptions& securityOptions,
-             const NodeID nid)
+SVSyncCore::SVSyncCore(ndn::Face& face,
+                       ndn::KeyChain& keyChain,
+                       const Name& syncPrefix,
+                       const UpdateCallback& onUpdate,
+                       const SecurityOptions& securityOptions,
+                       const NodeID nid)
   : m_face(face)
   , m_syncPrefix(syncPrefix)
   , m_securityOptions(securityOptions)
@@ -49,17 +49,17 @@ Logic::Logic(ndn::Face& face,
   // Register sync interest filter
   m_syncRegisteredPrefix =
     m_face.setInterestFilter(syncPrefix,
-                             bind(&Logic::onSyncInterest, this, _2),
-                             bind(&Logic::retxSyncInterest, this, true, 0),
+                             bind(&SVSyncCore::onSyncInterest, this, _2),
+                             bind(&SVSyncCore::retxSyncInterest, this, true, 0),
                              [] (const Name& prefix, const std::string& msg) {});
 }
 
-Logic::~Logic()
+SVSyncCore::~SVSyncCore()
 {
 }
 
 void
-Logic::onSyncInterest(const Interest &interest)
+SVSyncCore::onSyncInterest(const Interest &interest)
 {
   switch (m_securityOptions.interestSigningInfo.getSignerType())
   {
@@ -77,7 +77,7 @@ Logic::onSyncInterest(const Interest &interest)
     default:
       if (static_cast<bool>(m_securityOptions.validator))
         m_securityOptions.validator->validate(interest,
-                                              bind(&Logic::onSyncInterestValidated, this, _1),
+                                              bind(&SVSyncCore::onSyncInterestValidated, this, _1),
                                               nullptr);
       else
         onSyncInterestValidated(interest);
@@ -86,7 +86,7 @@ Logic::onSyncInterest(const Interest &interest)
 }
 
 void
-Logic::onSyncInterestValidated(const Interest &interest)
+SVSyncCore::onSyncInterestValidated(const Interest &interest)
 {
   const auto &n = interest.getName();
 
@@ -129,7 +129,7 @@ Logic::onSyncInterestValidated(const Interest &interest)
 }
 
 void
-Logic::retxSyncInterest(const bool send, unsigned int delay)
+SVSyncCore::retxSyncInterest(const bool send, unsigned int delay)
 {
   if (send)
   {
@@ -151,7 +151,7 @@ Logic::retxSyncInterest(const bool send, unsigned int delay)
 }
 
 void
-Logic::sendSyncInterest()
+SVSyncCore::sendSyncInterest()
 {
   Name syncName(m_syncPrefix);
 
@@ -183,7 +183,7 @@ Logic::sendSyncInterest()
 }
 
 std::pair<bool, bool>
-Logic::mergeStateVector(const VersionVector &vvOther)
+SVSyncCore::mergeStateVector(const VersionVector &vvOther)
 {
   std::lock_guard<std::mutex> lock(m_vvMutex);
 
@@ -235,12 +235,12 @@ Logic::mergeStateVector(const VersionVector &vvOther)
 }
 
 void
-Logic::reset(bool isOnInterest)
+SVSyncCore::reset(bool isOnInterest)
 {
 }
 
 SeqNo
-Logic::getSeqNo(const NodeID& nid) const
+SVSyncCore::getSeqNo(const NodeID& nid) const
 {
   std::lock_guard<std::mutex> lock(m_vvMutex);
   NodeID t_nid = (nid == EMPTY_NODE_ID) ? m_id : nid;
@@ -248,7 +248,7 @@ Logic::getSeqNo(const NodeID& nid) const
 }
 
 void
-Logic::updateSeqNo(const SeqNo& seq, const NodeID& nid)
+SVSyncCore::updateSeqNo(const SeqNo& seq, const NodeID& nid)
 {
   NodeID t_nid = (nid == EMPTY_NODE_ID) ? m_id : nid;
 
@@ -264,7 +264,7 @@ Logic::updateSeqNo(const SeqNo& seq, const NodeID& nid)
 }
 
 std::set<NodeID>
-Logic::getSessionNames() const
+SVSyncCore::getSessionNames() const
 {
   std::lock_guard<std::mutex> lock(m_vvMutex);
   std::set<NodeID> sessionNames;
@@ -276,14 +276,14 @@ Logic::getSessionNames() const
 }
 
 long
-Logic::getCurrentTime() const
+SVSyncCore::getCurrentTime() const
 {
   return std::chrono::duration_cast<std::chrono::microseconds>(
     m_steadyClock.now().time_since_epoch()).count();
 }
 
 bool
-Logic::recordVector(const VersionVector &vvOther)
+SVSyncCore::recordVector(const VersionVector &vvOther)
 {
   if (!m_recordedVv) return false;
 
@@ -305,7 +305,7 @@ Logic::recordVector(const VersionVector &vvOther)
 }
 
 void
-Logic::enterSuppressionState(const VersionVector &vvOther)
+SVSyncCore::enterSuppressionState(const VersionVector &vvOther)
 {
   std::lock_guard<std::mutex> lock(m_vvMutex);
 

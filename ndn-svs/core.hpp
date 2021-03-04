@@ -14,8 +14,8 @@
  * PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
  */
 
-#ifndef NDN_SVS_LOGIC_HPP
-#define NDN_SVS_LOGIC_HPP
+#ifndef NDN_SVS_CORE_HPP
+#define NDN_SVS_CORE_HPP
 
 #include "common.hpp"
 #include "version-vector.hpp"
@@ -50,9 +50,9 @@ public:
 using UpdateCallback = function<void(const std::vector<MissingDataInfo>&)>;
 
 /**
- * @brief Logic of SVS
+ * @brief Pure SVS
  */
-class Logic : noncopyable
+class SVSyncCore : noncopyable
 {
 public:
   class Error : public std::runtime_error
@@ -75,14 +75,14 @@ public:
    * @param syncKey Base64 encoded key to sign sync interests
    * @param nid ID for the node
    */
-  Logic(ndn::Face& face,
-        ndn::KeyChain& keyChain,
-        const Name& syncPrefix,
-        const UpdateCallback& onUpdate,
-        const SecurityOptions& securityOptions = SecurityOptions::DEFAULT,
-        const NodeID nid = EMPTY_NODE_ID);
+  SVSyncCore(ndn::Face& face,
+             ndn::KeyChain& keyChain,
+             const Name& syncPrefix,
+             const UpdateCallback& onUpdate,
+             const SecurityOptions& securityOptions = SecurityOptions::DEFAULT,
+             const NodeID nid = EMPTY_NODE_ID);
 
-  ~Logic();
+  ~SVSyncCore();
 
   /**
    * @brief Reset the sync tree (and restart synchronization again)
@@ -264,4 +264,4 @@ private:
 }  // namespace svs
 }  // namespace ndn
 
-#endif // NDN_SVS_LOGIC_HPP
+#endif // NDN_SVS_CORE_HPP

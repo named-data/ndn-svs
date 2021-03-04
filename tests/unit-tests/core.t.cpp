@@ -14,7 +14,7 @@
  * PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
  */
 
-#include "logic.hpp"
+#include "core.hpp"
 
 #include "tests/boost-test.hpp"
 
@@ -22,18 +22,18 @@ namespace ndn {
 namespace svs {
 namespace test {
 
-struct TestLogicFixture
+struct TestCoreFixture
 {
-  TestLogicFixture()
+  TestCoreFixture()
     : m_syncPrefix("/ndn/test")
-    , m_logic(m_face, m_keyChain, m_syncPrefix, bind(&TestLogicFixture::update, this, _1))
+    , m_core(m_face, m_keyChain, m_syncPrefix, bind(&TestCoreFixture::update, this, _1))
   {
   }
 
   Face m_face;
   KeyChain m_keyChain;
   Name m_syncPrefix;
-  Logic m_logic;
+  SVSyncCore m_core;
 
   std::vector<MissingDataInfo> missingData;
 
@@ -45,11 +45,11 @@ struct TestLogicFixture
   }
 };
 
-BOOST_FIXTURE_TEST_SUITE(TestLogic, TestLogicFixture)
+BOOST_FIXTURE_TEST_SUITE(TestCore, TestCoreFixture)
 
 BOOST_AUTO_TEST_CASE(mergeStateVector)
 {
-  VersionVector v = m_logic.getState();
+  VersionVector v = m_core.getState();
   BOOST_CHECK_EQUAL(v.get("one"), 0);
   BOOST_CHECK_EQUAL(v.get("two"), 0);
   BOOST_CHECK_EQUAL(v.get("three"), 0);
@@ -58,9 +58,9 @@ BOOST_AUTO_TEST_CASE(mergeStateVector)
   VersionVector v1;
   v1.set("one", 1);
   v1.set("two", 2);
-  m_logic.mergeStateVector(v1);
+  m_core.mergeStateVector(v1);
 
-  v = m_logic.getState();
+  v = m_core.getState();
   BOOST_CHECK_EQUAL(v.get("one"), 1);
   BOOST_CHECK_EQUAL(v.get("two"), 2);
   BOOST_CHECK_EQUAL(v.get("three"), 0);
@@ -71,9 +71,9 @@ BOOST_AUTO_TEST_CASE(mergeStateVector)
   v2.set("two", 1);
   v2.set("three", 3);
   missingData.clear();
-  m_logic.mergeStateVector(v2);
+  m_core.mergeStateVector(v2);
 
-  v = m_logic.getState();
+  v = m_core.getState();
   BOOST_CHECK_EQUAL(v.get("one"), 1);
   BOOST_CHECK_EQUAL(v.get("two"), 2);
   BOOST_CHECK_EQUAL(v.get("three"), 3);

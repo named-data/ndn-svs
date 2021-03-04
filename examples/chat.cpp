@@ -16,7 +16,7 @@
 
 #include "chat.hpp"
 
-#include <ndn-svs/socket.hpp>
+#include <ndn-svs/svsync.hpp>
 
 class ProgramPrefix : public Program
 {
@@ -27,7 +27,7 @@ public:
     ndn::svs::SecurityOptions securityOptions;
     securityOptions.interestSigningInfo.setSigningHmacKey("dGhpcyBpcyBhIHNlY3JldCBtZXNzYWdl");
 
-    m_svs = std::make_shared<ndn::svs::Socket>(
+    m_svs = std::make_shared<ndn::svs::SVSync>(
       ndn::Name(m_options.prefix),
       ndn::Name(m_options.m_id),
       face,

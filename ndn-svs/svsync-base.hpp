@@ -14,11 +14,11 @@
  * PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
  */
 
-#ifndef NDN_SVS_SOCKET_BASE_HPP
-#define NDN_SVS_SOCKET_BASE_HPP
+#ifndef NDN_SVS_SVSYNC_BASE_HPP
+#define NDN_SVS_SVSYNC_BASE_HPP
 
 #include "common.hpp"
-#include "logic.hpp"
+#include "core.hpp"
 #include "store.hpp"
 #include "security-options.hpp"
 
@@ -26,16 +26,11 @@ namespace ndn {
 namespace svs {
 
 /**
- * @brief A simple interface to interact with client code
- *
- * Though it is called Socket, it is not a real socket. It just trying to provide
- * a simplified interface for data publishing and fetching.
+ * @brief A simple interface to interact with SVS
  *
  * This interface simplify data publishing.  Client can simply dump raw data
  * into this interface without handling the SVS specific details, such
  * as sequence number and session id.
- *
- * The socket will throw if signingId does not exist.
  *
  * This interface also simplifies data fetching.  Client only needs to provide a
  * data fetching strategy (through a updateCallback).
@@ -48,10 +43,10 @@ namespace svs {
  * @param securityOptions Signing and validation options for interests and data
  * @param dataStore Interface to store data packets
  */
-class SocketBase : noncopyable
+class SVSyncBase : noncopyable
 {
 public:
-  SocketBase(const Name& syncPrefix,
+  SVSyncBase(const Name& syncPrefix,
              const Name& dataPrefix,
              const NodeID& id,
              ndn::Face& face,
@@ -59,7 +54,7 @@ public:
              const SecurityOptions& securityOptions = SecurityOptions::DEFAULT,
              std::shared_ptr<DataStore> dataStore = DEFAULT_DATASTORE);
 
-  virtual ~SocketBase() = default;
+  virtual ~SVSyncBase() = default;
 
   using DataValidatedCallback = function<void(const Data&)>;
 
@@ -129,7 +124,7 @@ public:
   /**
    * @brief Return data name for a given packet
    *
-   * The derived Socket class must provide implementation. Note that
+   * The derived SVSync class must provide implementation. Note that
    * the data name for the own node MUST be under the regtistered
    * data prefix for proper functionality, or the application must
    * independently produce data under the prefix.
@@ -144,11 +139,11 @@ public:
     return *m_dataStore;
   }
 
-  /*** @brief Get the underlying SVS logic */
-  Logic&
-  getLogic()
+  /*** @brief Get the underlying SVS core */
+  SVSyncCore&
+  getCore()
   {
-    return m_logic;
+    return m_core;
   }
 
 public:
@@ -205,10 +200,10 @@ private:
 
   std::shared_ptr<DataStore> m_dataStore;
 
-  Logic m_logic;
+  SVSyncCore m_core;
 };
 
 }  // namespace svs
 }  // namespace ndn
 
-#endif // NDN_SVS_SOCKET_BASE_HPP
+#endif // NDN_SVS_SVSYNC_BASE_HPP
