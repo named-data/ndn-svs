@@ -234,6 +234,7 @@ private:
   mutable std::mutex m_vvMutex;
   // Aggregates incoming vectors while in suppression state
   std::unique_ptr<VersionVector> m_recordedVv = nullptr;
+  mutable std::mutex m_recordedVvMutex;
 
   // Random Engine
   ndn::random::RandomNumberEngine& m_rng;
@@ -249,6 +250,7 @@ private:
   ndn::KeyChain m_keyChainMem;
 
   ndn::Scheduler m_scheduler;
+  mutable std::mutex m_schedulerMutex;
   scheduler::ScopedEventId m_retxEvent;
   scheduler::ScopedEventId m_packetEvent;
 

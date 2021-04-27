@@ -133,6 +133,8 @@ SVSyncCore::retxSyncInterest(const bool send, unsigned int delay)
 {
   if (send)
   {
+    std::lock_guard<std::mutex> lock(m_recordedVvMutex);
+
     // Only send interest if in steady state or local vector has newer state
     // than recorded interests
     if (!m_recordedVv || mergeStateVector(*m_recordedVv).first)
@@ -143,11 +145,15 @@ SVSyncCore::retxSyncInterest(const bool send, unsigned int delay)
   if (delay == 0)
     delay = m_retxDist(m_rng);
 
-  // Store the scheduled time
-  m_nextSyncInterest = getCurrentTime() + 1000 * delay;
+  {
+    std::lock_guard<std::mutex> lock(m_schedulerMutex);
 
-  m_retxEvent = m_scheduler.schedule(time::milliseconds(delay),
-                                     [this] { retxSyncInterest(true, 0); });
+    // Store the scheduled time
+    m_nextSyncInterest = getCurrentTime() + 1000 * delay;
+
+    m_retxEvent = m_scheduler.schedule(time::milliseconds(delay),
+                                      [this] { retxSyncInterest(true, 0); });
+  }
 }
 
 void
@@ -285,9 +291,11 @@ SVSyncCore::getCurrentTime() const
 bool
 SVSyncCore::recordVector(const VersionVector &vvOther)
 {
+  std::lock_guard<std::mutex> lock(m_recordedVvMutex);
+
   if (!m_recordedVv) return false;
 
-  std::lock_guard<std::mutex> lock(m_vvMutex);
+  std::lock_guard<std::mutex> lock1(m_vvMutex);
 
   for (auto entry : vvOther)
   {
@@ -307,7 +315,7 @@ SVSyncCore::recordVector(const VersionVector &vvOther)
 void
 SVSyncCore::enterSuppressionState(const VersionVector &vvOther)
 {
-  std::lock_guard<std::mutex> lock(m_vvMutex);
+  std::lock_guard<std::mutex> lock(m_recordedVvMutex);
 
   if (!m_recordedVv)
     m_recordedVv = make_unique<VersionVector>(vvOther);
