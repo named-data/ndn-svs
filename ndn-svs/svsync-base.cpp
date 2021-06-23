@@ -89,7 +89,8 @@ SVSyncBase::publishData(const Block& content, const ndn::time::milliseconds& fre
 void
 SVSyncBase::onDataInterest(const Interest &interest) {
   auto data = m_dataStore->find(interest);
-  if (data != nullptr) {
+  if (data != nullptr)
+  {
     m_face.put(*data);
     return;
   }
