@@ -69,7 +69,7 @@ public:
     MissingDataInfo info;
     info.low = name.get(-2).toNumber();
     info.high = name.get(-1).toNumber();
-    info.session = name.getPrefix(-2 - m_syncPrefix.size()).toUri();
+    info.session = name.getPrefix(-3 - m_syncPrefix.size()).toUri();
     return info;
   }
 

@@ -9,6 +9,8 @@ enum {
   VersionVector = 201,
   VersionVectorKey = 202,
   VersionVectorValue = 203,
+  MappingData = 205,
+  MappingEntry = 206,
 };
 
 } // namespace tlv

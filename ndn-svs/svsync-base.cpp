@@ -16,6 +16,7 @@
 
 #include "svsync-base.hpp"
 #include "store-memory.hpp"
+#include "tlv.hpp"
 
 #include <ndn-cxx/security/signing-helpers.hpp>
 
@@ -207,12 +208,48 @@ void
 SVSyncBase::onMappingQuery(const Interest& interest)
 {
   MissingDataInfo query = parseMappingQueryDataName(interest.getName());
-  std::cout << "Received mapping query " << query.session << " = " << query.low << " = " << query.high << std::endl;
+  std::vector<std::pair<SeqNo, Name>> queryResponse;
+
+  for (SeqNo i = query.low; i <= std::max(query.high, query.low); i++)
+  {
+    auto data = m_dataStore->find(Interest(getDataName(query.session, i)));
+    if (data != nullptr)
+      if (data->getContentType() == ndn::tlv::Data)
+      {
+        Name name = Data(data->getContent().blockFromValue()).getName();
+        queryResponse.push_back(std::make_pair(i, name));
+      }
+  }
+
+  ndn::encoding::Encoder enc;
+  size_t totalLength = 0;
+
+  for (const auto p : queryResponse)
+  {
+    size_t entryLength = enc.prependBlock(p.second.wireEncode());
+    size_t valLength = enc.prependNonNegativeInteger(p.first);
+    entryLength += enc.prependVarNumber(valLength);
+    entryLength += enc.prependVarNumber(tlv::VersionVectorValue);
+    entryLength += valLength;
+
+    totalLength += enc.prependVarNumber(entryLength);
+    totalLength += enc.prependVarNumber(tlv::MappingEntry);
+    totalLength += entryLength;
+  }
+
+  totalLength += enc.prependVarNumber(totalLength);
+  totalLength += enc.prependVarNumber(tlv::MappingData);
+
+  Data data(interest.getName());
+  data.setContent(enc.block());
+  data.setFreshnessPeriod(ndn::time::milliseconds(1000));
+  m_keyChain.sign(data, m_securityOptions.dataSigningInfo);
+  m_face.put(data);
 }
 
 void
 SVSyncBase::fetchNameMapping(const MissingDataInfo info,
-                             const DataValidatedCallback& onValidated,
+                             const MappingListCallback& onValidated,
                              const int nRetries)
 {
   TimeoutCallback onTimeout =
@@ -222,7 +259,7 @@ SVSyncBase::fetchNameMapping(const MissingDataInfo info,
 
 void
 SVSyncBase::fetchNameMapping(const MissingDataInfo info,
-                             const DataValidatedCallback& onValidated,
+                             const MappingListCallback& onValidated,
                              const TimeoutCallback& onTimeout,
                              const int nRetries)
 {
@@ -231,15 +268,34 @@ SVSyncBase::fetchNameMapping(const MissingDataInfo info,
   interest.setMustBeFresh(true);
   interest.setCanBePrefix(false);
 
+  DataValidatedCallback onDataValidated = [onValidated] (const Data& data)
+  {
+    MappingList list;
+
+    Block block = data.getContent().blockFromValue();
+    block.parse();
+
+    for (auto it = block.elements_begin(); it < block.elements_end(); it++) {
+      if (it->type() != tlv::MappingEntry) continue;
+      it->parse();
+
+      SeqNo seqNo = ndn::encoding::readNonNegativeInteger(it->elements().at(0));
+      Name name(it->elements().at(1));
+      list.push_back(std::make_pair(seqNo, name));
+    }
+
+    onValidated(list);
+  };
+
   DataValidationErrorCallback onValidationFailed =
     bind(&SVSyncBase::onDataValidationFailed, this, _1, _2);
 
   m_face.expressInterest(interest,
-                         bind(&SVSyncBase::onData, this, _1, _2, onValidated, onValidationFailed),
+                         bind(&SVSyncBase::onData, this, _1, _2, onDataValidated, onValidationFailed),
                          bind(&SVSyncBase::onDataTimeout, this, _1, nRetries,
-                              onValidated, onValidationFailed, onTimeout), // Nack
+                              onDataValidated, onValidationFailed, onTimeout), // Nack
                          bind(&SVSyncBase::onDataTimeout, this, _1, nRetries,
-                              onValidated, onValidationFailed, onTimeout));
+                              onDataValidated, onValidationFailed, onTimeout));
 }
 
 }  // namespace svs

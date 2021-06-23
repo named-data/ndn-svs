@@ -57,7 +57,6 @@ public:
   virtual ~SVSyncBase() = default;
 
   using DataValidatedCallback = function<void(const Data&)>;
-
   using DataValidationErrorCallback = function<void(const Data&, const ValidationError& error)> ;
 
   /**
@@ -141,7 +140,7 @@ public:
    */
   void
   fetchNameMapping(const MissingDataInfo info,
-                   const DataValidatedCallback& onValidated,
+                   const MappingListCallback& onValidated,
                    const int nRetries = 0);
 
   /**
@@ -153,7 +152,7 @@ public:
    */
   void
   fetchNameMapping(const MissingDataInfo info,
-                   const DataValidatedCallback& onValidated,
+                   const MappingListCallback& onValidated,
                    const TimeoutCallback& onTimeout,
                    const int nRetries = 0);
 
