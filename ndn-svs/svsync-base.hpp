@@ -106,7 +106,7 @@ public:
   /**
    * @brief Retrive a data packet with a particular seqNo from a session
    *
-   * @param sessionName The name of the target session.
+   * @param nid The name of the target node
    * @param seq The seqNo of the data packet.
    * @param onValidated The callback when the retrieved packet has been validated.
    * @param nRetries The number of retries.
@@ -114,12 +114,12 @@ public:
   void
   fetchData(const NodeID& nid, const SeqNo& seq,
             const DataValidatedCallback& onValidated,
-            int nRetries = 0);
+            const int nRetries = 0);
 
   /**
    * @brief Retrive a data packet with a particular seqNo from a session
    *
-   * @param sessionName The name of the target session.
+   * @param nid The name of the target node
    * @param seq The seqNo of the data packet.
    * @param onValidated The callback when the retrieved packet has been validated.
    * @param onValidationFailed The callback when the retrieved packet failed validation.
@@ -131,18 +131,31 @@ public:
             const DataValidatedCallback& onValidated,
             const DataValidationErrorCallback& onValidationFailed,
             const TimeoutCallback& onTimeout,
-            int nRetries = 0);
+            const int nRetries = 0);
 
   /**
-   * @brief Return data name for a given packet
+   * @brief Retrieve the data mappings for encapsulated data packets
    *
-   * The derived SVSync class must provide implementation. Note that
-   * the data name for the own node MUST be under the regtistered
-   * data prefix for proper functionality, or the application must
-   * independently produce data under the prefix.
+   * @param info Query info
+   * @param onValidated Callback when mapping is fetched and validated
    */
-  virtual Name
-  getDataName(const NodeID& nid, const SeqNo& seqNo) = 0;
+  void
+  fetchNameMapping(const MissingDataInfo info,
+                   const DataValidatedCallback& onValidated,
+                   const int nRetries = 0);
+
+  /**
+   * @brief Retrieve the data mappings for encapsulated data packets
+   *
+   * @param info Query info
+   * @param onValidated Callback when mapping is fetched and validated
+   * @param onTimeout Callback when mapping is not retrieved
+   */
+  void
+  fetchNameMapping(const MissingDataInfo info,
+                   const DataValidatedCallback& onValidated,
+                   const TimeoutCallback& onTimeout,
+                   const int nRetries = 0);
 
   /*** @brief Get the underlying data store */
   DataStore&
@@ -157,6 +170,44 @@ public:
   {
     return m_core;
   }
+
+protected:
+  /**
+   * @brief Return data name for a given packet
+   *
+   * The derived SVSync class must provide implementation. Note that
+   * the data name for the own node MUST be under the registered
+   * data prefix for proper functionality, or the application must
+   * independently produce data under the prefix.
+   */
+  virtual Name
+  getDataName(const NodeID& nid, const SeqNo& seqNo) = 0;
+
+  /**
+   * @brief Return data name for mapping query
+   *
+   * The derived SVSync class must provide implementation. Note that
+   * the name for self MUST be under the registered data prefix
+   */
+  virtual Name
+  getMappingQueryDataName(const MissingDataInfo& info) = 0;
+
+  /**
+   * @brief Return if the given name is a mapping query
+   *
+   * The derived SVSync class must provide implementation.
+   */
+  virtual bool
+  isMappingQueryDataName(const Name& name) = 0;
+
+  /**
+   * @brief Return the query from mapping data name
+   *
+   * The derived SVSync class must provide implementation.
+   * Must return the NodeID, start and end sequence numbers.
+   */
+  virtual MissingDataInfo
+  parseMappingQueryDataName(const Name& name) = 0;
 
 public:
   static const NodeID EMPTY_NODE_ID;
@@ -185,6 +236,9 @@ private:
   void
   onDataValidationFailed(const Data& data,
                          const ValidationError& error);
+
+  void
+  onMappingQuery(const Interest& interest);
 
   /**
    * Determines whether a particular data packet is to be cached

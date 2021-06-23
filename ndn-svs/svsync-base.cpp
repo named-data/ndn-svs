@@ -89,14 +89,19 @@ SVSyncBase::publishData(const Block& content, const ndn::time::milliseconds& fre
 void
 SVSyncBase::onDataInterest(const Interest &interest) {
   auto data = m_dataStore->find(interest);
-  if (data != nullptr)
+  if (data != nullptr) {
     m_face.put(*data);
+    return;
+  }
+
+  if (isMappingQueryDataName(interest.getName()))
+    onMappingQuery(interest);
 }
 
 void
 SVSyncBase::fetchData(const NodeID& nid, const SeqNo& seqNo,
                       const DataValidatedCallback& onValidated,
-                      int nRetries)
+                      const int nRetries)
 {
   Name interestName = getDataName(nid, seqNo);
   Interest interest(interestName);
@@ -121,7 +126,7 @@ SVSyncBase::fetchData(const NodeID& nid, const SeqNo& seqNo,
                       const DataValidatedCallback& onValidated,
                       const DataValidationErrorCallback& onValidationFailed,
                       const TimeoutCallback& onTimeout,
-                      int nRetries)
+                      const int nRetries)
 {
   Name interestName = getDataName(nid, seqNo);
   Interest interest(interestName);
@@ -195,6 +200,45 @@ void
 SVSyncBase::onDataValidationFailed(const Data& data,
                                    const ValidationError& error)
 {
+}
+
+void
+SVSyncBase::onMappingQuery(const Interest& interest)
+{
+  MissingDataInfo query = parseMappingQueryDataName(interest.getName());
+  std::cout << "Received mapping query " << query.session << " = " << query.low << " = " << query.high << std::endl;
+}
+
+void
+SVSyncBase::fetchNameMapping(const MissingDataInfo info,
+                             const DataValidatedCallback& onValidated,
+                             const int nRetries)
+{
+  TimeoutCallback onTimeout =
+    [] (const Interest& interest) {};
+  return fetchNameMapping(info, onValidated, onTimeout, nRetries);
+}
+
+void
+SVSyncBase::fetchNameMapping(const MissingDataInfo info,
+                             const DataValidatedCallback& onValidated,
+                             const TimeoutCallback& onTimeout,
+                             const int nRetries)
+{
+  Name queryName = getMappingQueryDataName(info);
+  Interest interest(queryName);
+  interest.setMustBeFresh(true);
+  interest.setCanBePrefix(false);
+
+  DataValidationErrorCallback onValidationFailed =
+    bind(&SVSyncBase::onDataValidationFailed, this, _1, _2);
+
+  m_face.expressInterest(interest,
+                         bind(&SVSyncBase::onData, this, _1, _2, onValidated, onValidationFailed),
+                         bind(&SVSyncBase::onDataTimeout, this, _1, nRetries,
+                              onValidated, onValidationFailed, onTimeout), // Nack
+                         bind(&SVSyncBase::onDataTimeout, this, _1, nRetries,
+                              onValidated, onValidationFailed, onTimeout));
 }
 
 }  // namespace svs
