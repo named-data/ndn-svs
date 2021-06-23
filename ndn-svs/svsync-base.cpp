@@ -177,13 +177,16 @@ SVSyncBase::onDataValidated(const Data& data,
   if (shouldCache(data))
     m_dataStore->insert(data);
 
-  if (data.getContentType() == ndn::tlv::Data) {
+  if (data.getContentType() == ndn::tlv::Data)
+  {
     Data encapsulatedData(data.getContent().blockFromValue());
     if (static_cast<bool>(m_securityOptions.validator))
       m_securityOptions.validator->validate(encapsulatedData, dataCallback, onFailed);
     else
       dataCallback(encapsulatedData);
-  } else {
+  }
+  else
+  {
     dataCallback(data);
   }
 }
