@@ -38,6 +38,7 @@ public:
     : m_options(options)
   {
     std::cout << "SVS client starting:" << m_options.m_id << std::endl;
+    m_signingInfo.setSha256Signing();
   }
 
   void
@@ -69,10 +70,9 @@ protected:
         ndn::svs::NodeID nid = v[i].session;
         m_svs->fetchData(nid, s, [nid] (const ndn::Data& data)
           {
-            size_t data_size = data.getContent().value_size();
-            std::string content_str((char *)data.getContent().value(), data_size);
-            content_str = nid + " : " + content_str;
-            std::cout << content_str << std::endl;
+            const size_t data_size = data.getContent().value_size();
+            const std::string content_str((char *)data.getContent().value(), data_size);
+            std::cout << data.getName() << " : " << content_str << std::endl;
           });
       }
     }
@@ -81,15 +81,27 @@ protected:
   void
   publishMsg(std::string msg)
   {
-    m_svs->publishData(reinterpret_cast<const uint8_t*>(msg.c_str()),
-                       msg.size(),
-                       ndn::time::milliseconds(1000));
+    // Content block
+    ndn::Block block = ndn::encoding::makeBinaryBlock(ndn::tlv::Content, reinterpret_cast<const uint8_t*>(msg.c_str()), msg.size());
+
+    // Data packet
+    ndn::Name name(m_options.m_id);
+    name.appendTimestamp();
+
+    ndn::Data data(name);
+    data.setContent(block);
+    data.setFreshnessPeriod(ndn::time::milliseconds(1000));
+    m_keyChain.sign(data, m_signingInfo);
+
+    m_svs->publishData(data);
   }
 
 public:
   const Options m_options;
   ndn::Face face;
   std::shared_ptr<ndn::svs::SVSyncBase> m_svs;
+  ndn::KeyChain m_keyChain;
+  ndn::security::SigningInfo m_signingInfo;
 };
 
 template <typename T>

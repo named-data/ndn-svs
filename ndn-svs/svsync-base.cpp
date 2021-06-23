@@ -60,8 +60,14 @@ SVSyncBase::publishData(const uint8_t* buf, size_t len, const ndn::time::millise
 }
 
 void
+SVSyncBase::publishData(const Data& data, const NodeID id)
+{
+  publishData(data.wireEncode(), data.getFreshnessPeriod(), id, ndn::tlv::Data);
+}
+
+void
 SVSyncBase::publishData(const Block& content, const ndn::time::milliseconds& freshness,
-                        const NodeID id)
+                        const NodeID id, const uint32_t contentType)
 {
   NodeID pubId = id != EMPTY_NODE_ID ? id : m_id;
   SeqNo newSeq = m_core.getSeqNo(pubId) + 1;
@@ -70,6 +76,9 @@ SVSyncBase::publishData(const Block& content, const ndn::time::milliseconds& fre
   shared_ptr<Data> data = make_shared<Data>(dataName);
   data->setContent(content);
   data->setFreshnessPeriod(freshness);
+
+  if (contentType != ndn::tlv::Invalid)
+    data->setContentType(contentType);
 
   m_keyChain.sign(*data, m_securityOptions.dataSigningInfo);
 
@@ -86,8 +95,8 @@ SVSyncBase::onDataInterest(const Interest &interest) {
 
 void
 SVSyncBase::fetchData(const NodeID& nid, const SeqNo& seqNo,
-                  const DataValidatedCallback& onValidated,
-                  int nRetries)
+                      const DataValidatedCallback& onValidated,
+                      int nRetries)
 {
   Name interestName = getDataName(nid, seqNo);
   Interest interest(interestName);
@@ -134,10 +143,10 @@ SVSyncBase::onData(const Interest& interest, const Data& data,
 {
   if (static_cast<bool>(m_securityOptions.validator))
     m_securityOptions.validator->validate(data,
-                                          bind(&SVSyncBase::onDataValidated, this, _1, onValidated),
+                                          bind(&SVSyncBase::onDataValidated, this, _1, onValidated, onFailed),
                                           onFailed);
   else
-    onDataValidated(data, onValidated);
+    onDataValidated(data, onValidated, onFailed);
 }
 
 void
@@ -162,12 +171,21 @@ SVSyncBase::onDataTimeout(const Interest& interest, int nRetries,
 
 void
 SVSyncBase::onDataValidated(const Data& data,
-                            const DataValidatedCallback& dataCallback)
+                            const DataValidatedCallback& dataCallback,
+                            const DataValidationErrorCallback& onFailed)
 {
   if (shouldCache(data))
     m_dataStore->insert(data);
 
-  dataCallback(data);
+  if (data.getContentType() == ndn::tlv::Data) {
+    Data encapsulatedData(data.getContent().blockFromValue());
+    if (static_cast<bool>(m_securityOptions.validator))
+      m_securityOptions.validator->validate(encapsulatedData, dataCallback, onFailed);
+    else
+      dataCallback(encapsulatedData);
+  } else {
+    dataCallback(data);
+  }
 }
 
 void
