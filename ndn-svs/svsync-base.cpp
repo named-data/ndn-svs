@@ -105,22 +105,11 @@ SVSyncBase::fetchData(const NodeID& nid, const SeqNo& seqNo,
                       const DataValidatedCallback& onValidated,
                       const int nRetries)
 {
-  Name interestName = getDataName(nid, seqNo);
-  Interest interest(interestName);
-  interest.setMustBeFresh(true);
-  interest.setCanBePrefix(false);
-
   DataValidationErrorCallback onValidationFailed =
     bind(&SVSyncBase::onDataValidationFailed, this, _1, _2);
   TimeoutCallback onTimeout =
     [] (const Interest& interest) {};
-
-  m_face.expressInterest(interest,
-                         bind(&SVSyncBase::onData, this, _1, _2, onValidated, onValidationFailed),
-                         bind(&SVSyncBase::onDataTimeout, this, _1, nRetries,
-                              onValidated, onValidationFailed, onTimeout), // Nack
-                         bind(&SVSyncBase::onDataTimeout, this, _1, nRetries,
-                              onValidated, onValidationFailed, onTimeout));
+  fetchData(nid, seqNo, onValidated, onValidationFailed, onTimeout, nRetries);
 }
 
 void
