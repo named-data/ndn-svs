@@ -113,6 +113,7 @@ SVSyncBase::fetchData(const NodeID& nid, const SeqNo& seqNo,
   Interest interest(interestName);
   interest.setMustBeFresh(true);
   interest.setCanBePrefix(false);
+  interest.setInterestLifetime(ndn::time::milliseconds(4000));
 
   m_face.expressInterest(interest,
                          bind(&SVSyncBase::onData, this, _1, _2, onValidated, onValidationFailed),

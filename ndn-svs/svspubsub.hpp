@@ -24,6 +24,10 @@
 #include "svsync.hpp"
 #include "mapping-provider.hpp"
 
+#include <boost/multi_index_container.hpp>
+#include <boost/multi_index/hashed_index.hpp>
+#include <boost/multi_index/sequenced_index.hpp>
+
 namespace ndn {
 namespace svs {
 
@@ -54,7 +58,8 @@ public:
   virtual ~SVSPubSub() = default;
 
   /** Subscription Data type */
-  struct SubscriptionData {
+  struct SubscriptionData
+  {
     const Data& data;
     const Name& producerPrefix;
     const SeqNo seqNo;
@@ -82,11 +87,13 @@ public:
    *
    * @param nodePrefix Prefix of the producer
    * @param callback Callback when new data is received from the producer
+   * @param prefetch Mark as low latency stream(s)
    *
    * @returns Handle to the subscription
    */
   uint32_t
-  subscribeToProducer(const Name nodePrefix, const SubscriptionCallback callback);
+  subscribeToProducer(const Name nodePrefix, const SubscriptionCallback callback,
+                      const bool prefetch = false);
 
   /**
    * @brief Subscribe to a data prefix
@@ -115,7 +122,13 @@ public:
   }
 
 private:
-  struct Subscription { uint32_t id; Name prefix; SubscriptionCallback callback; };
+  struct Subscription
+  {
+    uint32_t id;
+    Name prefix;
+    SubscriptionCallback callback;
+    bool prefetch = false;
+  };
 
   bool
   onSyncData(const Data& syncData, const Subscription& subscription,
@@ -138,6 +151,21 @@ private:
   uint32_t m_subscriptionCount;
   std::vector<Subscription> m_producerSubscriptions;
   std::vector<Subscription> m_prefixSubscriptions;
+
+  struct Queue {};
+  struct Hashtable {};
+  using Container = boost::multi_index_container<
+    size_t,
+    boost::multi_index::indexed_by<
+      boost::multi_index::sequenced<boost::multi_index::tag<Queue>>,
+      boost::multi_index::hashed_non_unique<boost::multi_index::tag<Hashtable>,
+                                            boost::multi_index::identity<size_t>>
+    >
+  >;
+
+  Container m_doneIndex;
+  Container::index<Queue>::type& m_doneQueue = m_doneIndex.get<Queue>();
+  Container::index<Hashtable>::type& m_doneHt = m_doneIndex.get<Hashtable>();
 };
 
 }  // namespace svs

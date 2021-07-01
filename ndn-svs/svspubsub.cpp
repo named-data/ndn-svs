@@ -18,6 +18,8 @@
 #include "store-memory.hpp"
 #include "tlv.hpp"
 
+#include <functional>
+
 namespace ndn {
 namespace svs {
 
@@ -49,10 +51,11 @@ SVSPubSub::publishData(const Data& data, const Name nodePrefix)
 }
 
 uint32_t
-SVSPubSub::subscribeToProducer(const Name nodePrefix, const SubscriptionCallback callback)
+SVSPubSub::subscribeToProducer(const Name nodePrefix, const SubscriptionCallback callback,
+                               const bool prefetch)
 {
   uint32_t handle = ++m_subscriptionCount;
-  Subscription sub = { handle, nodePrefix, callback };
+  Subscription sub = { handle, nodePrefix, callback, prefetch };
   m_producerSubscriptions.push_back(sub);
   return handle;
 }
@@ -103,6 +106,14 @@ SVSPubSub::updateCallbackInternal(const std::vector<ndn::svs::MissingDataInfo>& 
           m_svsync.fetchData(stream.session, i,
                              std::bind(&SVSPubSub::onSyncData, this, _1, sub, streamName, i), -1);
         }
+
+        // Prefetch next available data
+        if (sub.prefetch)
+        {
+          const SeqNo s = stream.high + 1;
+          m_svsync.fetchData(stream.session, s,
+                             std::bind(&SVSPubSub::onSyncData, this, _1, sub, streamName, s), -1);
+        }
       }
     }
 
@@ -133,6 +144,12 @@ bool
 SVSPubSub::onSyncData(const Data& syncData, const Subscription& subscription,
                       const Name& streamName, const SeqNo seqNo)
 {
+  // Check for duplicate calls and push into queue
+  const size_t hash = std::hash<std::string>{}(Name(streamName).appendNumber(seqNo).toUri());
+  if (m_doneHt.find(hash) != m_doneHt.end())
+    return false;
+  m_doneQueue.push_back(hash);
+
   // Check if data in encapsulated
   if (syncData.getContentType() == ndn::tlv::Data)
   {

@@ -59,7 +59,7 @@ public:
 
       std::cout << subData.producerPrefix << "[" << subData.seqNo << "] : " <<
                    subData.data.getName() << " : " << content_str << std::endl;
-    });
+    }, true);
   }
 
   void
