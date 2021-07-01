@@ -42,7 +42,7 @@ SVSPubSub::SVSPubSub(const Name& syncPrefix,
 SeqNo
 SVSPubSub::publishData(const Data& data, const Name nodePrefix)
 {
-  NodeID nid = nodePrefix == EMPTY_NAME ? SVSync::EMPTY_NODE_ID : nodePrefix.toUri();
+  NodeID nid = nodePrefix == EMPTY_NAME ? m_dataPrefix.toUri() : nodePrefix.toUri();
   SeqNo seqNo = m_svsync.publishData(data.wireEncode(), data.getFreshnessPeriod(), nid, ndn::tlv::Data);
   m_mappingProvider.insertMapping(nid, seqNo, data.getName());
   return seqNo;
@@ -54,6 +54,15 @@ SVSPubSub::subscribeToProducer(const Name nodePrefix, const SubscriptionCallback
   uint32_t handle = ++m_subscriptionCount;
   Subscription sub = { handle, nodePrefix, callback };
   m_producerSubscriptions.push_back(sub);
+  return handle;
+}
+
+uint32_t
+SVSPubSub::subscribeToPrefix(const Name prefix, const SubscriptionCallback callback)
+{
+  uint32_t handle = ++m_subscriptionCount;
+  Subscription sub = { handle, prefix, callback };
+  m_prefixSubscriptions.push_back(sub);
   return handle;
 }
 
@@ -73,6 +82,7 @@ SVSPubSub::unsubscribe(uint32_t handle)
   };
 
   unsub(handle, m_producerSubscriptions);
+  unsub(handle, m_prefixSubscriptions);
 }
 
 void
@@ -82,6 +92,7 @@ SVSPubSub::updateCallbackInternal(const std::vector<ndn::svs::MissingDataInfo>& 
   {
     Name streamName(stream.session);
 
+    // Producer subscriptions
     for (const auto sub : m_producerSubscriptions)
     {
       if (sub.prefix.isPrefixOf(streamName))
@@ -93,6 +104,25 @@ SVSPubSub::updateCallbackInternal(const std::vector<ndn::svs::MissingDataInfo>& 
                              std::bind(&SVSPubSub::onSyncData, this, _1, sub, streamName, i));
         }
       }
+    }
+
+    // Fetch all mappings if we have prefix subscription(s)
+    if (m_prefixSubscriptions.size() > 0)
+    {
+      m_mappingProvider.fetchNameMapping(stream, [this, stream, streamName] (MappingProvider::MappingList list)
+      {
+        for (const auto sub : m_prefixSubscriptions)
+        {
+          for (const auto entry : list)
+          {
+            if (sub.prefix.isPrefixOf(entry.second))
+            {
+              m_svsync.fetchData(stream.session, entry.first,
+                                 std::bind(&SVSPubSub::onSyncData, this, _1, sub, streamName, entry.first));
+            }
+          }
+        }
+      });
     }
   }
 

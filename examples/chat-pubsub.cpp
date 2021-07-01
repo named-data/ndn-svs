@@ -91,7 +91,7 @@ protected:
   {
     // Content block
     ndn::Block block = ndn::encoding::makeBinaryBlock(
-        ndn::tlv::Content, reinterpret_cast<const uint8_t*>(msg.c_str()), msg.size());
+      ndn::tlv::Content, reinterpret_cast<const uint8_t*>(msg.c_str()), msg.size());
 
     // Data packet
     ndn::Name name(m_options.m_id);

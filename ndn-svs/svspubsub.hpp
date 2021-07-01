@@ -60,6 +60,7 @@ public:
     const SeqNo seqNo;
     bool validated;
   };
+
   /** Callback returning the received data, producer and sequence number and validated */
   //using SubscriptionCallback = function<void(const Data&, const Name&, const SeqNo, const bool)>;
   using SubscriptionCallback = function<void(const SubscriptionData& subData)>;
@@ -86,6 +87,17 @@ public:
    */
   uint32_t
   subscribeToProducer(const Name nodePrefix, const SubscriptionCallback callback);
+
+  /**
+   * @brief Subscribe to a data prefix
+   *
+   * @param prefix Prefix of the application data
+   * @param callback Callback when new data is received
+   *
+   * @returns Handle to the subscription
+   */
+  uint32_t
+  subscribeToPrefix(const Name prefix, const SubscriptionCallback callback);
 
   /**
    * @brief Unsubscribe from a stream using a handle
@@ -125,6 +137,7 @@ private:
 
   uint32_t m_subscriptionCount;
   std::vector<Subscription> m_producerSubscriptions;
+  std::vector<Subscription> m_prefixSubscriptions;
 };
 
 }  // namespace svs
