@@ -141,7 +141,7 @@ SVSyncBase::onDataTimeout(const Interest& interest, int nRetries,
                           const DataValidationErrorCallback& failCallback,
                           const TimeoutCallback& timeoutCallback)
 {
-  if (nRetries <= 0)
+  if (nRetries == 0)
     return timeoutCallback(interest);
 
   Interest newNonceInterest(interest);

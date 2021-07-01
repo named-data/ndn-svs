@@ -101,7 +101,7 @@ SVSPubSub::updateCallbackInternal(const std::vector<ndn::svs::MissingDataInfo>& 
         for (SeqNo i = stream.low; i <= stream.high; i++)
         {
           m_svsync.fetchData(stream.session, i,
-                             std::bind(&SVSPubSub::onSyncData, this, _1, sub, streamName, i), 5);
+                             std::bind(&SVSPubSub::onSyncData, this, _1, sub, streamName, i), -1);
         }
       }
     }
@@ -118,11 +118,11 @@ SVSPubSub::updateCallbackInternal(const std::vector<ndn::svs::MissingDataInfo>& 
             if (sub.prefix.isPrefixOf(entry.second))
             {
               m_svsync.fetchData(stream.session, entry.first,
-                                 std::bind(&SVSPubSub::onSyncData, this, _1, sub, streamName, entry.first), 5);
+                                 std::bind(&SVSPubSub::onSyncData, this, _1, sub, streamName, entry.first), -1);
             }
           }
         }
-      }, 5);
+      }, -1);
     }
   }
 
