@@ -85,13 +85,7 @@ void
 SVSyncBase::onDataInterest(const Interest &interest) {
   auto data = m_dataStore->find(interest);
   if (data != nullptr)
-  {
     m_face.put(*data);
-    return;
-  }
-
-  if (isMappingQueryDataName(interest.getName()))
-    onMappingQuery(interest);
 }
 
 void
@@ -133,10 +127,10 @@ SVSyncBase::onData(const Interest& interest, const Data& data,
 {
   if (static_cast<bool>(m_securityOptions.validator))
     m_securityOptions.validator->validate(data,
-                                          bind(&SVSyncBase::onDataValidated, this, _1, onValidated, onFailed),
+                                          bind(&SVSyncBase::onDataValidated, this, _1, onValidated),
                                           onFailed);
   else
-    onDataValidated(data, onValidated, onFailed);
+    onDataValidated(data, onValidated);
 }
 
 void
@@ -161,8 +155,7 @@ SVSyncBase::onDataTimeout(const Interest& interest, int nRetries,
 
 void
 SVSyncBase::onDataValidated(const Data& data,
-                            const DataValidatedCallback& dataCallback,
-                            const DataValidationErrorCallback& onFailed)
+                            const DataValidatedCallback& dataCallback)
 {
   if (shouldCache(data))
     m_dataStore->insert(data);
@@ -174,100 +167,6 @@ void
 SVSyncBase::onDataValidationFailed(const Data& data,
                                    const ValidationError& error)
 {
-}
-
-void
-SVSyncBase::onMappingQuery(const Interest& interest)
-{
-  MissingDataInfo query = parseMappingQueryDataName(interest.getName());
-  std::vector<std::pair<SeqNo, Name>> queryResponse;
-
-  for (SeqNo i = query.low; i <= std::max(query.high, query.low); i++)
-  {
-    auto data = m_dataStore->find(Interest(getDataName(query.session, i)));
-    if (data != nullptr)
-      if (data->getContentType() == ndn::tlv::Data)
-      {
-        Name name = Data(data->getContent().blockFromValue()).getName();
-        queryResponse.push_back(std::make_pair(i, name));
-      }
-  }
-
-  ndn::encoding::Encoder enc;
-  size_t totalLength = 0;
-
-  for (const auto p : queryResponse)
-  {
-    size_t entryLength = enc.prependBlock(p.second.wireEncode());
-    size_t valLength = enc.prependNonNegativeInteger(p.first);
-    entryLength += enc.prependVarNumber(valLength);
-    entryLength += enc.prependVarNumber(tlv::VersionVectorValue);
-    entryLength += valLength;
-
-    totalLength += enc.prependVarNumber(entryLength);
-    totalLength += enc.prependVarNumber(tlv::MappingEntry);
-    totalLength += entryLength;
-  }
-
-  totalLength += enc.prependVarNumber(totalLength);
-  totalLength += enc.prependVarNumber(tlv::MappingData);
-
-  Data data(interest.getName());
-  data.setContent(enc.block());
-  data.setFreshnessPeriod(ndn::time::milliseconds(1000));
-  m_keyChain.sign(data, m_securityOptions.dataSigningInfo);
-  m_face.put(data);
-}
-
-void
-SVSyncBase::fetchNameMapping(const MissingDataInfo info,
-                             const MappingListCallback& onValidated,
-                             const int nRetries)
-{
-  TimeoutCallback onTimeout =
-    [] (const Interest& interest) {};
-  return fetchNameMapping(info, onValidated, onTimeout, nRetries);
-}
-
-void
-SVSyncBase::fetchNameMapping(const MissingDataInfo info,
-                             const MappingListCallback& onValidated,
-                             const TimeoutCallback& onTimeout,
-                             const int nRetries)
-{
-  Name queryName = getMappingQueryDataName(info);
-  Interest interest(queryName);
-  interest.setMustBeFresh(true);
-  interest.setCanBePrefix(false);
-
-  DataValidatedCallback onDataValidated = [onValidated] (const Data& data)
-  {
-    MappingList list;
-
-    Block block = data.getContent().blockFromValue();
-    block.parse();
-
-    for (auto it = block.elements_begin(); it < block.elements_end(); it++) {
-      if (it->type() != tlv::MappingEntry) continue;
-      it->parse();
-
-      SeqNo seqNo = ndn::encoding::readNonNegativeInteger(it->elements().at(0));
-      Name name(it->elements().at(1));
-      list.push_back(std::make_pair(seqNo, name));
-    }
-
-    onValidated(list);
-  };
-
-  DataValidationErrorCallback onValidationFailed =
-    bind(&SVSyncBase::onDataValidationFailed, this, _1, _2);
-
-  m_face.expressInterest(interest,
-                         bind(&SVSyncBase::onData, this, _1, _2, onDataValidated, onValidationFailed),
-                         bind(&SVSyncBase::onDataTimeout, this, _1, nRetries,
-                              onDataValidated, onValidationFailed, onTimeout), // Nack
-                         bind(&SVSyncBase::onDataTimeout, this, _1, nRetries,
-                              onDataValidated, onValidationFailed, onTimeout));
 }
 
 }  // namespace svs

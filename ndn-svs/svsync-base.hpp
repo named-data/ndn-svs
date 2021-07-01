@@ -56,9 +56,6 @@ public:
 
   virtual ~SVSyncBase() = default;
 
-  using DataValidatedCallback = function<void(const Data&)>;
-  using DataValidationErrorCallback = function<void(const Data&, const ValidationError& error)> ;
-
   /**
    * @brief Publish a data packet in the session and trigger synchronization updates
    *
@@ -120,30 +117,6 @@ public:
             const TimeoutCallback& onTimeout,
             const int nRetries = 0);
 
-  /**
-   * @brief Retrieve the data mappings for encapsulated data packets
-   *
-   * @param info Query info
-   * @param onValidated Callback when mapping is fetched and validated
-   */
-  void
-  fetchNameMapping(const MissingDataInfo info,
-                   const MappingListCallback& onValidated,
-                   const int nRetries = 0);
-
-  /**
-   * @brief Retrieve the data mappings for encapsulated data packets
-   *
-   * @param info Query info
-   * @param onValidated Callback when mapping is fetched and validated
-   * @param onTimeout Callback when mapping is not retrieved
-   */
-  void
-  fetchNameMapping(const MissingDataInfo info,
-                   const MappingListCallback& onValidated,
-                   const TimeoutCallback& onTimeout,
-                   const int nRetries = 0);
-
   /*** @brief Get the underlying data store */
   DataStore&
   getDataStore()
@@ -170,32 +143,6 @@ protected:
   virtual Name
   getDataName(const NodeID& nid, const SeqNo& seqNo) = 0;
 
-  /**
-   * @brief Return data name for mapping query
-   *
-   * The derived SVSync class must provide implementation. Note that
-   * the name for self MUST be under the registered data prefix
-   */
-  virtual Name
-  getMappingQueryDataName(const MissingDataInfo& info) = 0;
-
-  /**
-   * @brief Return if the given name is a mapping query
-   *
-   * The derived SVSync class must provide implementation.
-   */
-  virtual bool
-  isMappingQueryDataName(const Name& name) = 0;
-
-  /**
-   * @brief Return the query from mapping data name
-   *
-   * The derived SVSync class must provide implementation.
-   * Must return the NodeID, start and end sequence numbers.
-   */
-  virtual MissingDataInfo
-  parseMappingQueryDataName(const Name& name) = 0;
-
 public:
   static const NodeID EMPTY_NODE_ID;
   static const std::shared_ptr<DataStore> DEFAULT_DATASTORE;
@@ -217,15 +164,11 @@ private:
 
   void
   onDataValidated(const Data& data,
-                  const DataValidatedCallback& dataCallback,
-                  const DataValidationErrorCallback& onFailed);
+                  const DataValidatedCallback& dataCallback);
 
   void
   onDataValidationFailed(const Data& data,
                          const ValidationError& error);
-
-  void
-  onMappingQuery(const Interest& interest);
 
   /**
    * Determines whether a particular data packet is to be cached

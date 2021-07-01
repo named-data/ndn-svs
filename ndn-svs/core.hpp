@@ -49,9 +49,6 @@ public:
  */
 using UpdateCallback = function<void(const std::vector<MissingDataInfo>&)>;
 
-using MappingList = std::vector<std::pair<SeqNo, Name>>;
-using MappingListCallback = function<void(const MappingList&)>;
-
 /**
  * @brief Pure SVS
  */
