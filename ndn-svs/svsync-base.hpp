@@ -67,8 +67,10 @@ public:
    * @param len size of the bytes in content
    * @param freshness FreshnessPeriod of the data packet.
    * @param id NodeID to publish the data under
+   *
+   * @returns Sequence number of the published data packet
    */
-  void
+  SeqNo
   publishData(const uint8_t* buf, size_t len, const ndn::time::milliseconds& freshness,
               const NodeID id = EMPTY_NODE_ID);
 
@@ -82,8 +84,10 @@ public:
    * @param content Block that will be set as the content of the data packet.
    * @param freshness FreshnessPeriod of the data packet.
    * @param id NodeID to publish the data under
+   *
+   * @returns Sequence number of the published data packet
    */
-  void
+  SeqNo
   publishData(const Block& content, const ndn::time::milliseconds& freshness,
               const NodeID id = EMPTY_NODE_ID, const uint32_t contentType = ndn::tlv::Invalid);
 

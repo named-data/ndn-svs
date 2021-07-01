@@ -36,13 +36,16 @@ SVSPubSub::SVSPubSub(const Name& syncPrefix,
   , m_svsync(syncPrefix, nodePrefix, face,
              std::bind(&SVSPubSub::updateCallbackInternal, this, _1),
              securityOptions, dataStore)
+  , m_mappingProvider(syncPrefix, nodePrefix.toUri(), face, securityOptions)
 {}
 
-void
+SeqNo
 SVSPubSub::publishData(const Data& data, const Name nodePrefix)
 {
   NodeID nid = nodePrefix == EMPTY_NAME ? SVSync::EMPTY_NODE_ID : nodePrefix.toUri();
-  m_svsync.publishData(data.wireEncode(), data.getFreshnessPeriod(), nid, ndn::tlv::Data);
+  SeqNo seqNo = m_svsync.publishData(data.wireEncode(), data.getFreshnessPeriod(), nid, ndn::tlv::Data);
+  m_mappingProvider.insertMapping(nid, seqNo, data.getName());
+  return seqNo;
 }
 
 uint32_t

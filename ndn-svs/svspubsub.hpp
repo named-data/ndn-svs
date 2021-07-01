@@ -22,6 +22,7 @@
 #include "store.hpp"
 #include "security-options.hpp"
 #include "svsync.hpp"
+#include "mapping-provider.hpp"
 
 namespace ndn {
 namespace svs {
@@ -72,7 +73,7 @@ public:
    * @param data Data packet to publish
    * @param nodePrefix Name to publish the data under
    */
-  void
+  SeqNo
   publishData(const Data& data, const Name nodePrefix = EMPTY_NAME);
 
   /**
@@ -120,6 +121,7 @@ private:
   const UpdateCallback m_onUpdate;
   const SecurityOptions m_securityOptions;
   SVSync m_svsync;
+  MappingProvider m_mappingProvider;
 
   uint32_t m_subscriptionCount;
   std::vector<Subscription> m_producerSubscriptions;

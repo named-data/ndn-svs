@@ -53,14 +53,14 @@ SVSyncBase::SVSyncBase(const Name& syncPrefix,
                              [] (const Name& prefix, const std::string& msg) {});
 }
 
-void
+SeqNo
 SVSyncBase::publishData(const uint8_t* buf, size_t len, const ndn::time::milliseconds& freshness,
                         const NodeID id)
 {
-  publishData(ndn::encoding::makeBinaryBlock(ndn::tlv::Content, buf, len), freshness, id);
+  return publishData(ndn::encoding::makeBinaryBlock(ndn::tlv::Content, buf, len), freshness, id);
 }
 
-void
+SeqNo
 SVSyncBase::publishData(const Block& content, const ndn::time::milliseconds& freshness,
                         const NodeID id, const uint32_t contentType)
 {
@@ -79,6 +79,8 @@ SVSyncBase::publishData(const Block& content, const ndn::time::milliseconds& fre
 
   m_dataStore->insert(*data);
   m_core.updateSeqNo(newSeq, pubId);
+
+  return newSeq;
 }
 
 void
