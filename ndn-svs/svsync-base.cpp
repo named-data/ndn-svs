@@ -79,6 +79,7 @@ SVSyncBase::publishData(const Block& content, const ndn::time::milliseconds& fre
 
   m_dataStore->insert(*data);
   m_core.updateSeqNo(newSeq, pubId);
+  m_face.put(*data);
 
   return newSeq;
 }
