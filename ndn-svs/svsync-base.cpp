@@ -38,6 +38,7 @@ SVSyncBase::SVSyncBase(const Name& syncPrefix,
   , m_securityOptions(securityOptions)
   , m_id(id)
   , m_face(face)
+  , m_fetcher(face)
   , m_onUpdate(updateCallback)
   , m_dataStore(dataStore)
   , m_core(m_face, m_keyChain, m_syncPrefix, m_onUpdate, securityOptions, m_id)
@@ -116,12 +117,10 @@ SVSyncBase::fetchData(const NodeID& nid, const SeqNo& seqNo,
   interest.setCanBePrefix(false);
   interest.setInterestLifetime(ndn::time::milliseconds(4000));
 
-  m_face.expressInterest(interest,
-                         bind(&SVSyncBase::onData, this, _1, _2, onValidated, onValidationFailed),
-                         bind(&SVSyncBase::onDataTimeout, this, _1, nRetries,
-                              onValidated, onValidationFailed, onTimeout), // Nack
-                         bind(&SVSyncBase::onDataTimeout, this, _1, nRetries,
-                              onValidated, onValidationFailed, onTimeout));
+  m_fetcher.expressInterest(interest,
+                            bind(&SVSyncBase::onData, this, _1, _2, onValidated, onValidationFailed),
+                            bind(onTimeout, _1), // Nack
+                            onTimeout, nRetries);
 }
 
 void
@@ -135,26 +134,6 @@ SVSyncBase::onData(const Interest& interest, const Data& data,
                                           onFailed);
   else
     onDataValidated(data, onValidated);
-}
-
-void
-SVSyncBase::onDataTimeout(const Interest& interest, int nRetries,
-                          const DataValidatedCallback& dataCallback,
-                          const DataValidationErrorCallback& failCallback,
-                          const TimeoutCallback& timeoutCallback)
-{
-  if (nRetries == 0)
-    return timeoutCallback(interest);
-
-  Interest newNonceInterest(interest);
-  newNonceInterest.refreshNonce();
-
-  m_face.expressInterest(newNonceInterest,
-                         bind(&SVSyncBase::onData, this, _1, _2, dataCallback, failCallback),
-                         bind(&SVSyncBase::onDataTimeout, this, _1, nRetries - 1,
-                              dataCallback, failCallback, timeoutCallback), // Nack
-                         bind(&SVSyncBase::onDataTimeout, this, _1, nRetries - 1,
-                              dataCallback, failCallback, timeoutCallback));
 }
 
 void

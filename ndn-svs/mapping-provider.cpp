@@ -27,6 +27,7 @@ MappingProvider::MappingProvider(const Name& syncPrefix,
   : m_syncPrefix(syncPrefix)
   , m_id(id)
   , m_face(face)
+  , m_fetcher(face)
   , m_securityOptions(securityOptions)
 {
   m_registeredPrefix =
@@ -129,12 +130,10 @@ MappingProvider::fetchNameMapping(const MissingDataInfo info,
 
   auto onValidationFailed = [] (const Data& data, const ValidationError& error) {};
 
-  m_face.expressInterest(interest,
-                         bind(&MappingProvider::onData, this, _1, _2, onDataValidated, onValidationFailed),
-                         bind(&MappingProvider::onDataTimeout, this, _1, nRetries,
-                              onDataValidated, onValidationFailed, onTimeout), // Nack
-                         bind(&MappingProvider::onDataTimeout, this, _1, nRetries,
-                              onDataValidated, onValidationFailed, onTimeout));
+  m_fetcher.expressInterest(interest,
+                            bind(&MappingProvider::onData, this, _1, _2, onDataValidated, onValidationFailed),
+                            bind(onTimeout, _1), // Nack
+                            onTimeout, nRetries);
 }
 
 Name
@@ -162,26 +161,6 @@ MappingProvider::onData(const Interest& interest, const Data& data,
     m_securityOptions.validator->validate(data, onValidated, onFailed);
   else
     onValidated(data);
-}
-
-void
-MappingProvider::onDataTimeout(const Interest& interest, int nRetries,
-                               const DataValidatedCallback& dataCallback,
-                               const DataValidationErrorCallback& failCallback,
-                               const TimeoutCallback& timeoutCallback)
-{
-  if (nRetries == 0)
-    return timeoutCallback(interest);
-
-  Interest newNonceInterest(interest);
-  newNonceInterest.refreshNonce();
-
-  m_face.expressInterest(newNonceInterest,
-                         bind(&MappingProvider::onData, this, _1, _2, dataCallback, failCallback),
-                         bind(&MappingProvider::onDataTimeout, this, _1, nRetries - 1,
-                              dataCallback, failCallback, timeoutCallback), // Nack
-                         bind(&MappingProvider::onDataTimeout, this, _1, nRetries - 1,
-                              dataCallback, failCallback, timeoutCallback));
 }
 
 }  // namespace svs

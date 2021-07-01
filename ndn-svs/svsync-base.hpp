@@ -21,6 +21,7 @@
 #include "core.hpp"
 #include "store.hpp"
 #include "security-options.hpp"
+#include "fetcher.hpp"
 
 namespace ndn {
 namespace svs {
@@ -161,12 +162,6 @@ private:
          const DataValidationErrorCallback& failCallback);
 
   void
-  onDataTimeout(const Interest& interest, int nRetries,
-                const DataValidatedCallback& dataCallback,
-                const DataValidationErrorCallback& failCallback,
-                const TimeoutCallback& timeoutCallback);
-
-  void
   onDataValidated(const Data& data,
                   const DataValidatedCallback& dataCallback);
 
@@ -196,6 +191,7 @@ private:
   KeyChain m_keyChain;
 
   ndn::ScopedRegisteredPrefixHandle m_registeredDataPrefix;
+  Fetcher m_fetcher;
 
   const UpdateCallback m_onUpdate;
 

@@ -19,6 +19,7 @@
 
 #include "common.hpp"
 #include "core.hpp"
+#include "fetcher.hpp"
 
 #include <map>
 
@@ -98,18 +99,13 @@ private:
          const DataValidationErrorCallback& failCallback);
 
   void
-  onDataTimeout(const Interest& interest, int nRetries,
-                const DataValidatedCallback& dataCallback,
-                const DataValidationErrorCallback& failCallback,
-                const TimeoutCallback& timeoutCallback);
-
-  void
   onMappingQuery(const Interest& interest);
 
 private:
   const Name m_syncPrefix;
   const NodeID m_id;
   Face& m_face;
+  Fetcher m_fetcher;
   const SecurityOptions m_securityOptions;
 
   ndn::ScopedRegisteredPrefixHandle m_registeredPrefix;
