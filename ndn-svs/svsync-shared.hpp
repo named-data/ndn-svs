@@ -51,29 +51,6 @@ public:
     return Name(m_dataPrefix).append(nid).appendNumber(seqNo);
   }
 
-  Name
-  getMappingQueryDataName(const MissingDataInfo& info)
-  {
-    return Name(m_dataPrefix).append(info.session)
-                             .append("MAPPING").appendNumber(info.low).appendNumber(info.high);
-  }
-
-  bool
-  isMappingQueryDataName(const Name& name)
-  {
-    return name.get(-3).toUri() == "MAPPING";
-  }
-
-  MissingDataInfo
-  parseMappingQueryDataName(const Name& name)
-  {
-    MissingDataInfo info;
-    info.low = name.get(-2).toNumber();
-    info.high = name.get(-1).toNumber();
-    info.session = name.getPrefix(-4).toUri();
-    return info;
-  }
-
   /*** @brief Set whether data of other nodes is also cached and served */
   void
   setCacheAll(bool val)

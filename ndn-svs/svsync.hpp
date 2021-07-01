@@ -50,28 +50,6 @@ public:
   {
     return Name(nid).append(m_syncPrefix).appendNumber(seqNo);
   }
-
-  Name
-  getMappingQueryDataName(const MissingDataInfo& info)
-  {
-    return Name(info.session).append(m_syncPrefix).append("MAPPING").appendNumber(info.low).appendNumber(info.high);
-  }
-
-  bool
-  isMappingQueryDataName(const Name& name)
-  {
-    return name.get(-3).toUri() == "MAPPING";
-  }
-
-  MissingDataInfo
-  parseMappingQueryDataName(const Name& name)
-  {
-    MissingDataInfo info;
-    info.low = name.get(-2).toNumber();
-    info.high = name.get(-1).toNumber();
-    info.session = name.getPrefix(-3 - m_syncPrefix.size()).toUri();
-    return info;
-  }
 };
 
 }  // namespace svs
