@@ -61,12 +61,6 @@ SVSyncBase::publishData(const uint8_t* buf, size_t len, const ndn::time::millise
 }
 
 void
-SVSyncBase::publishData(const Data& data, const NodeID id)
-{
-  publishData(data.wireEncode(), data.getFreshnessPeriod(), id, ndn::tlv::Data);
-}
-
-void
 SVSyncBase::publishData(const Block& content, const ndn::time::milliseconds& freshness,
                         const NodeID id, const uint32_t contentType)
 {
@@ -173,18 +167,7 @@ SVSyncBase::onDataValidated(const Data& data,
   if (shouldCache(data))
     m_dataStore->insert(data);
 
-  if (data.getContentType() == ndn::tlv::Data)
-  {
-    Data encapsulatedData(data.getContent().blockFromValue());
-    if (static_cast<bool>(m_securityOptions.validator))
-      m_securityOptions.validator->validate(encapsulatedData, dataCallback, onFailed);
-    else
-      dataCallback(encapsulatedData);
-  }
-  else
-  {
-    dataCallback(data);
-  }
+  dataCallback(data);
 }
 
 void

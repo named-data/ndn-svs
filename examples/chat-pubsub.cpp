@@ -18,8 +18,9 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include <ndn-svs/svspubsub.hpp>
 
-#include <ndn-svs/svsync-base.hpp>
+using namespace ndn::svs;
 
 class Options
 {
@@ -37,8 +38,28 @@ public:
   Program(const Options &options)
     : m_options(options)
   {
+    // Use HMAC signing
+    SecurityOptions securityOptions;
+    securityOptions.interestSigningInfo.setSigningHmacKey("dGhpcyBpcyBhIHNlY3JldCBtZXNzYWdl");
+
+    m_svspubsub = std::make_shared<SVSPubSub>(
+      ndn::Name(m_options.prefix),
+      ndn::Name(m_options.m_id),
+      face,
+      std::bind(&Program::onMissingData, this, _1),
+      securityOptions);
+
     std::cout << "SVS client starting:" << m_options.m_id << std::endl;
     m_signingInfo.setSha256Signing();
+
+    m_svspubsub->subscribeToProducer(ndn::Name("/ndn"), [&] (SVSPubSub::SubscriptionData subData)
+    {
+      const size_t data_size = subData.data.getContent().value_size();
+      const std::string content_str((char *) subData.data.getContent().value(), data_size);
+
+      std::cout << subData.producerPrefix << "[" << subData.seqNo << "] : " <<
+                   subData.data.getName() << " : " << content_str << std::endl;
+    });
   }
 
   void
@@ -61,21 +82,8 @@ public:
 
 protected:
   void
-  onMissingData(const std::vector<ndn::svs::MissingDataInfo>& v)
+  onMissingData(const std::vector<MissingDataInfo>& v)
   {
-    for (size_t i = 0; i < v.size(); i++)
-    {
-      for (ndn::svs::SeqNo s = v[i].low; s <= v[i].high; ++s)
-      {
-        ndn::svs::NodeID nid = v[i].session;
-        m_svs->fetchData(nid, s, [nid] (const ndn::Data& data)
-          {
-            const size_t data_size = data.getContent().value_size();
-            const std::string content_str((char *)data.getContent().value(), data_size);
-            std::cout << data.getName() << " : " << content_str << std::endl;
-          });
-      }
-    }
   }
 
   void
@@ -83,22 +91,30 @@ protected:
   {
     // Content block
     ndn::Block block = ndn::encoding::makeBinaryBlock(
-      ndn::tlv::Content,
-      reinterpret_cast<const uint8_t*>(msg.c_str()), msg.size());
-    m_svs->publishData(block, ndn::time::milliseconds(1000));
+        ndn::tlv::Content, reinterpret_cast<const uint8_t*>(msg.c_str()), msg.size());
+
+    // Data packet
+    ndn::Name name(m_options.m_id);
+    name.appendTimestamp();
+
+    ndn::Data data(name);
+    data.setContent(block);
+    data.setFreshnessPeriod(ndn::time::milliseconds(1000));
+    m_keyChain.sign(data, m_signingInfo);
+
+    m_svspubsub->publishData(data);
   }
 
 public:
   const Options m_options;
   ndn::Face face;
-  std::shared_ptr<ndn::svs::SVSyncBase> m_svs;
+  std::shared_ptr<SVSPubSub> m_svspubsub;
   ndn::KeyChain m_keyChain;
   ndn::security::SigningInfo m_signingInfo;
 };
 
-template <typename T>
-int
-callMain(int argc, char **argv) {
+int main(int argc, char **argv)
+{
   if (argc != 2) {
     std::cout << "Usage: client <prefix>" << std::endl;
     exit(1);
@@ -108,7 +124,7 @@ callMain(int argc, char **argv) {
   opt.prefix = "/ndn/svs";
   opt.m_id = argv[1];
 
-  T program(opt);
+  Program program(opt);
   program.run();
   return 0;
 }

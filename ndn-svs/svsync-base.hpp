@@ -91,18 +91,6 @@ public:
               const NodeID id = EMPTY_NODE_ID, const uint32_t contentType = ndn::tlv::Invalid);
 
   /**
-   * @brief Publish a encapsulated Data packet in the session and trigger
-   * synchronization updates.
-   *
-   * The encapsulated packet MUST be signed
-   *
-   * @param data Data packet to publish
-   * @param id NodeID to publish the data under
-   */
-  void
-  publishData(const Data& data, const NodeID id = EMPTY_NODE_ID);
-
-  /**
    * @brief Retrive a data packet with a particular seqNo from a session
    *
    * @param nid The name of the target node

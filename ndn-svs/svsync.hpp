@@ -72,42 +72,6 @@ public:
     info.session = name.getPrefix(-3 - m_syncPrefix.size()).toUri();
     return info;
   }
-
-  /**
-   * @brief Retrive a data packet with a particular seqNo from a node
-   *
-   * @param nodePrefix Node prefix of the target node
-   * @param seq The seqNo of the data packet.
-   * @param onValidated The callback when the retrieved packet has been validated.
-   * @param nRetries The number of retries.
-   */
-  void
-  fetchData(const Name& nodePrefix, const SeqNo& seq,
-            const DataValidatedCallback& onValidated,
-            int nRetries = 0)
-  {
-    return fetchData(nodePrefix.toUri(), seq, onValidated, nRetries);
-  }
-
-  /**
-   * @brief Retrive a data packet with a particular seqNo from a node
-   *
-   * @param nodePrefix Node prefix of the target node
-   * @param seq The seqNo of the data packet.
-   * @param onValidated The callback when the retrieved packet has been validated.
-   * @param onValidationFailed The callback when the retrieved packet failed validation.
-   * @param onTimeout The callback when data is not retrieved.
-   * @param nRetries The number of retries.
-   */
-  void
-  fetchData(const Name& nodePrefix, const SeqNo& seq,
-            const DataValidatedCallback& onValidated,
-            const DataValidationErrorCallback& onValidationFailed,
-            const TimeoutCallback& onTimeout,
-            int nRetries = 0)
-  {
-    return fetchData(nodePrefix.toUri(), seq, onValidated, onValidationFailed, onTimeout, nRetries);
-  }
 };
 
 }  // namespace svs
