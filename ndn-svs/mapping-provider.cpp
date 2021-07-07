@@ -70,7 +70,7 @@ MappingProvider::onMappingQuery(const Interest& interest)
     size_t entryLength = enc.prependBlock(p.second.wireEncode());
     size_t valLength = enc.prependNonNegativeInteger(p.first);
     entryLength += enc.prependVarNumber(valLength);
-    entryLength += enc.prependVarNumber(tlv::VersionVectorValue);
+    entryLength += enc.prependVarNumber(tlv::SeqNo);
     entryLength += valLength;
 
     totalLength += enc.prependVarNumber(entryLength);

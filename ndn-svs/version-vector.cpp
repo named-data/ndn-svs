@@ -23,16 +23,19 @@ namespace svs {
 VersionVector::VersionVector(const ndn::Block& block) {
   block.parse();
 
-  for (auto it = block.elements_begin(); it < block.elements_end(); it += 2) {
-    auto key = it, val = it + 1;
+  if (block.type() != tlv::VersionVector)
+    NDN_THROW(Error("Expected VersionVector"));
 
-    if (key->type() != tlv::VersionVectorKey)
-      NDN_THROW(Error("Expected VersionVectorKey"));
-    if (val->type() != tlv::VersionVectorValue)
-      NDN_THROW(Error("Expected VersionVectorValue"));
+  for (auto it = block.elements_begin(); it < block.elements_end(); it++) {
+    if (it->type() != tlv::VersionVectorEntry)
+      NDN_THROW(Error("Expected VersionVectorEntry"));
+    it->parse();
 
-    m_map[NodeID(reinterpret_cast<const char*>(it->value()), it->value_size())] =
-      SeqNo(ndn::encoding::readNonNegativeInteger(*val));
+    auto nodeIdElem = it->elements().at(0);
+    NodeID nodeId(reinterpret_cast<const char*>(nodeIdElem.value()), nodeIdElem.value_size());
+    SeqNo seqNo = ndn::encoding::readNonNegativeInteger(it->elements().at(1));
+
+    m_map[nodeId] = seqNo;
   }
 }
 
@@ -45,13 +48,18 @@ VersionVector::encode() const
 
   for (auto it = m_map.rbegin(); it != m_map.rend(); it++)
   {
+    size_t entryLength = 0;
     size_t valLength = enc.prependNonNegativeInteger(it->second);
-    totalLength += enc.prependVarNumber(valLength);
-    totalLength += enc.prependVarNumber(tlv::VersionVectorValue);
-    totalLength += valLength;
+    entryLength += enc.prependVarNumber(valLength);
+    entryLength += enc.prependVarNumber(tlv::SeqNo);
+    entryLength += valLength;
 
-    totalLength += enc.prependByteArrayBlock(tlv::VersionVectorKey,
+    entryLength += enc.prependByteArrayBlock(tlv::ProducerPrefix,
                                              reinterpret_cast<const uint8_t*>(it->first.c_str()), it->first.size());
+
+    totalLength += enc.prependVarNumber(entryLength);
+    entryLength += enc.prependVarNumber(tlv::VersionVectorEntry);
+    totalLength += entryLength;
   }
 
   totalLength += enc.prependVarNumber(totalLength);

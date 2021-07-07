@@ -15,6 +15,7 @@
  */
 
 #include "version-vector.hpp"
+#include "tlv.hpp"
 
 #include "tests/boost-test.hpp"
 
@@ -64,7 +65,7 @@ BOOST_AUTO_TEST_CASE(Iterate)
 BOOST_AUTO_TEST_CASE(EncodeDecode)
 {
   ndn::Block block = v.encode();
-  BOOST_CHECK_EQUAL(block.value_size(), 16);
+  BOOST_CHECK_EQUAL(block.value_size(), 20);
 
   VersionVector dv(block);
   BOOST_CHECK_EQUAL(dv.get("one"), 1);
@@ -73,9 +74,9 @@ BOOST_AUTO_TEST_CASE(EncodeDecode)
 
 BOOST_AUTO_TEST_CASE(DecodeStatic)
 {
-  // Hex: CA036F6E65CB0101CA0374776FCB0102
-  const char* encoded = "\xCA\x03\x6F\x6E\x65\xCB\x01\x01\xCA\x03\x74\x77\x6F\xCB\x01\x02";
-  VersionVector dv(ndn::encoding::makeBinaryBlock(ndn::tlv::Content, encoded, 16));
+  // Hex: CA08CB036F6E65CC0101CA08CB0374776FCC0102
+  const char* encoded = "\xCA\x08\xCB\x03\x6F\x6E\x65\xCC\x01\x01\xCA\x08\xCB\x03\x74\x77\x6F\xCC\x01\x02";
+  VersionVector dv(ndn::encoding::makeBinaryBlock(tlv::VersionVector, encoded, 20));
   BOOST_CHECK_EQUAL(dv.get("one"), 1);
   BOOST_CHECK_EQUAL(dv.get("two"), 2);
 }
