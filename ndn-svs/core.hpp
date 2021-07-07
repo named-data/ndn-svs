@@ -129,6 +129,28 @@ public:
   std::set<NodeID>
   getSessionNames() const;
 
+  using GetExtraBlockCallback = function<const ndn::Block(const VersionVector&)>;
+  using RecvExtraBlockCallback = function<void(const ndn::Block&, const VersionVector&)>;
+
+  /**
+  * @brief Callback to get extra data block for sync interest
+  * The version vector will be locked during the duration of this callback,
+  * so it must return FAST
+  */
+  void setGetExtraBlockCallback(const GetExtraBlockCallback& callback)
+  {
+    m_getExtraBlock = callback;
+  }
+
+  /**
+   * @brief Callback on receiving extra data in a sync interest.
+   * Will be called BEFORE the interest is processed.
+   */
+  void setRecvExtraBlockCallback(const RecvExtraBlockCallback& callback)
+  {
+    m_recvExtraBlock = callback;
+  }
+
   /// @brief Get current version vector
   VersionVector&
   getState()
@@ -235,6 +257,10 @@ private:
   // Aggregates incoming vectors while in suppression state
   std::unique_ptr<VersionVector> m_recordedVv = nullptr;
   mutable std::mutex m_recordedVvMutex;
+
+  // Extra block
+  GetExtraBlockCallback m_getExtraBlock;
+  RecvExtraBlockCallback m_recvExtraBlock;
 
   // Random Engine
   ndn::random::RandomNumberEngine& m_rng;

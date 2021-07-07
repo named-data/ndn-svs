@@ -26,6 +26,26 @@
 namespace ndn {
 namespace svs {
 
+class MappingList
+{
+public:
+  MappingList();
+
+  MappingList(const NodeID& nid);
+
+  /// @brief Decode from block
+  MappingList(const Block& block);
+
+  /// @brief Encode to block
+  Block
+  encode();
+
+public:
+  using PairType = std::pair<SeqNo, Name>;
+  NodeID nodeId;
+  std::vector<PairType> pairs;
+};
+
 /**
  * @brief Provider for application name mapping
  */
@@ -39,7 +59,6 @@ public:
 
   virtual ~MappingProvider() = default;
 
-  using MappingList = std::vector<std::pair<SeqNo, Name>>;
   using MappingListCallback = function<void(const MappingList&)>;
 
   /**

@@ -137,6 +137,12 @@ private:
   void
   updateCallbackInternal(const std::vector<ndn::svs::MissingDataInfo>& info);
 
+  Block
+  onGetExtraData(const VersionVector& vv);
+
+  void
+  onRecvExtraData(const Block& block);
+
 public:
   static const Name EMPTY_NAME;
 
@@ -146,7 +152,12 @@ private:
   const UpdateCallback m_onUpdate;
   const SecurityOptions m_securityOptions;
   SVSync m_svsync;
+
+  // Provider for mapping interests
   MappingProvider m_mappingProvider;
+
+  // MappingList to be sent in the next update with sync interest
+  MappingList m_notificationMappingList;
 
   uint32_t m_subscriptionCount;
   std::vector<Subscription> m_producerSubscriptions;

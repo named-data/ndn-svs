@@ -101,6 +101,11 @@ SVSyncCore::onSyncInterestValidated(const Interest &interest)
     return;
   }
 
+  if (m_recvExtraBlock && interest.hasApplicationParameters())
+  {
+    m_recvExtraBlock(interest.getApplicationParameters().blockFromValue(), *vvOther);
+  }
+
   // Merge state vector
   bool myVectorNew, otherVectorNew;
   std::tie(myVectorNew, otherVectorNew) = mergeStateVector(*vvOther);
@@ -160,13 +165,20 @@ void
 SVSyncCore::sendSyncInterest()
 {
   Name syncName(m_syncPrefix);
+  Interest interest;
 
   {
     std::lock_guard<std::mutex> lock(m_vvMutex);
     syncName.append(Name::Component(m_vv.encode()));
+
+    if (m_getExtraBlock)
+    {
+      interest.setApplicationParameters(m_getExtraBlock(m_vv));
+    }
   }
 
-  Interest interest(syncName, time::milliseconds(1000));
+  interest.setName(syncName);
+  interest.setInterestLifetime(time::milliseconds(1000));
   interest.setCanBePrefix(true);
   interest.setMustBeFresh(true);
 
@@ -266,7 +278,7 @@ SVSyncCore::updateSeqNo(const SeqNo& seq, const NodeID& nid)
   }
 
   if (seq > prev)
-    retxSyncInterest(true, 0);
+    retxSyncInterest(false, 1);
 }
 
 std::set<NodeID>

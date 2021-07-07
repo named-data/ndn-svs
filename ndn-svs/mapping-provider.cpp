@@ -52,37 +52,18 @@ void
 MappingProvider::onMappingQuery(const Interest& interest)
 {
   MissingDataInfo query = parseMappingQueryDataName(interest.getName());
-  std::vector<std::pair<SeqNo, Name>> queryResponse;
+  MappingList queryResponse(query.session);
 
   for (SeqNo i = query.low; i <= std::max(query.high, query.low); i++)
   {
     try {
       Name name = getMapping(query.session, i);
-      queryResponse.push_back(std::make_pair(i, name));
+      queryResponse.pairs.push_back(std::make_pair(i, name));
     } catch (const std::exception& ex) {}
   }
 
-  ndn::encoding::Encoder enc;
-  size_t totalLength = 0;
-
-  for (const auto p : queryResponse)
-  {
-    size_t entryLength = enc.prependBlock(p.second.wireEncode());
-    size_t valLength = enc.prependNonNegativeInteger(p.first);
-    entryLength += enc.prependVarNumber(valLength);
-    entryLength += enc.prependVarNumber(tlv::SeqNo);
-    entryLength += valLength;
-
-    totalLength += enc.prependVarNumber(entryLength);
-    totalLength += enc.prependVarNumber(tlv::MappingEntry);
-    totalLength += entryLength;
-  }
-
-  totalLength += enc.prependVarNumber(totalLength);
-  totalLength += enc.prependVarNumber(tlv::MappingData);
-
   Data data(interest.getName());
-  data.setContent(enc.block());
+  data.setContent(queryResponse.encode());
   data.setFreshnessPeriod(ndn::time::milliseconds(1000));
   m_keyChain.sign(data, m_securityOptions.dataSigningInfo);
   m_face.put(data);
@@ -111,21 +92,8 @@ MappingProvider::fetchNameMapping(const MissingDataInfo info,
 
   auto onDataValidated = [onValidated] (const Data& data)
   {
-    MappingList list;
-
     Block block = data.getContent().blockFromValue();
-    block.parse();
-
-    for (auto it = block.elements_begin(); it < block.elements_end(); it++) {
-      if (it->type() != tlv::MappingEntry) continue;
-      it->parse();
-
-      SeqNo seqNo = ndn::encoding::readNonNegativeInteger(it->elements().at(0));
-      Name name(it->elements().at(1));
-      list.push_back(std::make_pair(seqNo, name));
-    }
-
-    onValidated(list);
+    onValidated(MappingList(block));
   };
 
   auto onValidationFailed = [] (const Data& data, const ValidationError& error) {};
@@ -162,6 +130,64 @@ MappingProvider::onData(const Interest& interest, const Data& data,
   else
     onValidated(data);
 }
+
+Block
+MappingList::encode()
+{
+  ndn::encoding::Encoder enc;
+  size_t totalLength = 0;
+
+  for (const auto p : pairs)
+  {
+    size_t entryLength = enc.prependBlock(p.second.wireEncode());
+    size_t valLength = enc.prependNonNegativeInteger(p.first);
+    entryLength += enc.prependVarNumber(valLength);
+    entryLength += enc.prependVarNumber(tlv::SeqNo);
+    entryLength += valLength;
+
+    totalLength += enc.prependVarNumber(entryLength);
+    totalLength += enc.prependVarNumber(tlv::MappingEntry);
+    totalLength += entryLength;
+  }
+
+  totalLength += enc.prependByteArrayBlock(tlv::ProducerPrefix,
+                                           reinterpret_cast<const uint8_t*>(nodeId.c_str()), nodeId.size());
+
+  totalLength += enc.prependVarNumber(totalLength);
+  totalLength += enc.prependVarNumber(tlv::MappingData);
+
+  return enc.block();
+}
+
+MappingList::MappingList(const Block& block)
+{
+  block.parse();
+
+  for (auto it = block.elements_begin(); it < block.elements_end(); it++) {
+    if (it->type() == tlv::ProducerPrefix)
+    {
+      nodeId = NodeID(reinterpret_cast<const char*>(it->value()), it->value_size());
+      continue;
+    }
+
+    if (it->type() == tlv::MappingEntry)
+    {
+      it->parse();
+
+      SeqNo seqNo = ndn::encoding::readNonNegativeInteger(it->elements().at(0));
+      Name name(it->elements().at(1));
+      pairs.push_back(std::make_pair(seqNo, name));
+      continue;
+    }
+  }
+}
+
+MappingList::MappingList()
+{}
+
+MappingList::MappingList(const NodeID& nid)
+  : nodeId(nid)
+{}
 
 }  // namespace svs
 }  // namespace ndn
