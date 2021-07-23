@@ -31,7 +31,7 @@ To try out the demo CLI chat application:
 
 Configure NFD to be multicast:
 
-    nfdc strategy set <sync-prefix> /localhost/nfd/strategy/multicast/
+    nfdc strategy set <sync-prefix> /localhost/nfd/strategy/multicast
 where `sync-prefix` is `/ndn/svs` for the example application.
 
 ## Contributing
