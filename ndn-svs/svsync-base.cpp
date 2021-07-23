@@ -113,7 +113,7 @@ SVSyncBase::fetchData(const NodeID& nid, const SeqNo& seqNo,
 {
   Name interestName = getDataName(nid, seqNo);
   Interest interest(interestName);
-  interest.setMustBeFresh(true);
+  interest.setMustBeFresh(false);
   interest.setCanBePrefix(false);
   interest.setInterestLifetime(ndn::time::milliseconds(4000));
 

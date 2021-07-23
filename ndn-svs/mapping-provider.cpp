@@ -87,7 +87,7 @@ MappingProvider::fetchNameMapping(const MissingDataInfo info,
 {
   Name queryName = getMappingQueryDataName(info);
   Interest interest(queryName);
-  interest.setMustBeFresh(true);
+  interest.setMustBeFresh(false);
   interest.setCanBePrefix(false);
 
   auto onDataValidated = [onValidated] (const Data& data)
