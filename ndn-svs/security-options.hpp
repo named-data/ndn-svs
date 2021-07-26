@@ -30,7 +30,7 @@ struct SecurityOptions
   security::SigningInfo dataSigningInfo;
 
   /** Validator to validate data and interests (unless using HMAC) */
-  const std::shared_ptr<Validator> validator = DEFAULT_VALIDATOR;
+  std::shared_ptr<Validator> validator = DEFAULT_VALIDATOR;
 
   static const SecurityOptions DEFAULT;
   static const std::shared_ptr<Validator> DEFAULT_VALIDATOR;
