@@ -26,12 +26,11 @@ struct TestCoreFixture
 {
   TestCoreFixture()
     : m_syncPrefix("/ndn/test")
-    , m_core(m_face, m_keyChain, m_syncPrefix, bind(&TestCoreFixture::update, this, _1))
+    , m_core(m_face, m_syncPrefix, bind(&TestCoreFixture::update, this, _1))
   {
   }
 
   Face m_face;
-  KeyChain m_keyChain;
   Name m_syncPrefix;
   SVSyncCore m_core;
 

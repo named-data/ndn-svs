@@ -24,11 +24,11 @@ VersionVector::VersionVector(const ndn::Block& block) {
   block.parse();
 
   if (block.type() != tlv::VersionVector)
-    NDN_THROW(Error("Expected VersionVector"));
+    NDN_THROW(ndn::tlv::Error("Expected VersionVector"));
 
   for (auto it = block.elements_begin(); it < block.elements_end(); it++) {
     if (it->type() != tlv::VersionVectorEntry)
-      NDN_THROW(Error("Expected VersionVectorEntry"));
+      NDN_THROW(ndn::tlv::Error("Expected VersionVectorEntry"));
     it->parse();
 
     auto nodeIdElem = it->elements().at(0);

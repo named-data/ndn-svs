@@ -128,7 +128,6 @@ private:
   const SecurityOptions m_securityOptions;
 
   ndn::ScopedRegisteredPrefixHandle m_registeredPrefix;
-  ndn::KeyChain m_keyChain;
 
   std::map<std::string, Name> m_map;
 };

@@ -41,7 +41,7 @@ SVSyncBase::SVSyncBase(const Name& syncPrefix,
   , m_fetcher(face)
   , m_onUpdate(updateCallback)
   , m_dataStore(dataStore)
-  , m_core(m_face, m_keyChain, m_syncPrefix, m_onUpdate, securityOptions, m_id)
+  , m_core(m_face, m_syncPrefix, m_onUpdate, securityOptions, m_id)
 {
   // Register new data store
   if (m_dataStore == DEFAULT_DATASTORE)
@@ -76,7 +76,7 @@ SVSyncBase::publishData(const Block& content, const ndn::time::milliseconds& fre
   if (contentType != ndn::tlv::Invalid)
     data->setContentType(contentType);
 
-  m_keyChain.sign(*data, m_securityOptions.dataSigningInfo);
+  m_securityOptions.dataSigner.sign(*data);
 
   m_dataStore->insert(*data);
   m_core.updateSeqNo(newSeq, pubId);

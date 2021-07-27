@@ -188,7 +188,6 @@ protected:
 
 private:
   Face& m_face;
-  KeyChain m_keyChain;
 
   ndn::ScopedRegisteredPrefixHandle m_registeredDataPrefix;
   Fetcher m_fetcher;

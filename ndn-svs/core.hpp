@@ -76,7 +76,6 @@ public:
    * @param nid ID for the node
    */
   SVSyncCore(ndn::Face& face,
-             ndn::KeyChain& keyChain,
              const Name& syncPrefix,
              const UpdateCallback& onUpdate,
              const SecurityOptions& securityOptions = SecurityOptions::DEFAULT,
@@ -272,7 +271,6 @@ private:
   std::uniform_int_distribution<> m_intrReplyDist;
 
   // Security
-  ndn::KeyChain& m_keyChain;
   ndn::KeyChain m_keyChainMem;
 
   ndn::Scheduler m_scheduler;

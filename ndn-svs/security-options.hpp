@@ -18,17 +18,83 @@
 #define NDN_SVS_SIGNING_OPTIONS_HPP
 
 #include "common.hpp"
-#include "validator.hpp"
 
 namespace ndn {
 namespace svs {
 
+class BaseValidator {
+public:
+  /**
+   * @brief Asynchronously validate @p data
+   *
+   * @note @p successCb and @p failureCb must not be nullptr
+   */
+  virtual void
+  validate(const Data& data,
+            const ndn::security::DataValidationSuccessCallback& successCb,
+            const ndn::security::DataValidationFailureCallback& failureCb)
+  {
+    successCb(data);
+  }
+
+  /**
+   * @brief Asynchronously validate @p interest
+   *
+   * @note @p successCb and @p failureCb must not be nullptr
+   */
+  virtual void
+  validate(const Interest& interest,
+            const ndn::security::InterestValidationSuccessCallback& successCb,
+            const ndn::security::InterestValidationFailureCallback& failureCb)
+  {
+    successCb(interest);
+  }
+
+  virtual ~BaseValidator() = default;
+};
+
+class BaseSigner {
+public:
+  BaseSigner() : m_keyChain(new KeyChain("pib-memory:", "tpm-memory:")) {}
+
+  BaseSigner(KeyChain& keyChain) : m_keyChain(&keyChain) {}
+
+  virtual void
+  sign(Interest& interest) const
+  {
+    m_keyChain->sign(interest, signingInfo);
+  }
+
+  virtual void
+  sign(Data& data) const
+  {
+    m_keyChain->sign(data, signingInfo);
+  }
+
+  virtual ~BaseSigner() = default;
+
+  security::SigningInfo signingInfo;
+
+private:
+  std::shared_ptr<KeyChain> m_keyChain;
+};
+
 struct SecurityOptions
 {
+  SecurityOptions() : m_keyChain(new KeyChain()) {
+    init();
+  }
+
+  SecurityOptions(KeyChain& keyChain) : m_keyChain(&keyChain) {
+    init();
+  }
+
   /** Signing options for sync interests */
-  security::SigningInfo interestSigningInfo;
+  BaseSigner interestSigner;
   /** Signing options for data packets */
-  security::SigningInfo dataSigningInfo;
+  BaseSigner dataSigner;
+  /** Signing options for publication (encapsulated) packets */
+  BaseSigner pubSigner;
 
   /** Validator to validate data and interests (unless using HMAC) */
   std::shared_ptr<BaseValidator> validator = DEFAULT_VALIDATOR;
@@ -36,11 +102,20 @@ struct SecurityOptions
   static const SecurityOptions DEFAULT;
   static const std::shared_ptr<BaseValidator> DEFAULT_VALIDATOR;
 
-  SecurityOptions()
+private:
+  void
+  init()
   {
-    // Set defaults
-    interestSigningInfo.setSignedInterestFormat(security::SignedInterestFormat::V03);
+    interestSigner = BaseSigner(*m_keyChain);
+    dataSigner = BaseSigner(*m_keyChain);
+    pubSigner = BaseSigner(*m_keyChain);
+
+    // Interest signing format
+    interestSigner.signingInfo.setSignedInterestFormat(security::SignedInterestFormat::V03);
   }
+
+private:
+  std::shared_ptr<KeyChain> m_keyChain;
 };
 
 }  // namespace svs
