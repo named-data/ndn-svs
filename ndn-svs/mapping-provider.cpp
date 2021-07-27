@@ -65,7 +65,7 @@ MappingProvider::onMappingQuery(const Interest& interest)
   Data data(interest.getName());
   data.setContent(queryResponse.encode());
   data.setFreshnessPeriod(ndn::time::milliseconds(1000));
-  m_securityOptions.dataSigner.sign(data);
+  m_securityOptions.dataSigner->sign(data);
   m_face.put(data);
 }
 

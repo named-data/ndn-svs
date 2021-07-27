@@ -25,7 +25,7 @@ public:
   {
     // Use HMAC signing
     ndn::svs::SecurityOptions securityOptions;
-    securityOptions.interestSigner.signingInfo.setSigningHmacKey("dGhpcyBpcyBhIHNlY3JldCBtZXNzYWdl");
+    securityOptions.interestSigner->signingInfo.setSigningHmacKey("dGhpcyBpcyBhIHNlY3JldCBtZXNzYWdl");
 
     // Create sync with shared prefix
     auto svs = std::make_shared<ndn::svs::SVSyncShared>(

@@ -76,7 +76,7 @@ SVSyncBase::publishData(const Block& content, const ndn::time::milliseconds& fre
   if (contentType != ndn::tlv::Invalid)
     data->setContentType(contentType);
 
-  m_securityOptions.dataSigner.sign(*data);
+  m_securityOptions.dataSigner->sign(*data);
 
   m_dataStore->insert(*data);
   m_core.updateSeqNo(newSeq, pubId);

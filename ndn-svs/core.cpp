@@ -59,7 +59,7 @@ SVSyncCore::~SVSyncCore()
 void
 SVSyncCore::onSyncInterest(const Interest &interest)
 {
-  switch (m_securityOptions.interestSigner.signingInfo.getSignerType())
+  switch (m_securityOptions.interestSigner->signingInfo.getSignerType())
   {
     case security::SigningInfo::SIGNER_TYPE_NULL:
       onSyncInterestValidated(interest);
@@ -67,7 +67,7 @@ SVSyncCore::onSyncInterest(const Interest &interest)
 
     case security::SigningInfo::SIGNER_TYPE_HMAC:
       if (security::verifySignature(interest, m_keyChainMem.getTpm(),
-                                    m_securityOptions.interestSigner.signingInfo.getSignerName(),
+                                    m_securityOptions.interestSigner->signingInfo.getSignerName(),
                                     DigestAlgorithm::SHA256))
         onSyncInterestValidated(interest);
       return;
@@ -180,18 +180,18 @@ SVSyncCore::sendSyncInterest()
   interest.setCanBePrefix(true);
   interest.setMustBeFresh(true);
 
-  switch (m_securityOptions.interestSigner.signingInfo.getSignerType())
+  switch (m_securityOptions.interestSigner->signingInfo.getSignerType())
   {
     case security::SigningInfo::SIGNER_TYPE_NULL:
       interest.setName(syncName.appendNumber(0));
       break;
 
     case security::SigningInfo::SIGNER_TYPE_HMAC:
-      m_keyChainMem.sign(interest, m_securityOptions.interestSigner.signingInfo);
+      m_keyChainMem.sign(interest, m_securityOptions.interestSigner->signingInfo);
       break;
 
     default:
-      m_securityOptions.interestSigner.sign(interest);
+      m_securityOptions.interestSigner->sign(interest);
       break;
   }
 

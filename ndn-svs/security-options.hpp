@@ -90,11 +90,11 @@ struct SecurityOptions
   }
 
   /** Signing options for sync interests */
-  BaseSigner interestSigner;
+  std::shared_ptr<BaseSigner> interestSigner;
   /** Signing options for data packets */
-  BaseSigner dataSigner;
+  std::shared_ptr<BaseSigner> dataSigner;
   /** Signing options for publication (encapsulated) packets */
-  BaseSigner pubSigner;
+  std::shared_ptr<BaseSigner> pubSigner;
 
   /** Validator to validate data and interests (unless using HMAC) */
   std::shared_ptr<BaseValidator> validator = DEFAULT_VALIDATOR;
@@ -106,12 +106,12 @@ private:
   void
   init()
   {
-    interestSigner = BaseSigner(*m_keyChain);
-    dataSigner = BaseSigner(*m_keyChain);
-    pubSigner = BaseSigner(*m_keyChain);
+    interestSigner = make_shared<BaseSigner>(*m_keyChain);
+    dataSigner = make_shared<BaseSigner>(*m_keyChain);
+    pubSigner = make_shared<BaseSigner>(*m_keyChain);
 
     // Interest signing format
-    interestSigner.signingInfo.setSignedInterestFormat(security::SignedInterestFormat::V03);
+    interestSigner->signingInfo.setSignedInterestFormat(security::SignedInterestFormat::V03);
   }
 
 private:
