@@ -38,7 +38,6 @@ using NodeID = std::string;
 using SeqNo = uint64_t;
 
 using ndn::security::ValidationError;
-using ndn::security::Validator;
 
 using DataValidatedCallback = function<void(const Data&)>;
 using DataValidationErrorCallback = function<void(const Data&, const ValidationError& error)> ;

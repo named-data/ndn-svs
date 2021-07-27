@@ -20,7 +20,7 @@ namespace ndn {
 namespace svs {
 
 const SecurityOptions SecurityOptions::DEFAULT;
-const std::shared_ptr<Validator> SecurityOptions::DEFAULT_VALIDATOR;
+const std::shared_ptr<BaseValidator> SecurityOptions::DEFAULT_VALIDATOR;
 
 }  // namespace svs
 }  // namespace ndn
