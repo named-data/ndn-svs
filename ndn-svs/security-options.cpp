@@ -20,22 +20,22 @@ namespace ndn {
 namespace svs {
 
 void
-BaseSigner::sign(Interest& interest) const
+KeyChainSigner::sign(Interest& interest) const
 {
   m_keyChain.sign(interest, signingInfo);
 }
 
 void
-BaseSigner::sign(Data& data) const
+KeyChainSigner::sign(Data& data) const
 {
   m_keyChain.sign(data, signingInfo);
 }
 
 SecurityOptions::SecurityOptions(KeyChain& keyChain)
   : m_keyChain(keyChain)
-  , interestSigner(make_shared<BaseSigner>(keyChain))
-  , dataSigner(make_shared<BaseSigner>(keyChain))
-  , pubSigner(make_shared<BaseSigner>(keyChain))
+  , interestSigner(make_shared<KeyChainSigner>(keyChain))
+  , dataSigner(make_shared<KeyChainSigner>(keyChain))
+  , pubSigner(make_shared<KeyChainSigner>(keyChain))
 {
   interestSigner->signingInfo.setSignedInterestFormat(security::SignedInterestFormat::V03);
 }

@@ -22,7 +22,11 @@
 namespace ndn {
 namespace svs {
 
-class BaseValidator {
+/**
+ * A simple interface for a validator for data and interests
+ */
+class BaseValidator
+{
 public:
   /**
    * @brief Asynchronously validate @p data
@@ -53,24 +57,44 @@ public:
   virtual ~BaseValidator() = default;
 };
 
-class BaseSigner {
+/**
+ * A simple interface for a signer for data and interests
+ */
+class BaseSigner
+{
 public:
-  BaseSigner(KeyChain& keyChain) : m_keyChain(keyChain) {}
+  virtual void
+  sign(Interest& interest) const {}
 
   virtual void
-  sign(Interest& interest) const;
-
-  virtual void
-  sign(Data& data) const;
+  sign(Data& data) const {}
 
   virtual ~BaseSigner() = default;
 
   security::SigningInfo signingInfo;
+};
 
+/**
+ * A signer using an ndn-cxx keychain instance
+ */
+class KeyChainSigner : public BaseSigner {
+public:
+  KeyChainSigner(KeyChain& keyChain) : m_keyChain(keyChain) {}
+
+  void
+  sign(Interest& interest) const;
+
+  void
+  sign(Data& data) const;
+
+  virtual ~KeyChainSigner() = default;
 private:
   KeyChain& m_keyChain;
 };
 
+/**
+ * Global security options for SVS instance
+ */
 class SecurityOptions
 {
 public:
