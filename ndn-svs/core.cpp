@@ -48,12 +48,25 @@ SVSyncCore::SVSyncCore(ndn::Face& face,
   m_syncRegisteredPrefix =
     m_face.setInterestFilter(syncPrefix,
                              bind(&SVSyncCore::onSyncInterest, this, _2),
-                             bind(&SVSyncCore::retxSyncInterest, this, true, 0),
-                             [] (const Name& prefix, const std::string& msg) {});
+                             bind(&SVSyncCore::sendInitialInterest, this),
+                             [&] (const Name& prefix, const std::string& msg) {
+                                NDN_THROW(Error("Failed to register sync prefix"));
+                             });
 }
 
 SVSyncCore::~SVSyncCore()
 {
+}
+
+void
+SVSyncCore::sendInitialInterest()
+{
+  // Wait for 100ms before sending the first sync interest
+  // This is necessary to give other things time to initialize
+  m_scheduler.schedule(time::milliseconds(100), [this] {
+    m_initialized = true;
+    retxSyncInterest(true, 0);
+  });
 }
 
 void
@@ -162,6 +175,8 @@ SVSyncCore::retxSyncInterest(const bool send, unsigned int delay)
 void
 SVSyncCore::sendSyncInterest()
 {
+  if (!m_initialized) return;
+
   Name syncName(m_syncPrefix);
   Interest interest;
 

@@ -172,6 +172,12 @@ NDN_SVS_PUBLIC_WITH_TESTS_ELSE_PRIVATE:
   onSyncInterestValidated(const Interest &interest);
 
   /**
+   * @brief Mark the instance as initialized and send the first interest
+   */
+  void
+  sendInitialInterest();
+
+  /**
    * @brief sendSyncInterest and schedule a new retxSyncInterest event.
    *
    * @param send Send a sync interest immediately
@@ -285,6 +291,9 @@ private:
 
   int m_instanceId;
   static int s_instanceCounter;
+
+  // Prevent sending interests before initialization
+  bool m_initialized = false;
 };
 
 }  // namespace svs
