@@ -31,8 +31,8 @@ public:
    */
   virtual void
   validate(const Data& data,
-            const ndn::security::DataValidationSuccessCallback& successCb,
-            const ndn::security::DataValidationFailureCallback& failureCb)
+           const ndn::security::DataValidationSuccessCallback& successCb,
+           const ndn::security::DataValidationFailureCallback& failureCb)
   {
     successCb(data);
   }
@@ -44,8 +44,8 @@ public:
    */
   virtual void
   validate(const Interest& interest,
-            const ndn::security::InterestValidationSuccessCallback& successCb,
-            const ndn::security::InterestValidationFailureCallback& failureCb)
+           const ndn::security::InterestValidationSuccessCallback& successCb,
+           const ndn::security::InterestValidationFailureCallback& failureCb)
   {
     successCb(interest);
   }
@@ -55,40 +55,31 @@ public:
 
 class BaseSigner {
 public:
-  BaseSigner() : m_keyChain(new KeyChain("pib-memory:", "tpm-memory:")) {}
-
-  BaseSigner(KeyChain& keyChain) : m_keyChain(&keyChain) {}
+  BaseSigner(KeyChain& keyChain) : m_keyChain(keyChain) {}
 
   virtual void
-  sign(Interest& interest) const
-  {
-    m_keyChain->sign(interest, signingInfo);
-  }
+  sign(Interest& interest) const;
 
   virtual void
-  sign(Data& data) const
-  {
-    m_keyChain->sign(data, signingInfo);
-  }
+  sign(Data& data) const;
 
   virtual ~BaseSigner() = default;
 
   security::SigningInfo signingInfo;
 
 private:
-  std::shared_ptr<KeyChain> m_keyChain;
+  KeyChain& m_keyChain;
 };
 
-struct SecurityOptions
+class SecurityOptions
 {
-  SecurityOptions() : m_keyChain(new KeyChain()) {
-    init();
-  }
+public:
+  SecurityOptions(KeyChain& keyChain);
 
-  SecurityOptions(KeyChain& keyChain) : m_keyChain(&keyChain) {
-    init();
-  }
+private:
+  KeyChain& m_keyChain;
 
+public:
   /** Signing options for sync interests */
   std::shared_ptr<BaseSigner> interestSigner;
   /** Signing options for data packets */
@@ -99,23 +90,9 @@ struct SecurityOptions
   /** Validator to validate data and interests (unless using HMAC) */
   std::shared_ptr<BaseValidator> validator = DEFAULT_VALIDATOR;
 
+  static KeyChain DEFAULT_KEYCHAIN;
   static const SecurityOptions DEFAULT;
   static const std::shared_ptr<BaseValidator> DEFAULT_VALIDATOR;
-
-private:
-  void
-  init()
-  {
-    interestSigner = make_shared<BaseSigner>(*m_keyChain);
-    dataSigner = make_shared<BaseSigner>(*m_keyChain);
-    pubSigner = make_shared<BaseSigner>(*m_keyChain);
-
-    // Interest signing format
-    interestSigner->signingInfo.setSignedInterestFormat(security::SignedInterestFormat::V03);
-  }
-
-private:
-  std::shared_ptr<KeyChain> m_keyChain;
 };
 
 }  // namespace svs

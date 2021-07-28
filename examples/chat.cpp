@@ -24,7 +24,7 @@ public:
   ProgramPrefix(const Options &options) : Program(options)
   {
     // Use HMAC signing
-    ndn::svs::SecurityOptions securityOptions;
+    ndn::svs::SecurityOptions securityOptions(m_keyChain);
     securityOptions.interestSigner->signingInfo.setSigningHmacKey("dGhpcyBpcyBhIHNlY3JldCBtZXNzYWdl");
 
     m_svs = std::make_shared<ndn::svs::SVSync>(

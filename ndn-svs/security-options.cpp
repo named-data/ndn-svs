@@ -19,7 +19,29 @@
 namespace ndn {
 namespace svs {
 
-const SecurityOptions SecurityOptions::DEFAULT;
+void
+BaseSigner::sign(Interest& interest) const
+{
+  m_keyChain.sign(interest, signingInfo);
+}
+
+void
+BaseSigner::sign(Data& data) const
+{
+  m_keyChain.sign(data, signingInfo);
+}
+
+SecurityOptions::SecurityOptions(KeyChain& keyChain)
+  : m_keyChain(keyChain)
+  , interestSigner(make_shared<BaseSigner>(keyChain))
+  , dataSigner(make_shared<BaseSigner>(keyChain))
+  , pubSigner(make_shared<BaseSigner>(keyChain))
+{
+  interestSigner->signingInfo.setSignedInterestFormat(security::SignedInterestFormat::V03);
+}
+
+KeyChain SecurityOptions::DEFAULT_KEYCHAIN;
+const SecurityOptions SecurityOptions::DEFAULT(SecurityOptions::DEFAULT_KEYCHAIN);
 const std::shared_ptr<BaseValidator> SecurityOptions::DEFAULT_VALIDATOR;
 
 }  // namespace svs

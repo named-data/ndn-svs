@@ -39,7 +39,7 @@ public:
     : m_options(options)
   {
     // Use HMAC signing
-    SecurityOptions securityOptions;
+    SecurityOptions securityOptions(m_keyChain);
     securityOptions.interestSigner->signingInfo.setSigningHmacKey("dGhpcyBpcyBhIHNlY3JldCBtZXNzYWdl");
 
     m_svspubsub = std::make_shared<SVSPubSub>(
