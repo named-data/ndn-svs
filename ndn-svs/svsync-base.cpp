@@ -115,7 +115,7 @@ SVSyncBase::fetchData(const NodeID& nid, const SeqNo& seqNo,
   Interest interest(interestName);
   interest.setMustBeFresh(false);
   interest.setCanBePrefix(false);
-  interest.setInterestLifetime(ndn::time::milliseconds(4000));
+  interest.setInterestLifetime(ndn::time::milliseconds(2000));
 
   m_fetcher.expressInterest(interest,
                             bind(&SVSyncBase::onData, this, _1, _2, onValidated, onValidationFailed),

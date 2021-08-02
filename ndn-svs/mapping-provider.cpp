@@ -98,6 +98,7 @@ MappingProvider::fetchNameMapping(const MissingDataInfo info,
   Interest interest(queryName);
   interest.setMustBeFresh(false);
   interest.setCanBePrefix(false);
+  interest.setInterestLifetime(ndn::time::milliseconds(2000));
 
   auto onDataValidated = [onValidated] (const Data& data)
   {
