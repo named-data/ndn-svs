@@ -155,9 +155,18 @@ SVSPubSub::updateCallbackInternal(const std::vector<ndn::svs::MissingDataInfo>& 
       }
 
       // Find from network what we don't yet know
-      if (remainingInfo.high >= remainingInfo.low)
+      while (remainingInfo.high >= remainingInfo.low)
       {
-        m_mappingProvider.fetchNameMapping(remainingInfo, [this, remainingInfo, streamName] (MappingList list)
+        // Fetch a max of 10 entries per request
+        // This is to ensure the mapping response does not overflow
+        // TODO: implement a better solution to this issue
+        MissingDataInfo truncatedRemainingInfo = remainingInfo;
+        if (truncatedRemainingInfo.high - truncatedRemainingInfo.low > 10)
+        {
+          truncatedRemainingInfo.high = truncatedRemainingInfo.low + 10;
+        }
+
+        m_mappingProvider.fetchNameMapping(truncatedRemainingInfo, [this, remainingInfo, streamName] (MappingList list)
         {
           for (const auto sub : m_prefixSubscriptions)
           {
@@ -171,6 +180,8 @@ SVSPubSub::updateCallbackInternal(const std::vector<ndn::svs::MissingDataInfo>& 
             }
           }
         }, -1);
+
+        remainingInfo.low += 11;
       }
     }
   }
