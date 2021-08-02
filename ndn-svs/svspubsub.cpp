@@ -207,6 +207,13 @@ SVSPubSub::onSyncData(const Data& syncData, const Subscription& subscription,
     // Return data
     SubscriptionData subData = { encapsulatedData, streamName, seqNo, false };
 
+    // Check if mapping is missing
+    try {
+      m_mappingProvider.getMapping(streamName.toUri(), seqNo);
+    } catch (const std::exception& ex) {
+      m_mappingProvider.insertMapping(streamName.toUri(), seqNo, encapsulatedData.getName());
+    }
+
     if (static_cast<bool>(m_securityOptions.validator))
       m_securityOptions.validator->validate(
         encapsulatedData,
