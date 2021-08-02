@@ -59,8 +59,17 @@ MappingProvider::onMappingQuery(const Interest& interest)
     try {
       Name name = getMapping(query.session, i);
       queryResponse.pairs.push_back(std::make_pair(i, name));
-    } catch (const std::exception& ex) {}
+    } catch (const std::exception& ex) {
+      // TODO: don't give up if not everything is found
+      // Instead return whatever we have and let the client request
+      // the remaining mappings again
+      return;
+    }
   }
+
+  // Don't reply if we have nothing
+  if (queryResponse.pairs.size() == 0)
+    return;
 
   Data data(interest.getName());
   data.setContent(queryResponse.encode());
