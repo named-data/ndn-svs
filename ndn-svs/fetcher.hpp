@@ -57,6 +57,10 @@ private:
   Face& m_face;
 
   uint64_t m_pendingInterestId = 0;
+
+  // Keep a scoped map of all pending interests.
+  // This ensures all interests are cancelled when
+  // the fetcher is destroyed.
   std::map<uint64_t, ScopedPendingInterestHandle> m_pendingInterests;
 };
 
