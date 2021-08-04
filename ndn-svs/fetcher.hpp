@@ -19,6 +19,8 @@
 
 #include "common.hpp"
 
+#include <queue>
+
 namespace ndn {
 namespace svs {
 
@@ -53,15 +55,34 @@ private:
             const uint64_t interestId,
             const int nRetries);
 
+  void
+  processQueue();
+
 private:
   Face& m_face;
 
-  uint64_t m_pendingInterestId = 0;
+  uint64_t m_interestIdCounter = 0;
+  uint16_t m_windowSize = 10;
 
   // Keep a scoped map of all pending interests.
   // This ensures all interests are cancelled when
   // the fetcher is destroyed.
+  // The size of this map represents the current window in progress.
   std::map<uint64_t, ScopedPendingInterestHandle> m_pendingInterests;
+
+  // An Interest and its callbacks
+  struct QueuedInterest
+  {
+    uint64_t id;
+    Interest interest;
+    DataCallback afterSatisfied;
+    NackCallback afterNacked;
+    TimeoutCallback afterTimeout;
+    int nRetries;
+  };
+
+  // Interests yet to be sent
+  std::queue<QueuedInterest> m_interestQueue;
 };
 
 }  // namespace svs

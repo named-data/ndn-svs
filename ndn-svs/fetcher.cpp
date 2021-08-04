@@ -30,12 +30,25 @@ Fetcher::expressInterest(const ndn::Interest &interest,
                          const ndn::TimeoutCallback &afterTimeout,
                          const int nRetries)
 {
-  uint64_t id = ++m_pendingInterestId;
-  m_pendingInterests[id] =
-    m_face.expressInterest(interest,
-                           std::bind(&Fetcher::onData, this, _1, _2, afterSatisfied, id),
-                           std::bind(&Fetcher::onNack, this, _1, _2, afterNacked, id),
-                           std::bind(&Fetcher::onTimeout, this, _1, afterSatisfied, afterNacked, afterTimeout, id, nRetries));
+  uint64_t id = ++m_interestIdCounter;
+  m_interestQueue.push({ id, interest, afterSatisfied, afterNacked, afterTimeout, nRetries });
+  processQueue();
+}
+
+void
+Fetcher::processQueue()
+{
+  while (m_interestQueue.size() > 0 && m_pendingInterests.size() < m_windowSize)
+  {
+    QueuedInterest i = m_interestQueue.front();
+    m_interestQueue.pop();
+
+    m_pendingInterests[i.id] =
+      m_face.expressInterest(i.interest,
+                             std::bind(&Fetcher::onData, this, _1, _2, i.afterSatisfied, i.id),
+                             std::bind(&Fetcher::onNack, this, _1, _2, i.afterNacked, i.id),
+                             std::bind(&Fetcher::onTimeout, this, _1, i.afterSatisfied, i.afterNacked, i.afterTimeout, i.id, i.nRetries));
+  }
 }
 
 void
@@ -44,6 +57,7 @@ Fetcher::onData(const Interest& interest, const Data& data,
                 const uint64_t interestId)
 {
   m_pendingInterests.erase(interestId);
+  processQueue();
   afterSatisfied(interest, data);
 }
 
@@ -53,6 +67,7 @@ Fetcher::onNack(const ndn::Interest& interest, const ndn::lp::Nack& nack,
                 const uint64_t interestId)
 {
   m_pendingInterests.erase(interestId);
+  processQueue();
   afterNacked(interest, nack);
 }
 
@@ -67,7 +82,10 @@ Fetcher::onTimeout(const Interest& interest,
   m_pendingInterests.erase(interestId);
 
   if (nRetries == 0)
+  {
+    processQueue();
     return afterTimeout(interest);
+  }
 
   Interest newNonceInterest(interest);
   newNonceInterest.refreshNonce();
