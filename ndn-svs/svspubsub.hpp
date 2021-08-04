@@ -23,10 +23,7 @@
 #include "security-options.hpp"
 #include "svsync.hpp"
 #include "mapping-provider.hpp"
-
-#include <boost/multi_index_container.hpp>
-#include <boost/multi_index/hashed_index.hpp>
-#include <boost/multi_index/sequenced_index.hpp>
+#include "hashed-sequence.hpp"
 
 namespace ndn {
 namespace svs {
@@ -163,20 +160,7 @@ private:
   std::vector<Subscription> m_producerSubscriptions;
   std::vector<Subscription> m_prefixSubscriptions;
 
-  struct Queue {};
-  struct Hashtable {};
-  using Container = boost::multi_index_container<
-    size_t,
-    boost::multi_index::indexed_by<
-      boost::multi_index::sequenced<boost::multi_index::tag<Queue>>,
-      boost::multi_index::hashed_non_unique<boost::multi_index::tag<Hashtable>,
-                                            boost::multi_index::identity<size_t>>
-    >
-  >;
-
-  Container m_doneIndex;
-  Container::index<Queue>::type& m_doneQueue = m_doneIndex.get<Queue>();
-  Container::index<Hashtable>::type& m_doneHt = m_doneIndex.get<Hashtable>();
+  HashedSequence m_receivedObjectIds;
 };
 
 }  // namespace svs

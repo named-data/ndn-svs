@@ -194,10 +194,11 @@ SVSPubSub::onSyncData(const Data& syncData, const Subscription& subscription,
                       const Name& streamName, const SeqNo seqNo)
 {
   // Check for duplicate calls and push into queue
+  // TODO: save memory by popping out from the queue after some time?
   const size_t hash = std::hash<std::string>{}(Name(streamName).appendNumber(seqNo).toUri());
-  if (m_doneHt.find(hash) != m_doneHt.end())
+  if (m_receivedObjectIds.ht.find(hash) != m_receivedObjectIds.ht.end())
     return false;
-  m_doneQueue.push_back(hash);
+  m_receivedObjectIds.seq.push_back(hash);
 
   // Check if data in encapsulated
   if (syncData.getContentType() == ndn::tlv::Data)
