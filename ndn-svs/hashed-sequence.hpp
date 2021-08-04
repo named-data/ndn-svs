@@ -28,16 +28,17 @@ namespace svs {
  * Struct with a boost multi index container with
  * a sequence and a hash table
  */
+template<typename T>
 struct HashedSequence
 {
   struct Sequence {};
   struct Hashtable {};
   using Container = boost::multi_index_container<
-    size_t,
+    T,
     boost::multi_index::indexed_by<
       boost::multi_index::sequenced<boost::multi_index::tag<Sequence>>,
       boost::multi_index::hashed_non_unique<boost::multi_index::tag<Hashtable>,
-                                            boost::multi_index::identity<size_t>>
+                                            boost::multi_index::identity<T>>
     >
   >;
 

@@ -160,7 +160,7 @@ private:
   std::vector<Subscription> m_producerSubscriptions;
   std::vector<Subscription> m_prefixSubscriptions;
 
-  HashedSequence m_receivedObjectIds;
+  HashedSequence<size_t> m_receivedObjectIds;
 };
 
 }  // namespace svs
