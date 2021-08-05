@@ -208,6 +208,12 @@ SVSPubSub::onSyncData(const Data& syncData, const Subscription& subscription,
   {
     Data encapsulatedData(syncData.getContent().blockFromValue());
 
+    try {
+      m_mappingProvider.getMapping(streamName.toUri(), seqNo);
+    } catch (const std::exception& ex) {
+      m_mappingProvider.insertMapping(streamName.toUri(), seqNo, encapsulatedData.getName());
+    }
+
     // Return data
     SubscriptionData subData = { encapsulatedData, streamName, seqNo, false };
 
