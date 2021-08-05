@@ -100,10 +100,21 @@ MappingProvider::fetchNameMapping(const MissingDataInfo info,
   interest.setCanBePrefix(false);
   interest.setInterestLifetime(ndn::time::milliseconds(2000));
 
-  auto onDataValidated = [onValidated] (const Data& data)
+  auto onDataValidated = [this, onValidated, info] (const Data& data)
   {
     Block block = data.getContent().blockFromValue();
-    onValidated(MappingList(block));
+    MappingList list(block);
+
+    // Add all mappings to self
+    for (const auto entry : list.pairs) {
+      try {
+        getMapping(info.session, entry.first);
+      } catch (const std::exception& ex) {
+        insertMapping(info.session, entry.first, entry.second);
+      }
+    }
+
+    onValidated(list);
   };
 
   auto onValidationFailed = [] (const Data& data, const ValidationError& error) {};
