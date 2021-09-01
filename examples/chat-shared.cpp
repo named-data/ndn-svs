@@ -30,7 +30,7 @@ public:
     // Create sync with shared prefix
     auto svs = std::make_shared<ndn::svs::SVSyncShared>(
       ndn::Name(m_options.prefix),
-      ndn::Name(m_options.m_id).get(-1).toUri(),
+      ndn::Name(ndn::Name(m_options.m_id).get(-1)),
       face,
       std::bind(&ProgramShared::onMissingData, this, _1),
       securityOptions);

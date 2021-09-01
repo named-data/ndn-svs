@@ -129,7 +129,7 @@ private:
 
   ndn::ScopedRegisteredPrefixHandle m_registeredPrefix;
 
-  std::map<std::string, Name> m_map;
+  std::map<NodeID, Name> m_map;
 };
 
 }  // namespace svs

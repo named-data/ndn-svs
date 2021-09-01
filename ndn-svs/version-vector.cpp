@@ -31,8 +31,7 @@ VersionVector::VersionVector(const ndn::Block& block) {
       NDN_THROW(ndn::tlv::Error("Expected VersionVectorEntry"));
     it->parse();
 
-    auto nodeIdElem = it->elements().at(0);
-    NodeID nodeId(reinterpret_cast<const char*>(nodeIdElem.value()), nodeIdElem.value_size());
+    NodeID nodeId(it->elements().at(0));
     SeqNo seqNo = ndn::encoding::readNonNegativeInteger(it->elements().at(1));
 
     m_map[nodeId] = seqNo;
@@ -54,9 +53,7 @@ VersionVector::encode() const
     entryLength += enc.prependVarNumber(tlv::SeqNo);
     entryLength += valLength;
 
-    entryLength += enc.prependByteArrayBlock(tlv::ProducerPrefix,
-                                             reinterpret_cast<const uint8_t*>(it->first.c_str()), it->first.size());
-
+    entryLength += enc.prependBlock(it->first.wireEncode());
     totalLength += enc.prependVarNumber(entryLength);
     entryLength += enc.prependVarNumber(tlv::VersionVectorEntry);
     totalLength += entryLength;

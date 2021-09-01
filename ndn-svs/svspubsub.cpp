@@ -38,7 +38,7 @@ SVSPubSub::SVSPubSub(const Name& syncPrefix,
   , m_svsync(syncPrefix, nodePrefix, face,
              std::bind(&SVSPubSub::updateCallbackInternal, this, _1),
              securityOptions, dataStore)
-  , m_mappingProvider(syncPrefix, nodePrefix.toUri(), face, securityOptions)
+  , m_mappingProvider(syncPrefix, nodePrefix, face, securityOptions)
 {
   m_svsync.getCore().setGetExtraBlockCallback(std::bind(&SVSPubSub::onGetExtraData, this, _1));
   m_svsync.getCore().setRecvExtraBlockCallback(std::bind(&SVSPubSub::onRecvExtraData, this, _1));
@@ -47,10 +47,10 @@ SVSPubSub::SVSPubSub(const Name& syncPrefix,
 SeqNo
 SVSPubSub::publishData(const Data& data, const Name nodePrefix)
 {
-  NodeID nid = nodePrefix == EMPTY_NAME ? m_dataPrefix.toUri() : nodePrefix.toUri();
+  NodeID nid = nodePrefix == EMPTY_NAME ? m_dataPrefix : nodePrefix;
   SeqNo seqNo = m_svsync.publishData(data.wireEncode(), data.getFreshnessPeriod(), nid, ndn::tlv::Data);
 
-  if (m_notificationMappingList.nodeId == "" || m_notificationMappingList.nodeId == nid)
+  if (m_notificationMappingList.nodeId == EMPTY_NAME || m_notificationMappingList.nodeId == nid)
   {
     m_notificationMappingList.nodeId = nid;
     m_notificationMappingList.pairs.push_back(std::make_pair(seqNo, data.getName()));
@@ -209,9 +209,9 @@ SVSPubSub::onSyncData(const Data& syncData, const Subscription& subscription,
     Data encapsulatedData(syncData.getContent().blockFromValue());
 
     try {
-      m_mappingProvider.getMapping(streamName.toUri(), seqNo);
+      m_mappingProvider.getMapping(streamName, seqNo);
     } catch (const std::exception& ex) {
-      m_mappingProvider.insertMapping(streamName.toUri(), seqNo, encapsulatedData.getName());
+      m_mappingProvider.insertMapping(streamName, seqNo, encapsulatedData.getName());
     }
 
     // Return data

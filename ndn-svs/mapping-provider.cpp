@@ -39,13 +39,13 @@ MappingProvider::MappingProvider(const Name& syncPrefix,
 void
 MappingProvider::insertMapping(const NodeID& nodeId, const SeqNo& seqNo, const Name& appName)
 {
-  m_map[nodeId + "/" + std::to_string(seqNo)] = appName;
+  m_map[Name(nodeId).appendNumber(seqNo)] = appName;
 }
 
 Name
 MappingProvider::getMapping(const NodeID& nodeId, const SeqNo& seqNo)
 {
-  return m_map.at(nodeId + "/" + std::to_string(seqNo));
+  return m_map.at(Name(nodeId).appendNumber(seqNo));
 }
 
 void
@@ -137,7 +137,7 @@ MappingProvider::parseMappingQueryDataName(const Name& name)
   MissingDataInfo info;
   info.low = name.get(-2).toNumber();
   info.high = name.get(-1).toNumber();
-  info.session = name.getPrefix(-3 - m_syncPrefix.size()).toUri();
+  info.session = name.getPrefix(-3 - m_syncPrefix.size());
   return info;
 }
 
@@ -171,9 +171,7 @@ MappingList::encode()
     totalLength += entryLength;
   }
 
-  totalLength += enc.prependByteArrayBlock(tlv::ProducerPrefix,
-                                           reinterpret_cast<const uint8_t*>(nodeId.c_str()), nodeId.size());
-
+  totalLength += enc.prependBlock(nodeId.wireEncode());
   totalLength += enc.prependVarNumber(totalLength);
   totalLength += enc.prependVarNumber(tlv::MappingData);
 
@@ -185,9 +183,9 @@ MappingList::MappingList(const Block& block)
   block.parse();
 
   for (auto it = block.elements_begin(); it < block.elements_end(); it++) {
-    if (it->type() == tlv::ProducerPrefix)
+    if (it->type() == ndn::tlv::Name)
     {
-      nodeId = NodeID(reinterpret_cast<const char*>(it->value()), it->value_size());
+      nodeId = NodeID(*it);
       continue;
     }
 

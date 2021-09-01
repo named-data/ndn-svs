@@ -41,7 +41,7 @@ public:
   : SVSyncBase(
       syncPrefix,
       Name(nodePrefix).append(syncPrefix),
-      nodePrefix.toUri(),
+      nodePrefix,
       face, updateCallback, securityOptions, dataStore)
   {}
 

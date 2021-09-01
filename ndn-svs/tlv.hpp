@@ -8,7 +8,6 @@ namespace tlv {
 enum {
   VersionVector = 201,
   VersionVectorEntry = 202,
-  ProducerPrefix = 203,
   SeqNo = 204,
   MappingData = 205,
   MappingEntry = 206,
