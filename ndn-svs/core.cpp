@@ -295,7 +295,7 @@ SVSyncCore::updateSeqNo(const SeqNo& seq, const NodeID& nid)
 }
 
 std::set<NodeID>
-SVSyncCore::getSessionNames() const
+SVSyncCore::getNodeIds() const
 {
   std::lock_guard<std::mutex> lock(m_vvMutex);
   std::set<NodeID> sessionNames;

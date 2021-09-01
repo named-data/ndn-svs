@@ -78,7 +78,7 @@ BOOST_AUTO_TEST_CASE(mergeStateVector)
   BOOST_CHECK_EQUAL(v.get("three"), 3);
 
   BOOST_CHECK_EQUAL(missingData.size(), 1);
-  BOOST_CHECK_EQUAL(missingData[0].session, "three");
+  BOOST_CHECK_EQUAL(missingData[0].nodeId, "three");
   BOOST_CHECK_EQUAL(missingData[0].low, 1);
   BOOST_CHECK_EQUAL(missingData[0].high, 3);
 }

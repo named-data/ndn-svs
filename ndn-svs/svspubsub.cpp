@@ -103,7 +103,7 @@ SVSPubSub::updateCallbackInternal(const std::vector<ndn::svs::MissingDataInfo>& 
 {
   for (const auto stream : info)
   {
-    Name streamName(stream.session);
+    Name streamName(stream.nodeId);
 
     // Producer subscriptions
     for (const auto sub : m_producerSubscriptions)
@@ -113,7 +113,7 @@ SVSPubSub::updateCallbackInternal(const std::vector<ndn::svs::MissingDataInfo>& 
         // Fetch the data, validate and call callback of sub
         for (SeqNo i = stream.low; i <= stream.high; i++)
         {
-          m_svsync.fetchData(stream.session, i,
+          m_svsync.fetchData(stream.nodeId, i,
                              std::bind(&SVSPubSub::onSyncData, this, _1, sub, streamName, i), -1);
         }
 
@@ -121,7 +121,7 @@ SVSPubSub::updateCallbackInternal(const std::vector<ndn::svs::MissingDataInfo>& 
         if (sub.prefetch)
         {
           const SeqNo s = stream.high + 1;
-          m_svsync.fetchData(stream.session, s,
+          m_svsync.fetchData(stream.nodeId, s,
                              std::bind(&SVSPubSub::onSyncData, this, _1, sub, streamName, s), -1);
         }
       }
@@ -137,12 +137,12 @@ SVSPubSub::updateCallbackInternal(const std::vector<ndn::svs::MissingDataInfo>& 
       {
         try
         {
-          Name mapping = m_mappingProvider.getMapping(stream.session, i);
+          Name mapping = m_mappingProvider.getMapping(stream.nodeId, i);
           for (const auto sub : m_prefixSubscriptions)
           {
            if (sub.prefix.isPrefixOf(mapping))
             {
-              m_svsync.fetchData(stream.session, i,
+              m_svsync.fetchData(stream.nodeId, i,
                                  std::bind(&SVSPubSub::onSyncData, this, _1, sub, streamName, i), -1);
             }
           }
@@ -174,7 +174,7 @@ SVSPubSub::updateCallbackInternal(const std::vector<ndn::svs::MissingDataInfo>& 
             {
               if (sub.prefix.isPrefixOf(entry.second))
               {
-                m_svsync.fetchData(remainingInfo.session, entry.first,
+                m_svsync.fetchData(remainingInfo.nodeId, entry.first,
                                    std::bind(&SVSPubSub::onSyncData, this, _1, sub, streamName, entry.first), -1);
               }
             }

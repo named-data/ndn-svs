@@ -34,7 +34,7 @@ class MissingDataInfo
 {
 public:
   /// @brief session name
-  NodeID session;
+  NodeID nodeId;
   /// @brief the lowest one of missing sequence numbers
   SeqNo low;
   /// @brief the highest one of missing sequence numbers
@@ -97,7 +97,7 @@ public:
    * @param prefix prefix of the node
    */
   const NodeID&
-  getSessionName()
+  getNodeId()
   {
     return m_id;
   }
@@ -124,9 +124,9 @@ public:
   void
   updateSeqNo(const SeqNo& seq, const NodeID& nid = EMPTY_NODE_ID);
 
-  /// @brief Get the name of all sessions
+  /// @brief Get all the nodeIDs
   std::set<NodeID>
-  getSessionNames() const;
+  getNodeIds() const;
 
   using GetExtraBlockCallback = function<const ndn::Block(const VersionVector&)>;
   using RecvExtraBlockCallback = function<void(const ndn::Block&, const VersionVector&)>;

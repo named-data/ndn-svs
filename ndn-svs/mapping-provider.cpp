@@ -52,12 +52,12 @@ void
 MappingProvider::onMappingQuery(const Interest& interest)
 {
   MissingDataInfo query = parseMappingQueryDataName(interest.getName());
-  MappingList queryResponse(query.session);
+  MappingList queryResponse(query.nodeId);
 
   for (SeqNo i = query.low; i <= std::max(query.high, query.low); i++)
   {
     try {
-      Name name = getMapping(query.session, i);
+      Name name = getMapping(query.nodeId, i);
       queryResponse.pairs.push_back(std::make_pair(i, name));
     } catch (const std::exception& ex) {
       // TODO: don't give up if not everything is found
@@ -108,9 +108,9 @@ MappingProvider::fetchNameMapping(const MissingDataInfo info,
     // Add all mappings to self
     for (const auto entry : list.pairs) {
       try {
-        getMapping(info.session, entry.first);
+        getMapping(info.nodeId, entry.first);
       } catch (const std::exception& ex) {
-        insertMapping(info.session, entry.first, entry.second);
+        insertMapping(info.nodeId, entry.first, entry.second);
       }
     }
 
@@ -128,7 +128,7 @@ MappingProvider::fetchNameMapping(const MissingDataInfo info,
 Name
 MappingProvider::getMappingQueryDataName(const MissingDataInfo& info)
 {
-  return Name(info.session).append(m_syncPrefix).append("MAPPING").appendNumber(info.low).appendNumber(info.high);
+  return Name(info.nodeId).append(m_syncPrefix).append("MAPPING").appendNumber(info.low).appendNumber(info.high);
 }
 
 MissingDataInfo
@@ -137,7 +137,7 @@ MappingProvider::parseMappingQueryDataName(const Name& name)
   MissingDataInfo info;
   info.low = name.get(-2).toNumber();
   info.high = name.get(-1).toNumber();
-  info.session = name.getPrefix(-3 - m_syncPrefix.size());
+  info.nodeId = name.getPrefix(-3 - m_syncPrefix.size());
   return info;
 }
 
