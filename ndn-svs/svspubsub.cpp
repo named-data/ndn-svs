@@ -215,20 +215,13 @@ SVSPubSub::onSyncData(const Data& syncData, const Subscription& subscription,
     }
 
     // Return data
-    SubscriptionData subData = { encapsulatedData, streamName, seqNo, false };
+    SubscriptionData subData = { encapsulatedData, streamName, seqNo };
 
-    if (static_cast<bool>(m_securityOptions.validator))
-      m_securityOptions.validator->validate(
+    if (static_cast<bool>(m_securityOptions.encapsulatedDataValidator))
+      m_securityOptions.encapsulatedDataValidator->validate(
         encapsulatedData,
-        [&] (const Data& data)
-        {
-          subData.validated = true;
-          subscription.callback(subData);
-        },
-        [&] (const Data& data, const security::ValidationError error)
-        {
-          subscription.callback(subData);
-        }
+        [&] (const Data& data) { subscription.callback(subData); },
+        [&] (const Data& data, const security::ValidationError error) { }
       );
     else
       subscription.callback(subData);

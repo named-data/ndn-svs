@@ -113,6 +113,8 @@ public:
 
   /** Validator to validate data and interests (unless using HMAC) */
   std::shared_ptr<BaseValidator> validator = DEFAULT_VALIDATOR;
+  /** Validator to validate encapsulated data */
+  std::shared_ptr<BaseValidator> encapsulatedDataValidator = DEFAULT_VALIDATOR;
 
   static KeyChain DEFAULT_KEYCHAIN;
   static const SecurityOptions DEFAULT;

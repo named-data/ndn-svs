@@ -63,7 +63,6 @@ public:
     const Data& data;
     const Name& producerPrefix;
     const SeqNo seqNo;
-    bool validated;
   };
 
   /** Callback returning the received data, producer and sequence number and validated */
