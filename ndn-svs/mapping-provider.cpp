@@ -80,8 +80,8 @@ MappingProvider::onMappingQuery(const Interest& interest)
 
 void
 MappingProvider::fetchNameMapping(const MissingDataInfo info,
-                             const MappingListCallback& onValidated,
-                             const int nRetries)
+                                  const MappingListCallback& onValidated,
+                                  const int nRetries)
 {
   TimeoutCallback onTimeout =
     [] (const Interest& interest) {};
