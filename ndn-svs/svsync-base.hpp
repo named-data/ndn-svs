@@ -157,11 +157,6 @@ private:
   onDataInterest(const Interest &interest);
 
   void
-  onData(const Interest& interest, const Data& data,
-         const DataValidatedCallback& dataCallback,
-         const DataValidationErrorCallback& failCallback);
-
-  void
   onDataValidated(const Data& data,
                   const DataValidatedCallback& dataCallback);
 

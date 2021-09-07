@@ -112,13 +112,17 @@ public:
   std::shared_ptr<BaseSigner> pubSigner;
 
   /** Validator to validate data and interests (unless using HMAC) */
-  std::shared_ptr<BaseValidator> validator = DEFAULT_VALIDATOR;
+  std::shared_ptr<BaseValidator> validator = 0;
   /** Validator to validate encapsulated data */
-  std::shared_ptr<BaseValidator> encapsulatedDataValidator = DEFAULT_VALIDATOR;
+  std::shared_ptr<BaseValidator> encapsulatedDataValidator = 0;
+
+  /** Number of retries on validation fail */
+  int nRetriesOnValidationFail = 0;
+  /** Interval before validation fail retry */
+  int millisBeforeRetryOnValidationFail = 300;
 
   static KeyChain DEFAULT_KEYCHAIN;
   static const SecurityOptions DEFAULT;
-  static const std::shared_ptr<BaseValidator> DEFAULT_VALIDATOR;
 };
 
 }  // namespace svs

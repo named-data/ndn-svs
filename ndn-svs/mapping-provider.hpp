@@ -113,11 +113,6 @@ private:
   parseMappingQueryDataName(const Name& name);
 
   void
-  onData(const Interest& interest, const Data& data,
-         const DataValidatedCallback& dataCallback,
-         const DataValidationErrorCallback& failCallback);
-
-  void
   onMappingQuery(const Interest& interest);
 
 private:

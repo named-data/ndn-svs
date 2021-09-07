@@ -42,7 +42,6 @@ SecurityOptions::SecurityOptions(KeyChain& keyChain)
 
 KeyChain SecurityOptions::DEFAULT_KEYCHAIN;
 const SecurityOptions SecurityOptions::DEFAULT(SecurityOptions::DEFAULT_KEYCHAIN);
-const std::shared_ptr<BaseValidator> SecurityOptions::DEFAULT_VALIDATOR;
 
 }  // namespace svs
 }  // namespace ndn

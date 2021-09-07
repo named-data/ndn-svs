@@ -18,6 +18,7 @@
 #define NDN_SVS_FETCHER_HPP
 
 #include "common.hpp"
+#include "security-options.hpp"
 
 #include <queue>
 
@@ -26,40 +27,44 @@ namespace svs {
 
 class Fetcher
 {
+private:
+  struct QueuedInterest;
+
 public:
-  Fetcher(Face& face);
+  Fetcher(Face& face,
+          const SecurityOptions& securityOptions);
 
   void
   expressInterest(const ndn::Interest &interest,
                   const ndn::DataCallback &afterSatisfied,
                   const ndn::NackCallback &afterNacked,
                   const ndn::TimeoutCallback &afterTimeout,
-                  const int nRetries = 0);
+                  const int nRetries = 0,
+                  const ndn::security::DataValidationFailureCallback &afterValidationFailed = 0);
 
 private:
   void
+  expressInterest(const QueuedInterest& qi);
+
+  void
   onData(const Interest& interest, const Data& data,
-         const ndn::DataCallback& afterSatisfied,
-         const uint64_t interestId);
+         const QueuedInterest& qi);
 
   void
   onNack(const ndn::Interest& interest, const ndn::lp::Nack& nack,
-         const ndn::NackCallback &afterNacked,
-         const uint64_t interestId);
+         const QueuedInterest& qi);
 
   void
   onTimeout(const Interest& interest,
-            const ndn::DataCallback &afterSatisfied,
-            const ndn::NackCallback &afterNacked,
-            const ndn::TimeoutCallback &afterTimeout,
-            const uint64_t interestId,
-            const int nRetries);
+            const QueuedInterest& qi);
 
   void
   processQueue();
 
 private:
   Face& m_face;
+  ndn::Scheduler m_scheduler;
+  const SecurityOptions m_securityOptions;
 
   uint64_t m_interestIdCounter = 0;
   uint16_t m_windowSize = 10;
@@ -79,6 +84,8 @@ private:
     NackCallback afterNacked;
     TimeoutCallback afterTimeout;
     int nRetries;
+    int nRetriesOnValidationFail;
+    ndn::security::DataValidationFailureCallback afterValidationFailed;
   };
 
   // Interests yet to be sent

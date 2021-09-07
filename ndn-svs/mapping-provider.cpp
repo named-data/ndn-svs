@@ -27,7 +27,7 @@ MappingProvider::MappingProvider(const Name& syncPrefix,
   : m_syncPrefix(syncPrefix)
   , m_id(id)
   , m_face(face)
-  , m_fetcher(face)
+  , m_fetcher(face, securityOptions)
   , m_securityOptions(securityOptions)
 {
   m_registeredPrefix =
@@ -120,9 +120,10 @@ MappingProvider::fetchNameMapping(const MissingDataInfo info,
   auto onValidationFailed = [] (const Data& data, const ValidationError& error) {};
 
   m_fetcher.expressInterest(interest,
-                            bind(&MappingProvider::onData, this, _1, _2, onDataValidated, onValidationFailed),
+                            bind(onDataValidated, _2),
                             bind(onTimeout, _1), // Nack
-                            onTimeout, nRetries);
+                            onTimeout, nRetries,
+                            onValidationFailed);
 }
 
 Name
@@ -139,17 +140,6 @@ MappingProvider::parseMappingQueryDataName(const Name& name)
   info.high = name.get(-1).toNumber();
   info.nodeId = name.getPrefix(-3 - m_syncPrefix.size());
   return info;
-}
-
-void
-MappingProvider::onData(const Interest& interest, const Data& data,
-                        const DataValidatedCallback& onValidated,
-                        const DataValidationErrorCallback& onFailed)
-{
-  if (static_cast<bool>(m_securityOptions.validator))
-    m_securityOptions.validator->validate(data, onValidated, onFailed);
-  else
-    onValidated(data);
 }
 
 Block

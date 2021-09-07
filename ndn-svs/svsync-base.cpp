@@ -38,7 +38,7 @@ SVSyncBase::SVSyncBase(const Name& syncPrefix,
   , m_securityOptions(securityOptions)
   , m_id(id)
   , m_face(face)
-  , m_fetcher(face)
+  , m_fetcher(face, securityOptions)
   , m_onUpdate(updateCallback)
   , m_dataStore(dataStore)
   , m_core(m_face, m_syncPrefix, m_onUpdate, securityOptions, m_id)
@@ -118,22 +118,9 @@ SVSyncBase::fetchData(const NodeID& nid, const SeqNo& seqNo,
   interest.setInterestLifetime(ndn::time::milliseconds(2000));
 
   m_fetcher.expressInterest(interest,
-                            bind(&SVSyncBase::onData, this, _1, _2, onValidated, onValidationFailed),
+                            bind(&SVSyncBase::onDataValidated, this, _2, onValidated),
                             bind(onTimeout, _1), // Nack
-                            onTimeout, nRetries);
-}
-
-void
-SVSyncBase::onData(const Interest& interest, const Data& data,
-                   const DataValidatedCallback& onValidated,
-                   const DataValidationErrorCallback& onFailed)
-{
-  if (static_cast<bool>(m_securityOptions.validator))
-    m_securityOptions.validator->validate(data,
-                                          bind(&SVSyncBase::onDataValidated, this, _1, onValidated),
-                                          onFailed);
-  else
-    onDataValidated(data, onValidated);
+                            onTimeout, nRetries, onValidationFailed);
 }
 
 void
