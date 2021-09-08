@@ -47,8 +47,8 @@ SVSyncCore::SVSyncCore(ndn::Face& face,
   // Register sync interest filter
   m_syncRegisteredPrefix =
     m_face.setInterestFilter(syncPrefix,
-                             bind(&SVSyncCore::onSyncInterest, this, _2),
-                             bind(&SVSyncCore::sendInitialInterest, this),
+                             std::bind(&SVSyncCore::onSyncInterest, this, _2),
+                             std::bind(&SVSyncCore::sendInitialInterest, this),
                              [&] (const Name& prefix, const std::string& msg) {
                                 NDN_THROW(Error("Failed to register sync prefix"));
                              });
@@ -88,7 +88,7 @@ SVSyncCore::onSyncInterest(const Interest &interest)
     default:
       if (static_cast<bool>(m_securityOptions.validator))
         m_securityOptions.validator->validate(interest,
-                                              bind(&SVSyncCore::onSyncInterestValidated, this, _1),
+                                              std::bind(&SVSyncCore::onSyncInterestValidated, this, _1),
                                               nullptr);
       else
         onSyncInterestValidated(interest);
