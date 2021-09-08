@@ -114,7 +114,9 @@ SVSyncCore::onSyncInterestValidated(const Interest &interest)
 
   if (m_recvExtraBlock && interest.hasApplicationParameters())
   {
-    m_recvExtraBlock(interest.getApplicationParameters().blockFromValue(), *vvOther);
+    try {
+      m_recvExtraBlock(interest.getApplicationParameters().blockFromValue(), *vvOther);
+    } catch (std::exception&) {}
   }
 
   // Merge state vector
@@ -184,6 +186,9 @@ SVSyncCore::sendSyncInterest()
     std::lock_guard<std::mutex> lock(m_vvMutex);
     syncName.append(Name::Component(m_vv.encode()));
 
+    // Add parameters digest
+    interest.setApplicationParameters((uint8_t *) "0", 1);
+
     if (m_getExtraBlock)
     {
       interest.setApplicationParameters(m_getExtraBlock(m_vv));
@@ -198,7 +203,6 @@ SVSyncCore::sendSyncInterest()
   switch (m_securityOptions.interestSigner->signingInfo.getSignerType())
   {
     case security::SigningInfo::SIGNER_TYPE_NULL:
-      interest.setName(syncName.appendNumber(0));
       break;
 
     case security::SigningInfo::SIGNER_TYPE_HMAC:
