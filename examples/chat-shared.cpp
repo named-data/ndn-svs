@@ -24,13 +24,13 @@ public:
   ProgramShared(const Options &options) : Program(options)
   {
     // Use HMAC signing
-    ndn::svs::SecurityOptions securityOptions;
-    securityOptions.interestSigningInfo.setSigningHmacKey("dGhpcyBpcyBhIHNlY3JldCBtZXNzYWdl");
+    ndn::svs::SecurityOptions securityOptions(m_keyChain);
+    securityOptions.interestSigner->signingInfo.setSigningHmacKey("dGhpcyBpcyBhIHNlY3JldCBtZXNzYWdl");
 
     // Create sync with shared prefix
     auto svs = std::make_shared<ndn::svs::SVSyncShared>(
       ndn::Name(m_options.prefix),
-      ndn::Name(m_options.m_id).get(-1).toUri(),
+      ndn::Name(ndn::Name(m_options.m_id).get(-1)),
       face,
       std::bind(&ProgramShared::onMissingData, this, _1),
       securityOptions);

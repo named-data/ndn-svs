@@ -27,7 +27,6 @@ int SVSyncCore::s_instanceCounter = 0;
 const NodeID SVSyncCore::EMPTY_NODE_ID;
 
 SVSyncCore::SVSyncCore(ndn::Face& face,
-                       ndn::KeyChain& keyChain,
                        const Name& syncPrefix,
                        const UpdateCallback& onUpdate,
                        const SecurityOptions& securityOptions,
@@ -41,7 +40,6 @@ SVSyncCore::SVSyncCore(ndn::Face& face,
   , m_packetDist(10, 15)
   , m_retxDist(30000 * 0.9, 30000 * 1.1)
   , m_intrReplyDist(50 * 0.9, 50 * 1.1)
-  , m_keyChain(keyChain)
   , m_keyChainMem("pib-memory:", "tpm-memory:")
   , m_scheduler(m_face.getIoService())
   , m_instanceId(s_instanceCounter++)
@@ -49,9 +47,11 @@ SVSyncCore::SVSyncCore(ndn::Face& face,
   // Register sync interest filter
   m_syncRegisteredPrefix =
     m_face.setInterestFilter(syncPrefix,
-                             bind(&SVSyncCore::onSyncInterest, this, _2),
-                             bind(&SVSyncCore::retxSyncInterest, this, true, 0),
-                             [] (const Name& prefix, const std::string& msg) {});
+                             std::bind(&SVSyncCore::onSyncInterest, this, _2),
+                             std::bind(&SVSyncCore::sendInitialInterest, this),
+                             [&] (const Name& prefix, const std::string& msg) {
+                                NDN_THROW(Error("Failed to register sync prefix"));
+                             });
 }
 
 SVSyncCore::~SVSyncCore()
@@ -59,9 +59,20 @@ SVSyncCore::~SVSyncCore()
 }
 
 void
+SVSyncCore::sendInitialInterest()
+{
+  // Wait for 100ms before sending the first sync interest
+  // This is necessary to give other things time to initialize
+  m_scheduler.schedule(time::milliseconds(100), [this] {
+    m_initialized = true;
+    retxSyncInterest(true, 0);
+  });
+}
+
+void
 SVSyncCore::onSyncInterest(const Interest &interest)
 {
-  switch (m_securityOptions.interestSigningInfo.getSignerType())
+  switch (m_securityOptions.interestSigner->signingInfo.getSignerType())
   {
     case security::SigningInfo::SIGNER_TYPE_NULL:
       onSyncInterestValidated(interest);
@@ -69,7 +80,7 @@ SVSyncCore::onSyncInterest(const Interest &interest)
 
     case security::SigningInfo::SIGNER_TYPE_HMAC:
       if (security::verifySignature(interest, m_keyChainMem.getTpm(),
-                                    m_securityOptions.interestSigningInfo.getSignerName(),
+                                    m_securityOptions.interestSigner->signingInfo.getSignerName(),
                                     DigestAlgorithm::SHA256))
         onSyncInterestValidated(interest);
       return;
@@ -77,7 +88,7 @@ SVSyncCore::onSyncInterest(const Interest &interest)
     default:
       if (static_cast<bool>(m_securityOptions.validator))
         m_securityOptions.validator->validate(interest,
-                                              bind(&SVSyncCore::onSyncInterestValidated, this, _1),
+                                              std::bind(&SVSyncCore::onSyncInterestValidated, this, _1),
                                               nullptr);
       else
         onSyncInterestValidated(interest);
@@ -99,6 +110,13 @@ SVSyncCore::onSyncInterestValidated(const Interest &interest)
   catch (ndn::tlv::Error&)
   {
     return;
+  }
+
+  if (m_recvExtraBlock && interest.hasApplicationParameters())
+  {
+    try {
+      m_recvExtraBlock(interest.getApplicationParameters().blockFromValue(), *vvOther);
+    } catch (std::exception&) {}
   }
 
   // Merge state vector
@@ -159,29 +177,40 @@ SVSyncCore::retxSyncInterest(const bool send, unsigned int delay)
 void
 SVSyncCore::sendSyncInterest()
 {
+  if (!m_initialized) return;
+
   Name syncName(m_syncPrefix);
+  Interest interest;
 
   {
     std::lock_guard<std::mutex> lock(m_vvMutex);
     syncName.append(Name::Component(m_vv.encode()));
+
+    // Add parameters digest
+    interest.setApplicationParameters((uint8_t *) "0", 1);
+
+    if (m_getExtraBlock)
+    {
+      interest.setApplicationParameters(m_getExtraBlock(m_vv));
+    }
   }
 
-  Interest interest(syncName, time::milliseconds(1000));
+  interest.setName(syncName);
+  interest.setInterestLifetime(time::milliseconds(1000));
   interest.setCanBePrefix(true);
   interest.setMustBeFresh(true);
 
-  switch (m_securityOptions.interestSigningInfo.getSignerType())
+  switch (m_securityOptions.interestSigner->signingInfo.getSignerType())
   {
     case security::SigningInfo::SIGNER_TYPE_NULL:
-      interest.setName(syncName.appendNumber(0));
       break;
 
     case security::SigningInfo::SIGNER_TYPE_HMAC:
-      m_keyChainMem.sign(interest, m_securityOptions.interestSigningInfo);
+      m_keyChainMem.sign(interest, m_securityOptions.interestSigner->signingInfo);
       break;
 
     default:
-      m_keyChain.sign(interest, m_securityOptions.interestSigningInfo);
+      m_securityOptions.interestSigner->sign(interest);
       break;
   }
 
@@ -266,11 +295,11 @@ SVSyncCore::updateSeqNo(const SeqNo& seq, const NodeID& nid)
   }
 
   if (seq > prev)
-    retxSyncInterest(true, 0);
+    retxSyncInterest(false, 1);
 }
 
 std::set<NodeID>
-SVSyncCore::getSessionNames() const
+SVSyncCore::getNodeIds() const
 {
   std::lock_guard<std::mutex> lock(m_vvMutex);
   std::set<NodeID> sessionNames;

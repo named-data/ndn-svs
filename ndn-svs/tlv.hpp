@@ -7,8 +7,10 @@ namespace tlv {
 
 enum {
   VersionVector = 201,
-  VersionVectorKey = 202,
-  VersionVectorValue = 203,
+  VersionVectorEntry = 202,
+  SeqNo = 204,
+  MappingData = 205,
+  MappingEntry = 206,
 };
 
 } // namespace tlv

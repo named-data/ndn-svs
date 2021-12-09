@@ -16,6 +16,7 @@
 
 #include "svsync-base.hpp"
 #include "store-memory.hpp"
+#include "tlv.hpp"
 
 #include <ndn-cxx/security/signing-helpers.hpp>
 
@@ -37,9 +38,10 @@ SVSyncBase::SVSyncBase(const Name& syncPrefix,
   , m_securityOptions(securityOptions)
   , m_id(id)
   , m_face(face)
+  , m_fetcher(face, securityOptions)
   , m_onUpdate(updateCallback)
   , m_dataStore(dataStore)
-  , m_core(m_face, m_keyChain, m_syncPrefix, m_onUpdate, securityOptions, m_id)
+  , m_core(m_face, m_syncPrefix, m_onUpdate, securityOptions, m_id)
 {
   // Register new data store
   if (m_dataStore == DEFAULT_DATASTORE)
@@ -52,16 +54,16 @@ SVSyncBase::SVSyncBase(const Name& syncPrefix,
                              [] (const Name& prefix, const std::string& msg) {});
 }
 
-void
+SeqNo
 SVSyncBase::publishData(const uint8_t* buf, size_t len, const ndn::time::milliseconds& freshness,
                         const NodeID id)
 {
-  publishData(ndn::encoding::makeBinaryBlock(ndn::tlv::Content, buf, len), freshness, id);
+  return publishData(ndn::encoding::makeBinaryBlock(ndn::tlv::Content, buf, len), freshness, id);
 }
 
-void
+SeqNo
 SVSyncBase::publishData(const Block& content, const ndn::time::milliseconds& freshness,
-                        const NodeID id)
+                        const NodeID id, const uint32_t contentType)
 {
   NodeID pubId = id != EMPTY_NODE_ID ? id : m_id;
   SeqNo newSeq = m_core.getSeqNo(pubId) + 1;
@@ -71,10 +73,16 @@ SVSyncBase::publishData(const Block& content, const ndn::time::milliseconds& fre
   data->setContent(content);
   data->setFreshnessPeriod(freshness);
 
-  m_keyChain.sign(*data, m_securityOptions.dataSigningInfo);
+  if (contentType != ndn::tlv::Invalid)
+    data->setContentType(contentType);
+
+  m_securityOptions.dataSigner->sign(*data);
 
   m_dataStore->insert(*data);
   m_core.updateSeqNo(newSeq, pubId);
+  m_face.put(*data);
+
+  return newSeq;
 }
 
 void
@@ -86,25 +94,14 @@ SVSyncBase::onDataInterest(const Interest &interest) {
 
 void
 SVSyncBase::fetchData(const NodeID& nid, const SeqNo& seqNo,
-                  const DataValidatedCallback& onValidated,
-                  int nRetries)
+                      const DataValidatedCallback& onValidated,
+                      const int nRetries)
 {
-  Name interestName = getDataName(nid, seqNo);
-  Interest interest(interestName);
-  interest.setMustBeFresh(true);
-  interest.setCanBePrefix(false);
-
   DataValidationErrorCallback onValidationFailed =
     bind(&SVSyncBase::onDataValidationFailed, this, _1, _2);
   TimeoutCallback onTimeout =
     [] (const Interest& interest) {};
-
-  m_face.expressInterest(interest,
-                         bind(&SVSyncBase::onData, this, _1, _2, onValidated, onValidationFailed),
-                         bind(&SVSyncBase::onDataTimeout, this, _1, nRetries,
-                              onValidated, onValidationFailed, onTimeout), // Nack
-                         bind(&SVSyncBase::onDataTimeout, this, _1, nRetries,
-                              onValidated, onValidationFailed, onTimeout));
+  fetchData(nid, seqNo, onValidated, onValidationFailed, onTimeout, nRetries);
 }
 
 void
@@ -112,52 +109,18 @@ SVSyncBase::fetchData(const NodeID& nid, const SeqNo& seqNo,
                       const DataValidatedCallback& onValidated,
                       const DataValidationErrorCallback& onValidationFailed,
                       const TimeoutCallback& onTimeout,
-                      int nRetries)
+                      const int nRetries)
 {
   Name interestName = getDataName(nid, seqNo);
   Interest interest(interestName);
-  interest.setMustBeFresh(true);
+  interest.setMustBeFresh(false);
   interest.setCanBePrefix(false);
+  interest.setInterestLifetime(ndn::time::milliseconds(2000));
 
-  m_face.expressInterest(interest,
-                         bind(&SVSyncBase::onData, this, _1, _2, onValidated, onValidationFailed),
-                         bind(&SVSyncBase::onDataTimeout, this, _1, nRetries,
-                              onValidated, onValidationFailed, onTimeout), // Nack
-                         bind(&SVSyncBase::onDataTimeout, this, _1, nRetries,
-                              onValidated, onValidationFailed, onTimeout));
-}
-
-void
-SVSyncBase::onData(const Interest& interest, const Data& data,
-                   const DataValidatedCallback& onValidated,
-                   const DataValidationErrorCallback& onFailed)
-{
-  if (static_cast<bool>(m_securityOptions.validator))
-    m_securityOptions.validator->validate(data,
-                                          bind(&SVSyncBase::onDataValidated, this, _1, onValidated),
-                                          onFailed);
-  else
-    onDataValidated(data, onValidated);
-}
-
-void
-SVSyncBase::onDataTimeout(const Interest& interest, int nRetries,
-                          const DataValidatedCallback& dataCallback,
-                          const DataValidationErrorCallback& failCallback,
-                          const TimeoutCallback& timeoutCallback)
-{
-  if (nRetries <= 0)
-    return timeoutCallback(interest);
-
-  Interest newNonceInterest(interest);
-  newNonceInterest.refreshNonce();
-
-  m_face.expressInterest(newNonceInterest,
-                         bind(&SVSyncBase::onData, this, _1, _2, dataCallback, failCallback),
-                         bind(&SVSyncBase::onDataTimeout, this, _1, nRetries - 1,
-                              dataCallback, failCallback, timeoutCallback), // Nack
-                         bind(&SVSyncBase::onDataTimeout, this, _1, nRetries - 1,
-                              dataCallback, failCallback, timeoutCallback));
+  m_fetcher.expressInterest(interest,
+                            bind(&SVSyncBase::onDataValidated, this, _2, onValidated),
+                            bind(onTimeout, _1), // Nack
+                            onTimeout, nRetries, onValidationFailed);
 }
 
 void

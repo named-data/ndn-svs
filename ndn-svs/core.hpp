@@ -34,7 +34,7 @@ class MissingDataInfo
 {
 public:
   /// @brief session name
-  NodeID session;
+  NodeID nodeId;
   /// @brief the lowest one of missing sequence numbers
   SeqNo low;
   /// @brief the highest one of missing sequence numbers
@@ -76,7 +76,6 @@ public:
    * @param nid ID for the node
    */
   SVSyncCore(ndn::Face& face,
-             ndn::KeyChain& keyChain,
              const Name& syncPrefix,
              const UpdateCallback& onUpdate,
              const SecurityOptions& securityOptions = SecurityOptions::DEFAULT,
@@ -98,7 +97,7 @@ public:
    * @param prefix prefix of the node
    */
   const NodeID&
-  getSessionName()
+  getNodeId()
   {
     return m_id;
   }
@@ -125,9 +124,31 @@ public:
   void
   updateSeqNo(const SeqNo& seq, const NodeID& nid = EMPTY_NODE_ID);
 
-  /// @brief Get the name of all sessions
+  /// @brief Get all the nodeIDs
   std::set<NodeID>
-  getSessionNames() const;
+  getNodeIds() const;
+
+  using GetExtraBlockCallback = function<const ndn::Block(const VersionVector&)>;
+  using RecvExtraBlockCallback = function<void(const ndn::Block&, const VersionVector&)>;
+
+  /**
+  * @brief Callback to get extra data block for sync interest
+  * The version vector will be locked during the duration of this callback,
+  * so it must return FAST
+  */
+  void setGetExtraBlockCallback(const GetExtraBlockCallback& callback)
+  {
+    m_getExtraBlock = callback;
+  }
+
+  /**
+   * @brief Callback on receiving extra data in a sync interest.
+   * Will be called BEFORE the interest is processed.
+   */
+  void setRecvExtraBlockCallback(const RecvExtraBlockCallback& callback)
+  {
+    m_recvExtraBlock = callback;
+  }
 
   /// @brief Get current version vector
   VersionVector&
@@ -149,6 +170,12 @@ NDN_SVS_PUBLIC_WITH_TESTS_ELSE_PRIVATE:
 
   void
   onSyncInterestValidated(const Interest &interest);
+
+  /**
+   * @brief Mark the instance as initialized and send the first interest
+   */
+  void
+  sendInitialInterest();
 
   /**
    * @brief sendSyncInterest and schedule a new retxSyncInterest event.
@@ -236,6 +263,10 @@ private:
   std::unique_ptr<VersionVector> m_recordedVv = nullptr;
   mutable std::mutex m_recordedVvMutex;
 
+  // Extra block
+  GetExtraBlockCallback m_getExtraBlock;
+  RecvExtraBlockCallback m_recvExtraBlock;
+
   // Random Engine
   ndn::random::RandomNumberEngine& m_rng;
   // Milliseconds between sending two packets in the queues
@@ -246,7 +277,6 @@ private:
   std::uniform_int_distribution<> m_intrReplyDist;
 
   // Security
-  ndn::KeyChain& m_keyChain;
   ndn::KeyChain m_keyChainMem;
 
   ndn::Scheduler m_scheduler;
@@ -261,6 +291,9 @@ private:
 
   int m_instanceId;
   static int s_instanceCounter;
+
+  // Prevent sending interests before initialization
+  bool m_initialized = false;
 };
 
 }  // namespace svs

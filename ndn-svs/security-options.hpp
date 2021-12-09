@@ -22,24 +22,107 @@
 namespace ndn {
 namespace svs {
 
-struct SecurityOptions
+/**
+ * A simple interface for a validator for data and interests
+ */
+class BaseValidator
 {
+public:
+  /**
+   * @brief Asynchronously validate @p data
+   *
+   * @note @p successCb and @p failureCb must not be nullptr
+   */
+  virtual void
+  validate(const Data& data,
+           const ndn::security::DataValidationSuccessCallback& successCb,
+           const ndn::security::DataValidationFailureCallback& failureCb)
+  {
+    successCb(data);
+  }
+
+  /**
+   * @brief Asynchronously validate @p interest
+   *
+   * @note @p successCb and @p failureCb must not be nullptr
+   */
+  virtual void
+  validate(const Interest& interest,
+           const ndn::security::InterestValidationSuccessCallback& successCb,
+           const ndn::security::InterestValidationFailureCallback& failureCb)
+  {
+    successCb(interest);
+  }
+
+  virtual ~BaseValidator() = default;
+};
+
+/**
+ * A simple interface for a signer for data and interests
+ */
+class BaseSigner
+{
+public:
+  virtual void
+  sign(Interest& interest) const {}
+
+  virtual void
+  sign(Data& data) const {}
+
+  virtual ~BaseSigner() = default;
+
+  security::SigningInfo signingInfo;
+};
+
+/**
+ * A signer using an ndn-cxx keychain instance
+ */
+class KeyChainSigner : public BaseSigner {
+public:
+  KeyChainSigner(KeyChain& keyChain) : m_keyChain(keyChain) {}
+
+  void
+  sign(Interest& interest) const;
+
+  void
+  sign(Data& data) const;
+
+  virtual ~KeyChainSigner() = default;
+private:
+  KeyChain& m_keyChain;
+};
+
+/**
+ * Global security options for SVS instance
+ */
+class SecurityOptions
+{
+public:
+  SecurityOptions(KeyChain& keyChain);
+
+private:
+  KeyChain& m_keyChain;
+
+public:
   /** Signing options for sync interests */
-  security::SigningInfo interestSigningInfo;
+  std::shared_ptr<BaseSigner> interestSigner;
   /** Signing options for data packets */
-  security::SigningInfo dataSigningInfo;
+  std::shared_ptr<BaseSigner> dataSigner;
+  /** Signing options for publication (encapsulated) packets */
+  std::shared_ptr<BaseSigner> pubSigner;
 
   /** Validator to validate data and interests (unless using HMAC) */
-  const std::shared_ptr<Validator> validator = DEFAULT_VALIDATOR;
+  std::shared_ptr<BaseValidator> validator = 0;
+  /** Validator to validate encapsulated data */
+  std::shared_ptr<BaseValidator> encapsulatedDataValidator = 0;
 
+  /** Number of retries on validation fail */
+  int nRetriesOnValidationFail = 0;
+  /** Interval before validation fail retry */
+  int millisBeforeRetryOnValidationFail = 300;
+
+  static KeyChain DEFAULT_KEYCHAIN;
   static const SecurityOptions DEFAULT;
-  static const std::shared_ptr<Validator> DEFAULT_VALIDATOR;
-
-  SecurityOptions()
-  {
-    // Set defaults
-    interestSigningInfo.setSignedInterestFormat(security::SignedInterestFormat::V03);
-  }
 };
 
 }  // namespace svs

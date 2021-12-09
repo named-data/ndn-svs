@@ -21,6 +21,7 @@
 #include "core.hpp"
 #include "store.hpp"
 #include "security-options.hpp"
+#include "fetcher.hpp"
 
 namespace ndn {
 namespace svs {
@@ -56,10 +57,6 @@ public:
 
   virtual ~SVSyncBase() = default;
 
-  using DataValidatedCallback = function<void(const Data&)>;
-
-  using DataValidationErrorCallback = function<void(const Data&, const ValidationError& error)> ;
-
   /**
    * @brief Publish a data packet in the session and trigger synchronization updates
    *
@@ -71,8 +68,10 @@ public:
    * @param len size of the bytes in content
    * @param freshness FreshnessPeriod of the data packet.
    * @param id NodeID to publish the data under
+   *
+   * @returns Sequence number of the published data packet
    */
-  void
+  SeqNo
   publishData(const uint8_t* buf, size_t len, const ndn::time::milliseconds& freshness,
               const NodeID id = EMPTY_NODE_ID);
 
@@ -86,15 +85,17 @@ public:
    * @param content Block that will be set as the content of the data packet.
    * @param freshness FreshnessPeriod of the data packet.
    * @param id NodeID to publish the data under
+   *
+   * @returns Sequence number of the published data packet
    */
-  void
+  SeqNo
   publishData(const Block& content, const ndn::time::milliseconds& freshness,
-              const NodeID id = EMPTY_NODE_ID);
+              const NodeID id = EMPTY_NODE_ID, const uint32_t contentType = ndn::tlv::Invalid);
 
   /**
    * @brief Retrive a data packet with a particular seqNo from a session
    *
-   * @param sessionName The name of the target session.
+   * @param nid The name of the target node
    * @param seq The seqNo of the data packet.
    * @param onValidated The callback when the retrieved packet has been validated.
    * @param nRetries The number of retries.
@@ -102,12 +103,12 @@ public:
   void
   fetchData(const NodeID& nid, const SeqNo& seq,
             const DataValidatedCallback& onValidated,
-            int nRetries = 0);
+            const int nRetries = 0);
 
   /**
    * @brief Retrive a data packet with a particular seqNo from a session
    *
-   * @param sessionName The name of the target session.
+   * @param nid The name of the target node
    * @param seq The seqNo of the data packet.
    * @param onValidated The callback when the retrieved packet has been validated.
    * @param onValidationFailed The callback when the retrieved packet failed validation.
@@ -119,18 +120,7 @@ public:
             const DataValidatedCallback& onValidated,
             const DataValidationErrorCallback& onValidationFailed,
             const TimeoutCallback& onTimeout,
-            int nRetries = 0);
-
-  /**
-   * @brief Return data name for a given packet
-   *
-   * The derived SVSync class must provide implementation. Note that
-   * the data name for the own node MUST be under the regtistered
-   * data prefix for proper functionality, or the application must
-   * independently produce data under the prefix.
-   */
-  virtual Name
-  getDataName(const NodeID& nid, const SeqNo& seqNo) = 0;
+            const int nRetries = 0);
 
   /*** @brief Get the underlying data store */
   DataStore&
@@ -146,6 +136,18 @@ public:
     return m_core;
   }
 
+protected:
+  /**
+   * @brief Return data name for a given packet
+   *
+   * The derived SVSync class must provide implementation. Note that
+   * the data name for the own node MUST be under the registered
+   * data prefix for proper functionality, or the application must
+   * independently produce data under the prefix.
+   */
+  virtual Name
+  getDataName(const NodeID& nid, const SeqNo& seqNo) = 0;
+
 public:
   static const NodeID EMPTY_NODE_ID;
   static const std::shared_ptr<DataStore> DEFAULT_DATASTORE;
@@ -153,17 +155,6 @@ public:
 private:
   void
   onDataInterest(const Interest &interest);
-
-  void
-  onData(const Interest& interest, const Data& data,
-         const DataValidatedCallback& dataCallback,
-         const DataValidationErrorCallback& failCallback);
-
-  void
-  onDataTimeout(const Interest& interest, int nRetries,
-                const DataValidatedCallback& dataCallback,
-                const DataValidationErrorCallback& failCallback,
-                const TimeoutCallback& timeoutCallback);
 
   void
   onDataValidated(const Data& data,
@@ -192,9 +183,9 @@ protected:
 
 private:
   Face& m_face;
-  KeyChain m_keyChain;
 
   ndn::ScopedRegisteredPrefixHandle m_registeredDataPrefix;
+  Fetcher m_fetcher;
 
   const UpdateCallback m_onUpdate;
 
