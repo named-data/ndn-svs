@@ -101,12 +101,12 @@ SVSPubSub::unsubscribe(uint32_t handle)
 void
 SVSPubSub::updateCallbackInternal(const std::vector<ndn::svs::MissingDataInfo>& info)
 {
-  for (const auto stream : info)
+  for (const auto& stream : info)
   {
     Name streamName(stream.nodeId);
 
     // Producer subscriptions
-    for (const auto sub : m_producerSubscriptions)
+    for (const auto& sub : m_producerSubscriptions)
     {
       if (sub.prefix.isPrefixOf(streamName))
       {
@@ -138,7 +138,7 @@ SVSPubSub::updateCallbackInternal(const std::vector<ndn::svs::MissingDataInfo>& 
         try
         {
           Name mapping = m_mappingProvider.getMapping(stream.nodeId, i);
-          for (const auto sub : m_prefixSubscriptions)
+          for (const auto& sub : m_prefixSubscriptions)
           {
            if (sub.prefix.isPrefixOf(mapping))
             {
@@ -168,9 +168,9 @@ SVSPubSub::updateCallbackInternal(const std::vector<ndn::svs::MissingDataInfo>& 
 
         m_mappingProvider.fetchNameMapping(truncatedRemainingInfo, [this, remainingInfo, streamName] (MappingList list)
         {
-          for (const auto sub : m_prefixSubscriptions)
+          for (const auto& sub : m_prefixSubscriptions)
           {
-            for (const auto entry : list.pairs)
+            for (const auto& entry : list.pairs)
             {
               if (sub.prefix.isPrefixOf(entry.second))
               {
@@ -246,7 +246,7 @@ SVSPubSub::onRecvExtraData(const Block& block)
   try
   {
     MappingList list(block);
-    for (const auto p : list.pairs)
+    for (const auto& p : list.pairs)
     {
       m_mappingProvider.insertMapping(list.nodeId, p.first, p.second);
     }

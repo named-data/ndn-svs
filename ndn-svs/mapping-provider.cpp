@@ -106,7 +106,7 @@ MappingProvider::fetchNameMapping(const MissingDataInfo info,
     MappingList list(block);
 
     // Add all mappings to self
-    for (const auto entry : list.pairs) {
+    for (const auto& entry : list.pairs) {
       try {
         getMapping(info.nodeId, entry.first);
       } catch (const std::exception& ex) {
@@ -148,7 +148,7 @@ MappingList::encode()
   ndn::encoding::Encoder enc;
   size_t totalLength = 0;
 
-  for (const auto p : pairs)
+  for (const auto& p : pairs)
   {
     size_t entryLength = enc.prependBlock(p.second.wireEncode());
     size_t valLength = enc.prependNonNegativeInteger(p.first);
