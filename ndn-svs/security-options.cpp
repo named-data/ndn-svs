@@ -32,8 +32,7 @@ KeyChainSigner::sign(Data& data) const
 }
 
 SecurityOptions::SecurityOptions(KeyChain& keyChain)
-  : m_keyChain(keyChain)
-  , interestSigner(make_shared<KeyChainSigner>(keyChain))
+  : interestSigner(make_shared<KeyChainSigner>(keyChain))
   , dataSigner(make_shared<KeyChainSigner>(keyChain))
   , pubSigner(make_shared<KeyChainSigner>(keyChain))
 {

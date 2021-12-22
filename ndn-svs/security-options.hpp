@@ -100,9 +100,6 @@ class SecurityOptions
 public:
   SecurityOptions(KeyChain& keyChain);
 
-private:
-  KeyChain& m_keyChain;
-
 public:
   /** Signing options for sync interests */
   std::shared_ptr<BaseSigner> interestSigner;
