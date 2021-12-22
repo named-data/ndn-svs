@@ -32,7 +32,7 @@ MappingProvider::MappingProvider(const Name& syncPrefix,
 {
   m_registeredPrefix =
     m_face.setInterestFilter(Name(m_id).append(m_syncPrefix).append("MAPPING"),
-                             bind(&MappingProvider::onMappingQuery, this, _2),
+                             std::bind(&MappingProvider::onMappingQuery, this, _2),
                              [] (const Name& prefix, const std::string& msg) {});
 }
 
@@ -120,8 +120,8 @@ MappingProvider::fetchNameMapping(const MissingDataInfo info,
   auto onValidationFailed = [] (const Data& data, const ValidationError& error) {};
 
   m_fetcher.expressInterest(interest,
-                            bind(onDataValidated, _2),
-                            bind(onTimeout, _1), // Nack
+                            std::bind(onDataValidated, _2),
+                            std::bind(onTimeout, _1), // Nack
                             onTimeout, nRetries,
                             onValidationFailed);
 }

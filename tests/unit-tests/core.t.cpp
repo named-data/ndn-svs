@@ -26,7 +26,7 @@ struct TestCoreFixture
 {
   TestCoreFixture()
     : m_syncPrefix("/ndn/test")
-    , m_core(m_face, m_syncPrefix, bind(&TestCoreFixture::update, this, _1))
+    , m_core(m_face, m_syncPrefix, std::bind(&TestCoreFixture::update, this, _1))
   {
   }
 

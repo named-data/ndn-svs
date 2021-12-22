@@ -50,7 +50,7 @@ SVSyncBase::SVSyncBase(const Name& syncPrefix,
   // Register data prefix
   m_registeredDataPrefix =
     m_face.setInterestFilter(m_dataPrefix,
-                             bind(&SVSyncBase::onDataInterest, this, _2),
+                             std::bind(&SVSyncBase::onDataInterest, this, _2),
                              [] (const Name& prefix, const std::string& msg) {});
 }
 
@@ -98,7 +98,7 @@ SVSyncBase::fetchData(const NodeID& nid, const SeqNo& seqNo,
                       const int nRetries)
 {
   DataValidationErrorCallback onValidationFailed =
-    bind(&SVSyncBase::onDataValidationFailed, this, _1, _2);
+    std::bind(&SVSyncBase::onDataValidationFailed, this, _1, _2);
   TimeoutCallback onTimeout =
     [] (const Interest& interest) {};
   fetchData(nid, seqNo, onValidated, onValidationFailed, onTimeout, nRetries);
@@ -118,8 +118,8 @@ SVSyncBase::fetchData(const NodeID& nid, const SeqNo& seqNo,
   interest.setInterestLifetime(ndn::time::milliseconds(2000));
 
   m_fetcher.expressInterest(interest,
-                            bind(&SVSyncBase::onDataValidated, this, _2, onValidated),
-                            bind(onTimeout, _1), // Nack
+                            std::bind(&SVSyncBase::onDataValidated, this, _2, onValidated),
+                            std::bind(onTimeout, _1), // Nack
                             onTimeout, nRetries, onValidationFailed);
 }
 
