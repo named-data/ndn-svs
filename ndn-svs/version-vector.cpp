@@ -23,11 +23,11 @@ namespace svs {
 VersionVector::VersionVector(const ndn::Block& block) {
   block.parse();
 
-  if (block.type() != tlv::VersionVector)
+  if (block.type() != tlv::StateVector)
     NDN_THROW(ndn::tlv::Error("Expected VersionVector"));
 
   for (auto it = block.elements_begin(); it < block.elements_end(); it++) {
-    if (it->type() != tlv::VersionVectorEntry)
+    if (it->type() != tlv::StateVectorEntry)
       NDN_THROW(ndn::tlv::Error("Expected VersionVectorEntry"));
     it->parse();
 
@@ -55,12 +55,12 @@ VersionVector::encode() const
 
     entryLength += enc.prependBlock(it->first.wireEncode());
     totalLength += enc.prependVarNumber(entryLength);
-    entryLength += enc.prependVarNumber(tlv::VersionVectorEntry);
+    entryLength += enc.prependVarNumber(tlv::StateVectorEntry);
     totalLength += entryLength;
   }
 
   totalLength += enc.prependVarNumber(totalLength);
-  totalLength += enc.prependVarNumber(tlv::VersionVector);
+  totalLength += enc.prependVarNumber(tlv::StateVector);
 
   return enc.block();
 }

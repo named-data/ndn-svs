@@ -6,8 +6,8 @@ namespace svs {
 namespace tlv {
 
 enum {
-  VersionVector = 201,
-  VersionVectorEntry = 202,
+  StateVector = 201,
+  StateVectorEntry = 202,
   SeqNo = 204,
   MappingData = 205,
   MappingEntry = 206,
