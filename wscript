@@ -5,8 +5,6 @@ import os, subprocess
 
 VERSION = '0.0.1'
 APPNAME = 'ndn-svs'
-PACKAGE_BUGREPORT = 'https://github.com/pulsejet/ndn-svs/'
-PACKAGE_URL = 'https://github.com/pulsejet/ndn-svs/'
 GIT_TAG_PREFIX = 'ndn-svs-'
 
 def options(opt):
@@ -28,10 +26,10 @@ def options(opt):
     optgrp.add_option('--disable-shared', action='store_false', default=True,
                       dest='enable_shared', help='Do not build shared library (enabled by default)')
 
-    optgrp.add_option('--with-tests', action='store_true', default=False,
-                      help='Build unit tests')
     optgrp.add_option('--with-examples', action='store_true', default=False,
                       help='Build examples')
+    optgrp.add_option('--with-tests', action='store_true', default=False,
+                      help='Build unit tests')
 
 def configure(conf):
     conf.start_msg('Building static library')
@@ -55,11 +53,12 @@ def configure(conf):
                'default-compiler-flags', 'boost',
                'doxygen', 'sphinx_build'])
 
-    conf.env.WITH_TESTS = conf.options.with_tests
     conf.env.WITH_EXAMPLES = conf.options.with_examples
+    conf.env.WITH_TESTS = conf.options.with_tests
 
-    conf.check_cfg(package='libndn-cxx', args=['--cflags', '--libs'], uselib_store='NDN_CXX',
-                   pkg_config_path=os.environ.get('PKG_CONFIG_PATH', '%s/pkgconfig' % conf.env.LIBDIR))
+    pkg_config_path = os.environ.get('PKG_CONFIG_PATH', f'{conf.env.LIBDIR}/pkgconfig')
+    conf.check_cfg(package='libndn-cxx', args=['libndn-cxx >= 0.8.0', '--cflags', '--libs'],
+                   uselib_store='NDN_CXX', pkg_config_path=pkg_config_path)
 
     boost_libs = ['system']
     if conf.env.WITH_TESTS:
@@ -78,13 +77,12 @@ def configure(conf):
     # system has a different version of the ndn-svs library installed.
     conf.env.prepend_value('STLIBPATH', ['.'])
 
-    conf.define_cond('NDN_SVS_HAVE_TESTS', conf.env.WITH_TESTS)
-
+    conf.define_cond('HAVE_TESTS', conf.env.WITH_TESTS)
     # The config header will contain all defines that were added using conf.define()
     # or conf.define_cond().  Everything that was added directly to conf.env.DEFINES
     # will not appear in the config header, but will instead be passed directly to the
     # compiler on the command line.
-    conf.write_config_header('config.hpp')
+    conf.write_config_header('config.hpp', define_prefix='NDN_SVS_')
 
 def build(bld):
     libndn_svs = dict(
