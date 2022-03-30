@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2021 University of California, Los Angeles
+ * Copyright (c) 2012-2022 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -145,26 +145,26 @@ MappingProvider::parseMappingQueryDataName(const Name& name)
 Block
 MappingList::encode()
 {
-  ndn::encoding::Encoder enc;
+  ndn::encoding::EncodingBuffer enc;
   size_t totalLength = 0;
 
   for (const auto& p : pairs)
   {
-    size_t entryLength = enc.prependBlock(p.second.wireEncode());
-    size_t valLength = enc.prependNonNegativeInteger(p.first);
-    entryLength += enc.prependVarNumber(valLength);
-    entryLength += enc.prependVarNumber(tlv::SeqNo);
-    entryLength += valLength;
+    // Name
+    size_t entryLength = ndn::encoding::prependBlock(enc, p.second.wireEncode());
+
+    // SeqNo
+    entryLength += ndn::encoding::prependNonNegativeIntegerBlock(enc, tlv::SeqNo, p.first);
 
     totalLength += enc.prependVarNumber(entryLength);
     totalLength += enc.prependVarNumber(tlv::MappingEntry);
     totalLength += entryLength;
   }
 
-  totalLength += enc.prependBlock(nodeId.wireEncode());
-  totalLength += enc.prependVarNumber(totalLength);
-  totalLength += enc.prependVarNumber(tlv::MappingData);
+  totalLength += ndn::encoding::prependBlock(enc, nodeId.wireEncode());
 
+  enc.prependVarNumber(totalLength);
+  enc.prependVarNumber(tlv::MappingData);
   return enc.block();
 }
 

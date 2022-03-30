@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2021 University of California, Los Angeles
+ * Copyright (c) 2012-2022 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -58,7 +58,7 @@ SeqNo
 SVSyncBase::publishData(const uint8_t* buf, size_t len, const ndn::time::milliseconds& freshness,
                         const NodeID id)
 {
-  return publishData(ndn::encoding::makeBinaryBlock(ndn::tlv::Content, buf, len), freshness, id);
+  return publishData(ndn::encoding::makeBinaryBlock(ndn::tlv::Content, {buf, len}), freshness, id);
 }
 
 SeqNo

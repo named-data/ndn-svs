@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2021 University of California, Los Angeles
+ * Copyright (c) 2012-2022 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -41,27 +41,24 @@ VersionVector::VersionVector(const ndn::Block& block) {
 ndn::Block
 VersionVector::encode() const
 {
-  ndn::encoding::Encoder enc;
-
+  ndn::encoding::EncodingBuffer enc;
   size_t totalLength = 0;
 
   for (auto it = m_map.rbegin(); it != m_map.rend(); it++)
   {
-    size_t entryLength = 0;
-    size_t valLength = enc.prependNonNegativeInteger(it->second);
-    entryLength += enc.prependVarNumber(valLength);
-    entryLength += enc.prependVarNumber(tlv::SeqNo);
-    entryLength += valLength;
+    // SeqNo
+    size_t entryLength = ndn::encoding::prependNonNegativeIntegerBlock(enc, tlv::SeqNo, it->second);
 
-    entryLength += enc.prependBlock(it->first.wireEncode());
+    // NodeID (Name)
+    entryLength += ndn::encoding::prependBlock(enc, it->first.wireEncode());
+
     totalLength += enc.prependVarNumber(entryLength);
-    entryLength += enc.prependVarNumber(tlv::StateVectorEntry);
+    totalLength += enc.prependVarNumber(tlv::StateVectorEntry);
     totalLength += entryLength;
   }
 
-  totalLength += enc.prependVarNumber(totalLength);
-  totalLength += enc.prependVarNumber(tlv::StateVector);
-
+  enc.prependVarNumber(totalLength);
+  enc.prependVarNumber(tlv::StateVector);
   return enc.block();
 }
 
@@ -76,5 +73,5 @@ VersionVector::toStr() const
   return stream.str();
 }
 
-} // namespace ndn
 } // namespace svs
+} // namespace ndn

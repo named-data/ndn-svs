@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2021 University of California, Los Angeles
+ * Copyright (c) 2012-2022 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -187,7 +187,7 @@ SVSyncCore::sendSyncInterest()
     syncName.append(Name::Component(m_vv.encode()));
 
     // Add parameters digest
-    interest.setApplicationParameters((uint8_t *) "0", 1);
+    interest.setApplicationParameters(span<const uint8_t>{'0'});
 
     if (m_getExtraBlock)
     {

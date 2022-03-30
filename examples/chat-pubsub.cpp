@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2021 University of California, Los Angeles
+ * Copyright (c) 2012-2022 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -87,11 +87,10 @@ protected:
   }
 
   void
-  publishMsg(std::string msg)
+  publishMsg(const std::string& msg)
   {
     // Content block
-    ndn::Block block = ndn::encoding::makeBinaryBlock(
-      ndn::tlv::Content, reinterpret_cast<const uint8_t*>(msg.c_str()), msg.size());
+    auto block = ndn::encoding::makeBinaryBlock(ndn::tlv::Content, msg.data(), msg.size());
 
     // Data packet
     ndn::Name name(m_options.m_id);
