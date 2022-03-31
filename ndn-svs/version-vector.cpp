@@ -20,17 +20,18 @@
 namespace ndn {
 namespace svs {
 
-VersionVector::VersionVector(const ndn::Block& block) {
-  block.parse();
-
+VersionVector::VersionVector(const ndn::Block& block)
+{
   if (block.type() != tlv::StateVector)
-    NDN_THROW(ndn::tlv::Error("Expected VersionVector"));
+    NDN_THROW(ndn::tlv::Error("StateVector", block.type()));
+
+  block.parse();
 
   for (auto it = block.elements_begin(); it < block.elements_end(); it++) {
     if (it->type() != tlv::StateVectorEntry)
-      NDN_THROW(ndn::tlv::Error("Expected VersionVectorEntry"));
-    it->parse();
+      NDN_THROW(ndn::tlv::Error("StateVectorEntry", it->type()));
 
+    it->parse();
     NodeID nodeId(it->elements().at(0));
     SeqNo seqNo = ndn::encoding::readNonNegativeInteger(it->elements().at(1));
 
@@ -66,7 +67,7 @@ std::string
 VersionVector::toStr() const
 {
   std::ostringstream stream;
-  for (auto &elem : m_map)
+  for (const auto& elem : m_map)
   {
     stream << elem.first << ":" << elem.second << " ";
   }

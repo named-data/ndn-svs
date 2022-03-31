@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2021 University of California, Los Angeles
+ * Copyright (c) 2012-2022 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -17,11 +17,10 @@
 #ifndef NDN_SVS_SVSYNC_BASE_HPP
 #define NDN_SVS_SVSYNC_BASE_HPP
 
-#include "common.hpp"
 #include "core.hpp"
+#include "fetcher.hpp"
 #include "store.hpp"
 #include "security-options.hpp"
-#include "fetcher.hpp"
 
 namespace ndn {
 namespace svs {
@@ -55,7 +54,8 @@ public:
              const SecurityOptions& securityOptions = SecurityOptions::DEFAULT,
              std::shared_ptr<DataStore> dataStore = DEFAULT_DATASTORE);
 
-  virtual ~SVSyncBase() = default;
+  virtual
+  ~SVSyncBase() = default;
 
   /**
    * @brief Publish a data packet in the session and trigger synchronization updates
@@ -73,7 +73,7 @@ public:
    */
   SeqNo
   publishData(const uint8_t* buf, size_t len, const ndn::time::milliseconds& freshness,
-              const NodeID id = EMPTY_NODE_ID);
+              const NodeID& id = EMPTY_NODE_ID);
 
   /**
    * @brief Publish a data packet in the session and trigger synchronization updates
@@ -84,13 +84,14 @@ public:
    *
    * @param content Block that will be set as the content of the data packet.
    * @param freshness FreshnessPeriod of the data packet.
-   * @param id NodeID to publish the data under
+   * @param nid NodeID to publish the data under
    *
    * @returns Sequence number of the published data packet
    */
   SeqNo
   publishData(const Block& content, const ndn::time::milliseconds& freshness,
-              const NodeID id = EMPTY_NODE_ID, const uint32_t contentType = ndn::tlv::Invalid);
+              const NodeID& nid = EMPTY_NODE_ID,
+              uint32_t contentType = ndn::tlv::Invalid);
 
   /**
    * @brief Retrive a data packet with a particular seqNo from a session
@@ -103,7 +104,7 @@ public:
   void
   fetchData(const NodeID& nid, const SeqNo& seq,
             const DataValidatedCallback& onValidated,
-            const int nRetries = 0);
+            int nRetries = 0);
 
   /**
    * @brief Retrive a data packet with a particular seqNo from a session
@@ -120,16 +121,16 @@ public:
             const DataValidatedCallback& onValidated,
             const DataValidationErrorCallback& onValidationFailed,
             const TimeoutCallback& onTimeout,
-            const int nRetries = 0);
+            int nRetries = 0);
 
-  /*** @brief Get the underlying data store */
+  /** @brief Get the underlying data store */
   DataStore&
   getDataStore()
   {
     return *m_dataStore;
   }
 
-  /*** @brief Get the underlying SVS core */
+  /** @brief Get the underlying SVS core */
   SVSyncCore&
   getCore()
   {
@@ -170,9 +171,9 @@ private:
    * using multicast data interests.
    */
   virtual bool
-  shouldCache(const Data& data)
+  shouldCache(const Data& data) const
   {
-      return false;
+    return false;
   }
 
 protected:
@@ -183,7 +184,6 @@ protected:
 
 private:
   Face& m_face;
-
   ndn::ScopedRegisteredPrefixHandle m_registeredDataPrefix;
   Fetcher m_fetcher;
 
@@ -194,7 +194,7 @@ private:
   SVSyncCore m_core;
 };
 
-}  // namespace svs
-}  // namespace ndn
+} // namespace svs
+} // namespace ndn
 
 #endif // NDN_SVS_SVSYNC_BASE_HPP

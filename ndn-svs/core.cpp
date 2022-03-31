@@ -30,7 +30,7 @@ SVSyncCore::SVSyncCore(ndn::Face& face,
                        const Name& syncPrefix,
                        const UpdateCallback& onUpdate,
                        const SecurityOptions& securityOptions,
-                       const NodeID nid)
+                       const NodeID& nid)
   : m_face(face)
   , m_syncPrefix(syncPrefix)
   , m_securityOptions(securityOptions)
@@ -49,13 +49,9 @@ SVSyncCore::SVSyncCore(ndn::Face& face,
     m_face.setInterestFilter(syncPrefix,
                              std::bind(&SVSyncCore::onSyncInterest, this, _2),
                              std::bind(&SVSyncCore::sendInitialInterest, this),
-                             [&] (const Name& prefix, const std::string& msg) {
+                             [] (auto&&...) {
                                 NDN_THROW(Error("Failed to register sync prefix"));
                              });
-}
-
-SVSyncCore::~SVSyncCore()
-{
 }
 
 void
@@ -105,7 +101,7 @@ SVSyncCore::onSyncInterestValidated(const Interest &interest)
   std::shared_ptr<VersionVector> vvOther;
   try
   {
-    vvOther = make_shared<VersionVector>(n.get(-2));
+    vvOther = std::make_shared<VersionVector>(n.get(-2));
   }
   catch (ndn::tlv::Error&)
   {
@@ -147,7 +143,7 @@ SVSyncCore::onSyncInterestValidated(const Interest &interest)
 }
 
 void
-SVSyncCore::retxSyncInterest(const bool send, unsigned int delay)
+SVSyncCore::retxSyncInterest(bool send, unsigned int delay)
 {
   if (send)
   {
@@ -170,14 +166,15 @@ SVSyncCore::retxSyncInterest(const bool send, unsigned int delay)
     m_nextSyncInterest = getCurrentTime() + 1000 * delay;
 
     m_retxEvent = m_scheduler.schedule(time::milliseconds(delay),
-                                      [this] { retxSyncInterest(true, 0); });
+                                       [this] { retxSyncInterest(true, 0); });
   }
 }
 
 void
 SVSyncCore::sendSyncInterest()
 {
-  if (!m_initialized) return;
+  if (!m_initialized)
+    return;
 
   Name syncName(m_syncPrefix);
   Interest interest;
@@ -229,7 +226,7 @@ SVSyncCore::mergeStateVector(const VersionVector &vvOther)
   std::vector<MissingDataInfo> v;
 
   // Check if other vector has newer state
-  for (auto entry : vvOther)
+  for (const auto& entry : vvOther)
   {
     NodeID nidOther = entry.first;
     SeqNo seqOther = entry.second;
@@ -253,7 +250,7 @@ SVSyncCore::mergeStateVector(const VersionVector &vvOther)
   }
 
   // Check if I have newer state
-  for (auto entry : m_vv)
+  for (const auto& entry : m_vv)
   {
     NodeID nid = entry.first;
     SeqNo seq = entry.second;
@@ -266,7 +263,7 @@ SVSyncCore::mergeStateVector(const VersionVector &vvOther)
     }
   }
 
-  return std::make_pair(myVectorNew, otherVectorNew);
+  return {myVectorNew, otherVectorNew};
 }
 
 void
@@ -326,7 +323,7 @@ SVSyncCore::recordVector(const VersionVector &vvOther)
 
   std::lock_guard<std::mutex> lock1(m_vvMutex);
 
-  for (auto entry : vvOther)
+  for (const auto& entry : vvOther)
   {
     NodeID nidOther = entry.first;
     SeqNo seqOther = entry.second;
@@ -347,7 +344,7 @@ SVSyncCore::enterSuppressionState(const VersionVector &vvOther)
   std::lock_guard<std::mutex> lock(m_recordedVvMutex);
 
   if (!m_recordedVv)
-    m_recordedVv = make_unique<VersionVector>(vvOther);
+    m_recordedVv = std::make_unique<VersionVector>(vvOther);
 }
 
 }  // namespace svs

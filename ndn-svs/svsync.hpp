@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2021 University of California, Los Angeles
+ * Copyright (c) 2012-2022 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -38,21 +38,18 @@ public:
          const UpdateCallback& updateCallback,
          const SecurityOptions& securityOptions = SecurityOptions::DEFAULT,
          std::shared_ptr<DataStore> dataStore = DEFAULT_DATASTORE)
-  : SVSyncBase(
-      syncPrefix,
-      Name(nodePrefix).append(syncPrefix),
-      nodePrefix,
-      face, updateCallback, securityOptions, dataStore)
+    : SVSyncBase(syncPrefix, Name(nodePrefix).append(syncPrefix), nodePrefix,
+                 face, updateCallback, securityOptions, std::move(dataStore))
   {}
 
   Name
-  getDataName(const NodeID& nid, const SeqNo& seqNo)
+  getDataName(const NodeID& nid, const SeqNo& seqNo) override
   {
     return Name(nid).append(m_syncPrefix).appendNumber(seqNo);
   }
 };
 
-}  // namespace svs
-}  // namespace ndn
+} // namespace svs
+} // namespace ndn
 
 #endif // NDN_SVS_SVSYNC_HPP

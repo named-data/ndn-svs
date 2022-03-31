@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2021 University of California, Los Angeles
+ * Copyright (c) 2012-2022 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -21,23 +21,16 @@
 
 #include <map>
 
-#include <ndn-cxx/util/string-helper.hpp>
-
 namespace ndn {
 namespace svs {
 
 class VersionVector
 {
-
 public:
   class Error : public std::runtime_error
   {
   public:
-    explicit
-    Error(const std::string& what)
-      : std::runtime_error(what)
-    {
-    }
+    using std::runtime_error::runtime_error;
   };
 
 public:
@@ -45,9 +38,8 @@ public:
 
   VersionVector() = default;
 
-  VersionVector(const VersionVector&) = default;
-
-  /** Decode a version vector from ndn::buffer */
+  /** Decode a version vector from ndn::Block */
+  explicit
   VersionVector(const ndn::Block& encoded);
 
   /** Encode the version vector to a string */
@@ -59,14 +51,14 @@ public:
   toStr() const;
 
   SeqNo
-  set(NodeID nid, SeqNo seqNo)
+  set(const NodeID& nid, SeqNo seqNo)
   {
     m_map[nid] = seqNo;
     return seqNo;
   }
 
   SeqNo
-  get(NodeID nid) const
+  get(const NodeID& nid) const
   {
     auto elem = m_map.find(nid);
     return elem == m_map.end() ? 0 : elem->second;
@@ -85,10 +77,11 @@ public:
   }
 
   bool
-  has(NodeID nid) const
+  has(const NodeID& nid) const
   {
     return m_map.find(nid) != end();
   }
+
 private:
   std::map<NodeID, SeqNo> m_map;
 };

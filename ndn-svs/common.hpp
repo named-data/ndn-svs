@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2021 University of California, Los Angeles
+ * Copyright (c) 2012-2022 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -19,10 +19,15 @@
 
 #include "config.hpp"
 
-#include <ndn-cxx/util/scheduler.hpp>
-#include <ndn-cxx/security/validator.hpp>
+#include <ndn-cxx/data.hpp>
 #include <ndn-cxx/face.hpp>
-#include <iostream>
+#include <ndn-cxx/interest.hpp>
+#include <ndn-cxx/security/validator.hpp>
+
+#include <functional>
+#include <memory>
+#include <utility>
+#include <vector>
 
 #ifdef NDN_SVS_HAVE_TESTS
 #define NDN_SVS_PUBLIC_WITH_TESTS_ELSE_PRIVATE public
@@ -39,10 +44,10 @@ using SeqNo = uint64_t;
 
 using ndn::security::ValidationError;
 
-using DataValidatedCallback = function<void(const Data&)>;
-using DataValidationErrorCallback = function<void(const Data&, const ValidationError& error)> ;
+using DataValidatedCallback = std::function<void(const Data&)>;
+using DataValidationErrorCallback = std::function<void(const Data&, const ValidationError&)> ;
 
-}  // namespace svs
-}  // namespace ndn
+} // namespace svs
+} // namespace ndn
 
 #endif // NDN_SVS_COMMON_HPP

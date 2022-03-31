@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2021 University of California, Los Angeles
+ * Copyright (c) 2012-2022 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -25,9 +25,12 @@ namespace svs {
 /**
  * A simple interface for a validator for data and interests
  */
-class BaseValidator
+class BaseValidator : noncopyable
 {
 public:
+  virtual
+  ~BaseValidator() = default;
+
   /**
    * @brief Asynchronously validate @p data
    *
@@ -53,23 +56,22 @@ public:
   {
     successCb(interest);
   }
-
-  virtual ~BaseValidator() = default;
 };
 
 /**
  * A simple interface for a signer for data and interests
  */
-class BaseSigner
+class BaseSigner : noncopyable
 {
 public:
+  virtual
+  ~BaseSigner() = default;
+
   virtual void
   sign(Interest& interest) const {}
 
   virtual void
   sign(Data& data) const {}
-
-  virtual ~BaseSigner() = default;
 
   security::SigningInfo signingInfo;
 };
@@ -77,17 +79,18 @@ public:
 /**
  * A signer using an ndn-cxx keychain instance
  */
-class KeyChainSigner : public BaseSigner {
+class KeyChainSigner : public BaseSigner
+{
 public:
+  explicit
   KeyChainSigner(KeyChain& keyChain) : m_keyChain(keyChain) {}
 
   void
-  sign(Interest& interest) const;
+  sign(Interest& interest) const override;
 
   void
-  sign(Data& data) const;
+  sign(Data& data) const override;
 
-  virtual ~KeyChainSigner() = default;
 private:
   KeyChain& m_keyChain;
 };
@@ -98,6 +101,7 @@ private:
 class SecurityOptions
 {
 public:
+  explicit
   SecurityOptions(KeyChain& keyChain);
 
 public:
@@ -109,9 +113,9 @@ public:
   std::shared_ptr<BaseSigner> pubSigner;
 
   /** Validator to validate data and interests (unless using HMAC) */
-  std::shared_ptr<BaseValidator> validator = 0;
+  std::shared_ptr<BaseValidator> validator;
   /** Validator to validate encapsulated data */
-  std::shared_ptr<BaseValidator> encapsulatedDataValidator = 0;
+  std::shared_ptr<BaseValidator> encapsulatedDataValidator;
 
   /** Number of retries on validation fail */
   int nRetriesOnValidationFail = 0;

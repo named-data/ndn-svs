@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2021 University of California, Los Angeles
+ * Copyright (c) 2012-2022 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -17,12 +17,11 @@
 #ifndef NDN_SVS_SVSPS_HPP
 #define NDN_SVS_SVSPS_HPP
 
-#include "common.hpp"
 #include "core.hpp"
+#include "mapping-provider.hpp"
 #include "store.hpp"
 #include "security-options.hpp"
 #include "svsync.hpp"
-#include "mapping-provider.hpp"
 
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/hashed_index.hpp>
@@ -55,7 +54,8 @@ public:
             const SecurityOptions& securityOptions = SecurityOptions::DEFAULT,
             std::shared_ptr<DataStore> dataStore = SVSync::DEFAULT_DATASTORE);
 
-  virtual ~SVSPubSub() = default;
+  virtual
+  ~SVSPubSub() = default;
 
   /** Subscription Data type */
   struct SubscriptionData
@@ -66,8 +66,8 @@ public:
   };
 
   /** Callback returning the received data, producer and sequence number and validated */
-  //using SubscriptionCallback = function<void(const Data&, const Name&, const SeqNo, const bool)>;
-  using SubscriptionCallback = function<void(const SubscriptionData& subData)>;
+  //using SubscriptionCallback = std::function<void(const Data&, const Name&, SeqNo, bool)>;
+  using SubscriptionCallback = std::function<void(const SubscriptionData&)>;
 
   /**
    * @brief Publish a encapsulated Data packet in the session and trigger
@@ -79,7 +79,7 @@ public:
    * @param nodePrefix Name to publish the data under
    */
   SeqNo
-  publishData(const Data& data, const Name nodePrefix = EMPTY_NAME);
+  publishData(const Data& data, const Name& nodePrefix = EMPTY_NAME);
 
   /**
    * @brief Subscribe to a data producer
@@ -91,8 +91,8 @@ public:
    * @returns Handle to the subscription
    */
   uint32_t
-  subscribeToProducer(const Name nodePrefix, const SubscriptionCallback callback,
-                      const bool prefetch = false);
+  subscribeToProducer(const Name& nodePrefix, const SubscriptionCallback& callback,
+                      bool prefetch = false);
 
   /**
    * @brief Subscribe to a data prefix
@@ -103,7 +103,7 @@ public:
    * @returns Handle to the subscription
    */
   uint32_t
-  subscribeToPrefix(const Name prefix, const SubscriptionCallback callback);
+  subscribeToPrefix(const Name& prefix, const SubscriptionCallback& callback);
 
   /**
    * @brief Unsubscribe from a stream using a handle
@@ -113,7 +113,7 @@ public:
   void
   unsubscribe(uint32_t handle);
 
-  /*** @brief Get the underlying sync */
+  /** @brief Get the underlying sync */
   SVSync&
   getSVSync()
   {
@@ -131,7 +131,7 @@ private:
 
   bool
   onSyncData(const Data& syncData, const Subscription& subscription,
-             const Name& streamName, const SeqNo seqNo);
+             const Name& streamName, SeqNo seqNo);
 
   void
   updateCallbackInternal(const std::vector<ndn::svs::MissingDataInfo>& info);

@@ -22,12 +22,8 @@
 
 using namespace ndn::svs;
 
-class Options
+struct Options
 {
-public:
-  Options() {}
-
-public:
   std::string prefix;
   std::string m_id;
 };
@@ -52,13 +48,12 @@ public:
     std::cout << "SVS client starting:" << m_options.m_id << std::endl;
     m_signingInfo.setSha256Signing();
 
-    m_svspubsub->subscribeToProducer(ndn::Name("/ndn"), [&] (SVSPubSub::SubscriptionData subData)
+    m_svspubsub->subscribeToProducer(ndn::Name("/ndn"), [] (const auto& subData)
     {
-      const size_t data_size = subData.data.getContent().value_size();
-      const std::string content_str((char *) subData.data.getContent().value(), data_size);
-
+      const std::string content(reinterpret_cast<const char*>(subData.data.getContent().value()),
+                                subData.data.getContent().value_size());
       std::cout << subData.producerPrefix << "[" << subData.seqNo << "] : " <<
-                   subData.data.getName() << " : " << content_str << std::endl;
+                   subData.data.getName() << " : " << content << std::endl;
     }, true);
   }
 
@@ -82,7 +77,7 @@ public:
 
 protected:
   void
-  onMissingData(const std::vector<MissingDataInfo>& v)
+  onMissingData(const std::vector<MissingDataInfo>&)
   {
   }
 
@@ -104,7 +99,7 @@ protected:
     m_svspubsub->publishData(data);
   }
 
-public:
+private:
   const Options m_options;
   ndn::Face face;
   std::shared_ptr<SVSPubSub> m_svspubsub;

@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2021 University of California, Los Angeles
+ * Copyright (c) 2012-2022 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -20,6 +20,8 @@
 #include "common.hpp"
 #include "security-options.hpp"
 
+#include <ndn-cxx/util/scheduler.hpp>
+
 #include <queue>
 
 namespace ndn {
@@ -27,22 +29,20 @@ namespace svs {
 
 class Fetcher
 {
+public:
+  Fetcher(Face& face, const SecurityOptions& securityOptions);
+
+  void
+  expressInterest(const ndn::Interest& interest,
+                  const ndn::DataCallback& afterSatisfied,
+                  const ndn::NackCallback& afterNacked,
+                  const ndn::TimeoutCallback& afterTimeout,
+                  int nRetries = 0,
+                  const ndn::security::DataValidationFailureCallback& afterValidationFailed = nullptr);
+
 private:
   struct QueuedInterest;
 
-public:
-  Fetcher(Face& face,
-          const SecurityOptions& securityOptions);
-
-  void
-  expressInterest(const ndn::Interest &interest,
-                  const ndn::DataCallback &afterSatisfied,
-                  const ndn::NackCallback &afterNacked,
-                  const ndn::TimeoutCallback &afterTimeout,
-                  const int nRetries = 0,
-                  const ndn::security::DataValidationFailureCallback &afterValidationFailed = 0);
-
-private:
   void
   expressInterest(const QueuedInterest& qi);
 
