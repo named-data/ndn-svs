@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2021 University of California, Los Angeles
+ * Copyright (c) 2012-2022 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -18,10 +18,11 @@
 #define NDN_SVS_CORE_HPP
 
 #include "common.hpp"
-#include "version-vector.hpp"
 #include "security-options.hpp"
+#include "version-vector.hpp"
 
 #include <ndn-cxx/util/random.hpp>
+#include <ndn-cxx/util/scheduler.hpp>
 
 #include <atomic>
 #include <chrono>
@@ -47,7 +48,7 @@ public:
  * The parameter is a set of MissingDataInfo, of which each corresponds to
  * a session that has changed its state.
  */
-using UpdateCallback = function<void(const std::vector<MissingDataInfo>&)>;
+using UpdateCallback = std::function<void(const std::vector<MissingDataInfo>&)>;
 
 /**
  * @brief Pure SVS
@@ -58,11 +59,7 @@ public:
   class Error : public std::runtime_error
   {
   public:
-    explicit
-    Error(const std::string& what)
-      : std::runtime_error(what)
-    {
-    }
+    using std::runtime_error::runtime_error;
   };
 
 public:
@@ -79,9 +76,7 @@ public:
              const Name& syncPrefix,
              const UpdateCallback& onUpdate,
              const SecurityOptions& securityOptions = SecurityOptions::DEFAULT,
-             const NodeID nid = EMPTY_NODE_ID);
-
-  ~SVSyncCore();
+             const NodeID& nid = EMPTY_NODE_ID);
 
   /**
    * @brief Reset the sync tree (and restart synchronization again)
@@ -128,8 +123,8 @@ public:
   std::set<NodeID>
   getNodeIds() const;
 
-  using GetExtraBlockCallback = function<const ndn::Block(const VersionVector&)>;
-  using RecvExtraBlockCallback = function<void(const ndn::Block&, const VersionVector&)>;
+  using GetExtraBlockCallback = std::function<ndn::Block(const VersionVector&)>;
+  using RecvExtraBlockCallback = std::function<void(const ndn::Block&, const VersionVector&)>;
 
   /**
   * @brief Callback to get extra data block for sync interest
@@ -184,7 +179,7 @@ NDN_SVS_PUBLIC_WITH_TESTS_ELSE_PRIVATE:
    * @param delay Delay in milliseconds to schedule next interest (0 for default).
    */
   void
-  retxSyncInterest(const bool send, unsigned int delay);
+  retxSyncInterest(bool send, unsigned int delay);
 
   /**
    * @brief Add one sync interest to queue.
@@ -206,7 +201,7 @@ NDN_SVS_PUBLIC_WITH_TESTS_ELSE_PRIVATE:
    *    <my vector new, other vector new>.
    */
   std::pair<bool, bool>
-  mergeStateVector(const VersionVector &vvOther);
+  mergeStateVector(const VersionVector& vvOther);
 
   /**
    * @brief Record vector by merging it into m_recordedVv

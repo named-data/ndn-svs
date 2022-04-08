@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2021 University of California, Los Angeles
+ * Copyright (c) 2012-2022 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -39,19 +39,18 @@ public:
                const UpdateCallback& updateCallback,
                const SecurityOptions& securityOptions = SecurityOptions::DEFAULT,
                std::shared_ptr<DataStore> dataStore = DEFAULT_DATASTORE)
-  : SVSyncBase(
-      Name(grpPrefix).append("s"),
-      Name(grpPrefix).append("d"),
-      id, face, updateCallback, securityOptions, dataStore)
+    : SVSyncBase(Name(grpPrefix).append("s"),
+                 Name(grpPrefix).append("d"),
+                 id, face, updateCallback, securityOptions, std::move(dataStore))
   {}
 
   Name
-  getDataName(const NodeID& nid, const SeqNo& seqNo)
+  getDataName(const NodeID& nid, const SeqNo& seqNo) override
   {
     return Name(m_dataPrefix).append(nid).appendNumber(seqNo);
   }
 
-  /*** @brief Set whether data of other nodes is also cached and served */
+  /** @brief Set whether data of other nodes is also cached and served */
   void
   setCacheAll(bool val)
   {
@@ -60,7 +59,7 @@ public:
 
 private:
   bool
-  shouldCache(const Data& data)
+  shouldCache(const Data& data) const override
   {
     return m_cacheAll;
   }
@@ -69,7 +68,7 @@ private:
   bool m_cacheAll = false;
 };
 
-}  // namespace svs
-}  // namespace ndn
+} // namespace svs
+} // namespace ndn
 
 #endif // NDN_SVS_SVSYNC_SHARED_HPP

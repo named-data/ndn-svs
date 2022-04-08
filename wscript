@@ -5,15 +5,13 @@ import os, subprocess
 
 VERSION = '0.0.1'
 APPNAME = 'ndn-svs'
-PACKAGE_BUGREPORT = 'https://github.com/pulsejet/ndn-svs/'
-PACKAGE_URL = 'https://github.com/pulsejet/ndn-svs/'
 GIT_TAG_PREFIX = 'ndn-svs-'
 
 def options(opt):
     opt.load(['compiler_cxx', 'gnu_dirs'])
     opt.load(['default-compiler-flags',
               'coverage', 'sanitizers', 'boost',
-              'doxygen', 'sphinx_build'],
+              'doxygen'],
              tooldir=['.waf-tools'])
 
     optgrp = opt.add_option_group('ndn-svs Options')
@@ -28,10 +26,10 @@ def options(opt):
     optgrp.add_option('--disable-shared', action='store_false', default=True,
                       dest='enable_shared', help='Do not build shared library (enabled by default)')
 
-    optgrp.add_option('--with-tests', action='store_true', default=False,
-                      help='Build unit tests')
     optgrp.add_option('--with-examples', action='store_true', default=False,
                       help='Build examples')
+    optgrp.add_option('--with-tests', action='store_true', default=False,
+                      help='Build unit tests')
 
 def configure(conf):
     conf.start_msg('Building static library')
@@ -53,13 +51,16 @@ def configure(conf):
 
     conf.load(['compiler_cxx', 'gnu_dirs',
                'default-compiler-flags', 'boost',
-               'doxygen', 'sphinx_build'])
+               'doxygen'])
 
-    conf.env.WITH_TESTS = conf.options.with_tests
     conf.env.WITH_EXAMPLES = conf.options.with_examples
+    conf.env.WITH_TESTS = conf.options.with_tests
 
-    conf.check_cfg(package='libndn-cxx', args=['--cflags', '--libs'], uselib_store='NDN_CXX',
-                   pkg_config_path=os.environ.get('PKG_CONFIG_PATH', '%s/pkgconfig' % conf.env.LIBDIR))
+    conf.find_program('dot', var='DOT', mandatory=False)
+
+    pkg_config_path = os.environ.get('PKG_CONFIG_PATH', f'{conf.env.LIBDIR}/pkgconfig')
+    conf.check_cfg(package='libndn-cxx', args=['libndn-cxx >= 0.8.0', '--cflags', '--libs'],
+                   uselib_store='NDN_CXX', pkg_config_path=pkg_config_path)
 
     boost_libs = ['system']
     if conf.env.WITH_TESTS:
@@ -78,13 +79,12 @@ def configure(conf):
     # system has a different version of the ndn-svs library installed.
     conf.env.prepend_value('STLIBPATH', ['.'])
 
-    conf.define_cond('NDN_SVS_HAVE_TESTS', conf.env.WITH_TESTS)
-
+    conf.define_cond('HAVE_TESTS', conf.env.WITH_TESTS)
     # The config header will contain all defines that were added using conf.define()
     # or conf.define_cond().  Everything that was added directly to conf.env.DEFINES
     # will not appear in the config header, but will instead be passed directly to the
     # compiler on the command line.
-    conf.write_config_header('config.hpp')
+    conf.write_config_header('config.hpp', define_prefix='NDN_SVS_')
 
 def build(bld):
     libndn_svs = dict(
@@ -111,27 +111,18 @@ def build(bld):
     if bld.env.WITH_EXAMPLES:
         bld.recurse('examples')
 
-    bld.install_files(
-        dest = '%s/ndn-svs' % bld.env.INCLUDEDIR,
-        files = bld.path.ant_glob(['ndn-svs/*.hpp', 'common.hpp']),
-        cwd = bld.path.find_dir('ndn-svs'),
-        relative_trick = False)
+    bld.install_files('${INCLUDEDIR}',
+                      bld.path.ant_glob('ndn-svs/**/*.hpp'),
+                      relative_trick=True)
 
-    bld.install_files(
-        dest = '%s/ndn-svs' % bld.env.INCLUDEDIR,
-        files = bld.path.get_bld().ant_glob(['ndn-svs/*.hpp', 'common.hpp', 'config.hpp']),
-        cwd = bld.path.get_bld().find_dir('ndn-svs'),
-        relative_trick = False)
+    bld.install_files('${INCLUDEDIR}/ndn-svs',
+                      bld.path.find_resource('config.hpp'))
 
     bld(features='subst',
         source='libndn-svs.pc.in',
         target='libndn-svs.pc',
         install_path='${LIBDIR}/pkgconfig',
         VERSION=VERSION)
-
-def docs(bld):
-    from waflib import Options
-    Options.commands = ['doxygen', 'sphinx'] + Options.commands
 
 def doxygen(bld):
     version(bld)
@@ -146,6 +137,7 @@ def doxygen(bld):
         target=['docs/doxygen.conf',
                 'docs/named_data_theme/named_data_footer-with-analytics.html'],
         VERSION=VERSION,
+        HAVE_DOT='YES' if bld.env.DOT else 'NO',
         HTML_FOOTER='../build/docs/named_data_theme/named_data_footer-with-analytics.html' \
                         if os.getenv('GOOGLE_ANALYTICS', None) \
                         else '../docs/named_data_theme/named_data_footer.html',
@@ -154,19 +146,6 @@ def doxygen(bld):
     bld(features='doxygen',
         doxyfile='docs/doxygen.conf',
         use='doxygen.conf')
-
-def sphinx(bld):
-    version(bld)
-
-    if not bld.env.SPHINX_BUILD:
-        bld.fatal('Cannot build documentation ("sphinx-build" not found in PATH)')
-
-    bld(features='sphinx',
-        config='docs/conf.py',
-        outdir='docs',
-        source=bld.path.ant_glob('docs/**/*.rst'),
-        version=VERSION_BASE,
-        release=VERSION)
 
 def version(ctx):
     # don't execute more than once

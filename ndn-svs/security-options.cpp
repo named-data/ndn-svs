@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2021 University of California, Los Angeles
+ * Copyright (c) 2012-2022 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -19,6 +19,9 @@
 namespace ndn {
 namespace svs {
 
+KeyChain SecurityOptions::DEFAULT_KEYCHAIN;
+const SecurityOptions SecurityOptions::DEFAULT(SecurityOptions::DEFAULT_KEYCHAIN);
+
 void
 KeyChainSigner::sign(Interest& interest) const
 {
@@ -32,15 +35,12 @@ KeyChainSigner::sign(Data& data) const
 }
 
 SecurityOptions::SecurityOptions(KeyChain& keyChain)
-  : interestSigner(make_shared<KeyChainSigner>(keyChain))
-  , dataSigner(make_shared<KeyChainSigner>(keyChain))
-  , pubSigner(make_shared<KeyChainSigner>(keyChain))
+  : interestSigner(std::make_shared<KeyChainSigner>(keyChain))
+  , dataSigner(std::make_shared<KeyChainSigner>(keyChain))
+  , pubSigner(std::make_shared<KeyChainSigner>(keyChain))
 {
   interestSigner->signingInfo.setSignedInterestFormat(security::SignedInterestFormat::V03);
 }
-
-KeyChain SecurityOptions::DEFAULT_KEYCHAIN;
-const SecurityOptions SecurityOptions::DEFAULT(SecurityOptions::DEFAULT_KEYCHAIN);
 
 }  // namespace svs
 }  // namespace ndn

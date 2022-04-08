@@ -14,7 +14,7 @@ enum {
 };
 
 } // namespace tlv
-}  // namespace svs
-}  // namespace ndn
+} // namespace svs
+} // namespace ndn
 
 #endif // NDN_SVS_TLV_HPP

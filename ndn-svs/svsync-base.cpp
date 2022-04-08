@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2021 University of California, Los Angeles
+ * Copyright (c) 2012-2022 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -40,36 +40,36 @@ SVSyncBase::SVSyncBase(const Name& syncPrefix,
   , m_face(face)
   , m_fetcher(face, securityOptions)
   , m_onUpdate(updateCallback)
-  , m_dataStore(dataStore)
+  , m_dataStore(std::move(dataStore))
   , m_core(m_face, m_syncPrefix, m_onUpdate, securityOptions, m_id)
 {
   // Register new data store
   if (m_dataStore == DEFAULT_DATASTORE)
-    m_dataStore = make_shared<MemoryDataStore>();
+    m_dataStore = std::make_shared<MemoryDataStore>();
 
   // Register data prefix
   m_registeredDataPrefix =
     m_face.setInterestFilter(m_dataPrefix,
                              std::bind(&SVSyncBase::onDataInterest, this, _2),
-                             [] (const Name& prefix, const std::string& msg) {});
+                             [] (auto&&...) {});
 }
 
 SeqNo
 SVSyncBase::publishData(const uint8_t* buf, size_t len, const ndn::time::milliseconds& freshness,
-                        const NodeID id)
+                        const NodeID& nid)
 {
-  return publishData(ndn::encoding::makeBinaryBlock(ndn::tlv::Content, buf, len), freshness, id);
+  return publishData(ndn::encoding::makeBinaryBlock(ndn::tlv::Content, {buf, len}), freshness, nid);
 }
 
 SeqNo
 SVSyncBase::publishData(const Block& content, const ndn::time::milliseconds& freshness,
-                        const NodeID id, const uint32_t contentType)
+                        const NodeID& id, uint32_t contentType)
 {
   NodeID pubId = id != EMPTY_NODE_ID ? id : m_id;
   SeqNo newSeq = m_core.getSeqNo(pubId) + 1;
 
   Name dataName = getDataName(pubId, newSeq);
-  shared_ptr<Data> data = make_shared<Data>(dataName);
+  auto data = std::make_shared<Data>(dataName);
   data->setContent(content);
   data->setFreshnessPeriod(freshness);
 
@@ -86,7 +86,8 @@ SVSyncBase::publishData(const Block& content, const ndn::time::milliseconds& fre
 }
 
 void
-SVSyncBase::onDataInterest(const Interest &interest) {
+SVSyncBase::onDataInterest(const Interest &interest)
+{
   auto data = m_dataStore->find(interest);
   if (data != nullptr)
     m_face.put(*data);
@@ -94,13 +95,11 @@ SVSyncBase::onDataInterest(const Interest &interest) {
 
 void
 SVSyncBase::fetchData(const NodeID& nid, const SeqNo& seqNo,
-                      const DataValidatedCallback& onValidated,
-                      const int nRetries)
+                      const DataValidatedCallback& onValidated, int nRetries)
 {
   DataValidationErrorCallback onValidationFailed =
     std::bind(&SVSyncBase::onDataValidationFailed, this, _1, _2);
-  TimeoutCallback onTimeout =
-    [] (const Interest& interest) {};
+  TimeoutCallback onTimeout = [] (auto&&...) {};
   fetchData(nid, seqNo, onValidated, onValidationFailed, onTimeout, nRetries);
 }
 
@@ -109,12 +108,10 @@ SVSyncBase::fetchData(const NodeID& nid, const SeqNo& seqNo,
                       const DataValidatedCallback& onValidated,
                       const DataValidationErrorCallback& onValidationFailed,
                       const TimeoutCallback& onTimeout,
-                      const int nRetries)
+                      int nRetries)
 {
   Name interestName = getDataName(nid, seqNo);
   Interest interest(interestName);
-  interest.setMustBeFresh(false);
-  interest.setCanBePrefix(false);
   interest.setInterestLifetime(ndn::time::milliseconds(2000));
 
   m_fetcher.expressInterest(interest,

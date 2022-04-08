@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2021 University of California, Los Angeles
+ * Copyright (c) 2012-2022 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -28,12 +28,12 @@ Fetcher::Fetcher(Face& face,
 {}
 
 void
-Fetcher::expressInterest(const ndn::Interest &interest,
-                         const ndn::DataCallback &afterSatisfied,
-                         const ndn::NackCallback &afterNacked,
-                         const ndn::TimeoutCallback &afterTimeout,
-                         const int nRetries,
-                         const ndn::security::DataValidationFailureCallback &afterValidationFailed)
+Fetcher::expressInterest(const ndn::Interest& interest,
+                         const ndn::DataCallback& afterSatisfied,
+                         const ndn::NackCallback& afterNacked,
+                         const ndn::TimeoutCallback& afterTimeout,
+                         int nRetries,
+                         const ndn::security::DataValidationFailureCallback& afterValidationFailed)
 {
   uint64_t id = ++m_interestIdCounter;
   m_interestQueue.push({
@@ -61,7 +61,7 @@ Fetcher::expressInterest(const QueuedInterest& qi)
 void
 Fetcher::processQueue()
 {
-  while (m_interestQueue.size() > 0 && m_pendingInterests.size() < m_windowSize)
+  while (!m_interestQueue.empty() && m_pendingInterests.size() < m_windowSize)
   {
     QueuedInterest i = m_interestQueue.front();
     m_interestQueue.pop();
@@ -81,7 +81,7 @@ Fetcher::onData(const Interest& interest, const Data& data,
   m_pendingInterests.erase(qi.id);
   processQueue();
 
-  if (!static_cast<bool>(m_securityOptions.validator))
+  if (m_securityOptions.validator == nullptr)
   {
     // No validator provided
     qi.afterSatisfied(interest, data);
@@ -96,16 +96,16 @@ Fetcher::onData(const Interest& interest, const Data& data,
     auto onValidationFailed = [this, qi] (const Data& data, const ValidationError& error)
     {
       if (qi.nRetriesOnValidationFail > 0) {
-        this->m_scheduler.schedule(ndn::time::milliseconds(this->m_securityOptions.millisBeforeRetryOnValidationFail), [this, qi] ()
-        {
-          QueuedInterest qiNew(qi);
-          qiNew.nRetriesOnValidationFail--;
-          this->expressInterest(qiNew);
-        });
+        this->m_scheduler.schedule(ndn::time::milliseconds(this->m_securityOptions.millisBeforeRetryOnValidationFail),
+          [this, qi] {
+            QueuedInterest qiNew(qi);
+            qiNew.nRetriesOnValidationFail--;
+            this->expressInterest(qiNew);
+          });
       }
       return;
 
-      if ((bool) qi.afterValidationFailed) {
+      if (qi.afterValidationFailed) {
         qi.afterValidationFailed(data, error);
       }
     };

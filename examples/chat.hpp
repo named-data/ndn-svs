@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2021 University of California, Los Angeles
+ * Copyright (c) 2012-2022 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -21,12 +21,8 @@
 
 #include <ndn-svs/svsync-base.hpp>
 
-class Options
+struct Options
 {
-public:
-  Options() {}
-
-public:
   std::string prefix;
   std::string m_id;
 };
@@ -70,21 +66,19 @@ protected:
         ndn::svs::NodeID nid = v[i].nodeId;
         m_svs->fetchData(nid, s, [nid] (const ndn::Data& data)
           {
-            const size_t data_size = data.getContent().value_size();
-            const std::string content_str((char *)data.getContent().value(), data_size);
-            std::cout << data.getName() << " : " << content_str << std::endl;
+            const std::string content(reinterpret_cast<const char*>(data.getContent().value()),
+                                      data.getContent().value_size());
+            std::cout << data.getName() << " : " << content << std::endl;
           });
       }
     }
   }
 
   void
-  publishMsg(std::string msg)
+  publishMsg(const std::string& msg)
   {
     // Content block
-    ndn::Block block = ndn::encoding::makeBinaryBlock(
-      ndn::tlv::Content,
-      reinterpret_cast<const uint8_t*>(msg.c_str()), msg.size());
+    auto block = ndn::encoding::makeBinaryBlock(ndn::tlv::Content, msg.data(), msg.size());
     m_svs->publishData(block, ndn::time::milliseconds(1000));
   }
 
@@ -98,7 +92,8 @@ public:
 
 template <typename T>
 int
-callMain(int argc, char **argv) {
+callMain(int argc, char **argv)
+{
   if (argc != 2) {
     std::cout << "Usage: client <prefix>" << std::endl;
     exit(1);

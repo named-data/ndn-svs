@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2021 University of California, Los Angeles
+ * Copyright (c) 2012-2022 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -17,7 +17,6 @@
 #ifndef NDN_SVS_MAPPING_PROVIDER_HPP
 #define NDN_SVS_MAPPING_PROVIDER_HPP
 
-#include "common.hpp"
 #include "core.hpp"
 #include "fetcher.hpp"
 
@@ -31,14 +30,16 @@ class MappingList
 public:
   MappingList();
 
+  explicit
   MappingList(const NodeID& nid);
 
-  /// @brief Decode from block
+  /// @brief Decode from Block
+  explicit
   MappingList(const Block& block);
 
-  /// @brief Encode to block
+  /// @brief Encode to Block
   Block
-  encode();
+  encode() const;
 
 public:
   using PairType = std::pair<SeqNo, Name>;
@@ -57,9 +58,10 @@ public:
                   ndn::Face& face,
                   const SecurityOptions& securityOptions);
 
-  virtual ~MappingProvider() = default;
+  virtual
+  ~MappingProvider() = default;
 
-  using MappingListCallback = function<void(const MappingList&)>;
+  using MappingListCallback = std::function<void(const MappingList&)>;
 
   /**
    * @brief Insert a mapping into the store
@@ -82,9 +84,9 @@ public:
    * @param onValidated Callback when mapping is fetched and validated
    */
   void
-  fetchNameMapping(const MissingDataInfo info,
+  fetchNameMapping(const MissingDataInfo& info,
                    const MappingListCallback& onValidated,
-                   const int nRetries = 0);
+                   int nRetries = 0);
 
   /**
    * @brief Retrieve the data mappings for encapsulated data packets
@@ -94,10 +96,10 @@ public:
    * @param onTimeout Callback when mapping is not retrieved
    */
   void
-  fetchNameMapping(const MissingDataInfo info,
+  fetchNameMapping(const MissingDataInfo& info,
                    const MappingListCallback& onValidated,
                    const TimeoutCallback& onTimeout,
-                   const int nRetries = 0);
+                   int nRetries = 0);
 
 private:
   /**
@@ -127,7 +129,7 @@ private:
   std::map<NodeID, Name> m_map;
 };
 
-}  // namespace svs
-}  // namespace ndn
+} // namespace svs
+} // namespace ndn
 
 #endif // NDN_SVS_MAPPING_PROVIDER_HPP

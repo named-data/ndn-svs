@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2021 University of California, Los Angeles
+ * Copyright (c) 2012-2022 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -17,8 +17,6 @@
 #include "svspubsub.hpp"
 #include "store-memory.hpp"
 #include "tlv.hpp"
-
-#include <functional>
 
 namespace ndn {
 namespace svs {
@@ -37,7 +35,7 @@ SVSPubSub::SVSPubSub(const Name& syncPrefix,
   , m_securityOptions(securityOptions)
   , m_svsync(syncPrefix, nodePrefix, face,
              std::bind(&SVSPubSub::updateCallbackInternal, this, _1),
-             securityOptions, dataStore)
+             securityOptions, std::move(dataStore))
   , m_mappingProvider(syncPrefix, nodePrefix, face, securityOptions)
 {
   m_svsync.getCore().setGetExtraBlockCallback(std::bind(&SVSPubSub::onGetExtraData, this, _1));
@@ -45,7 +43,7 @@ SVSPubSub::SVSPubSub(const Name& syncPrefix,
 }
 
 SeqNo
-SVSPubSub::publishData(const Data& data, const Name nodePrefix)
+SVSPubSub::publishData(const Data& data, const Name& nodePrefix)
 {
   NodeID nid = nodePrefix == EMPTY_NAME ? m_dataPrefix : nodePrefix;
   SeqNo seqNo = m_svsync.publishData(data.wireEncode(), data.getFreshnessPeriod(), nid, ndn::tlv::Data);
@@ -61,8 +59,8 @@ SVSPubSub::publishData(const Data& data, const Name nodePrefix)
 }
 
 uint32_t
-SVSPubSub::subscribeToProducer(const Name nodePrefix, const SubscriptionCallback callback,
-                               const bool prefetch)
+SVSPubSub::subscribeToProducer(const Name& nodePrefix, const SubscriptionCallback& callback,
+                               bool prefetch)
 {
   uint32_t handle = ++m_subscriptionCount;
   Subscription sub = { handle, nodePrefix, callback, prefetch };
@@ -71,7 +69,7 @@ SVSPubSub::subscribeToProducer(const Name nodePrefix, const SubscriptionCallback
 }
 
 uint32_t
-SVSPubSub::subscribeToPrefix(const Name prefix, const SubscriptionCallback callback)
+SVSPubSub::subscribeToPrefix(const Name& prefix, const SubscriptionCallback& callback)
 {
   uint32_t handle = ++m_subscriptionCount;
   Subscription sub = { handle, prefix, callback };
@@ -128,7 +126,7 @@ SVSPubSub::updateCallbackInternal(const std::vector<ndn::svs::MissingDataInfo>& 
     }
 
     // Fetch all mappings if we have prefix subscription(s)
-    if (m_prefixSubscriptions.size() > 0)
+    if (!m_prefixSubscriptions.empty())
     {
       MissingDataInfo remainingInfo = stream;
 
@@ -148,7 +146,7 @@ SVSPubSub::updateCallbackInternal(const std::vector<ndn::svs::MissingDataInfo>& 
           }
           remainingInfo.low++;
         }
-        catch(const std::exception& e)
+        catch (const std::exception&)
         {
           break;
         }
@@ -191,12 +189,12 @@ SVSPubSub::updateCallbackInternal(const std::vector<ndn::svs::MissingDataInfo>& 
 
 bool
 SVSPubSub::onSyncData(const Data& syncData, const Subscription& subscription,
-                      const Name& streamName, const SeqNo seqNo)
+                      const Name& streamName, SeqNo seqNo)
 {
   // Check for duplicate calls and push into queue
   // TODO: save memory by popping out from the queue after some time?
   {
-    const size_t hash = std::hash<std::string>{}(Name(streamName).appendNumber(seqNo).toUri());
+    const size_t hash = std::hash<Name>{}(Name(streamName).appendNumber(seqNo));
     const auto& ht = m_receivedObjectIds.get<Hashtable>();
     if (ht.find(hash) != ht.end())
       return false;
@@ -217,15 +215,15 @@ SVSPubSub::onSyncData(const Data& syncData, const Subscription& subscription,
     // Return data
     SubscriptionData subData = { encapsulatedData, streamName, seqNo };
 
-    if (static_cast<bool>(m_securityOptions.encapsulatedDataValidator))
+    if (static_cast<bool>(m_securityOptions.encapsulatedDataValidator)) {
       m_securityOptions.encapsulatedDataValidator->validate(
         encapsulatedData,
-        [&] (const Data& data) { subscription.callback(subData); },
-        [&] (const Data& data, const security::ValidationError error) { }
-      );
-    else
+        [&] (const Data&) { subscription.callback(subData); },
+        [] (auto&&...) {});
+    }
+    else {
       subscription.callback(subData);
-
+    }
     return true;
   }
 
@@ -233,7 +231,7 @@ SVSPubSub::onSyncData(const Data& syncData, const Subscription& subscription,
 }
 
 Block
-SVSPubSub::onGetExtraData(const VersionVector& vv)
+SVSPubSub::onGetExtraData(const VersionVector&)
 {
   MappingList copy = m_notificationMappingList;
   m_notificationMappingList = MappingList();
@@ -251,7 +249,7 @@ SVSPubSub::onRecvExtraData(const Block& block)
       m_mappingProvider.insertMapping(list.nodeId, p.first, p.second);
     }
   }
-  catch(const std::exception& e) {}
+  catch (const std::exception&) {}
 }
 
 }  // namespace svs

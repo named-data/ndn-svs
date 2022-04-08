@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2021 University of California, Los Angeles
+ * Copyright (c) 2012-2022 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -33,7 +33,7 @@ MappingProvider::MappingProvider(const Name& syncPrefix,
   m_registeredPrefix =
     m_face.setInterestFilter(Name(m_id).append(m_syncPrefix).append("MAPPING"),
                              std::bind(&MappingProvider::onMappingQuery, this, _2),
-                             [] (const Name& prefix, const std::string& msg) {});
+                             [] (auto&&...) {});
 }
 
 void
@@ -58,7 +58,7 @@ MappingProvider::onMappingQuery(const Interest& interest)
   {
     try {
       Name name = getMapping(query.nodeId, i);
-      queryResponse.pairs.push_back(std::make_pair(i, name));
+      queryResponse.pairs.emplace_back(i, name);
     } catch (const std::exception& ex) {
       // TODO: don't give up if not everything is found
       // Instead return whatever we have and let the client request
@@ -68,7 +68,7 @@ MappingProvider::onMappingQuery(const Interest& interest)
   }
 
   // Don't reply if we have nothing
-  if (queryResponse.pairs.size() == 0)
+  if (queryResponse.pairs.empty())
     return;
 
   Data data(interest.getName());
@@ -79,20 +79,19 @@ MappingProvider::onMappingQuery(const Interest& interest)
 }
 
 void
-MappingProvider::fetchNameMapping(const MissingDataInfo info,
+MappingProvider::fetchNameMapping(const MissingDataInfo& info,
                                   const MappingListCallback& onValidated,
-                                  const int nRetries)
+                                  int nRetries)
 {
-  TimeoutCallback onTimeout =
-    [] (const Interest& interest) {};
+  TimeoutCallback onTimeout = [] (auto&&...) {};
   return fetchNameMapping(info, onValidated, onTimeout, nRetries);
 }
 
 void
-MappingProvider::fetchNameMapping(const MissingDataInfo info,
+MappingProvider::fetchNameMapping(const MissingDataInfo& info,
                                   const MappingListCallback& onValidated,
                                   const TimeoutCallback& onTimeout,
-                                  const int nRetries)
+                                  int nRetries)
 {
   Name queryName = getMappingQueryDataName(info);
   Interest interest(queryName);
@@ -117,13 +116,11 @@ MappingProvider::fetchNameMapping(const MissingDataInfo info,
     onValidated(list);
   };
 
-  auto onValidationFailed = [] (const Data& data, const ValidationError& error) {};
-
   m_fetcher.expressInterest(interest,
                             std::bind(onDataValidated, _2),
                             std::bind(onTimeout, _1), // Nack
                             onTimeout, nRetries,
-                            onValidationFailed);
+                            [] (auto&&...) {});
 }
 
 Name
@@ -143,36 +140,42 @@ MappingProvider::parseMappingQueryDataName(const Name& name)
 }
 
 Block
-MappingList::encode()
+MappingList::encode() const
 {
-  ndn::encoding::Encoder enc;
+  ndn::encoding::EncodingBuffer enc;
   size_t totalLength = 0;
 
   for (const auto& p : pairs)
   {
-    size_t entryLength = enc.prependBlock(p.second.wireEncode());
-    size_t valLength = enc.prependNonNegativeInteger(p.first);
-    entryLength += enc.prependVarNumber(valLength);
-    entryLength += enc.prependVarNumber(tlv::SeqNo);
-    entryLength += valLength;
+    // Name
+    size_t entryLength = ndn::encoding::prependBlock(enc, p.second.wireEncode());
+
+    // SeqNo
+    entryLength += ndn::encoding::prependNonNegativeIntegerBlock(enc, tlv::SeqNo, p.first);
 
     totalLength += enc.prependVarNumber(entryLength);
     totalLength += enc.prependVarNumber(tlv::MappingEntry);
     totalLength += entryLength;
   }
 
-  totalLength += enc.prependBlock(nodeId.wireEncode());
-  totalLength += enc.prependVarNumber(totalLength);
-  totalLength += enc.prependVarNumber(tlv::MappingData);
+  totalLength += ndn::encoding::prependBlock(enc, nodeId.wireEncode());
 
+  enc.prependVarNumber(totalLength);
+  enc.prependVarNumber(tlv::MappingData);
   return enc.block();
 }
+
+MappingList::MappingList() = default;
+
+MappingList::MappingList(const NodeID& nid)
+  : nodeId(nid)
+{}
 
 MappingList::MappingList(const Block& block)
 {
   block.parse();
 
-  for (auto it = block.elements_begin(); it < block.elements_end(); it++) {
+  for (auto it = block.elements_begin(); it != block.elements_end(); it++) {
     if (it->type() == ndn::tlv::Name)
     {
       nodeId = NodeID(*it);
@@ -185,18 +188,11 @@ MappingList::MappingList(const Block& block)
 
       SeqNo seqNo = ndn::encoding::readNonNegativeInteger(it->elements().at(0));
       Name name(it->elements().at(1));
-      pairs.push_back(std::make_pair(seqNo, name));
+      pairs.emplace_back(seqNo, name);
       continue;
     }
   }
 }
-
-MappingList::MappingList()
-{}
-
-MappingList::MappingList(const NodeID& nid)
-  : nodeId(nid)
-{}
 
 }  // namespace svs
 }  // namespace ndn

@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2021 University of California, Los Angeles
+ * Copyright (c) 2012-2022 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -22,12 +22,8 @@
 
 using namespace ndn::svs;
 
-class Options
+struct Options
 {
-public:
-  Options() {}
-
-public:
   std::string prefix;
   std::string m_id;
 };
@@ -52,13 +48,12 @@ public:
     std::cout << "SVS client starting:" << m_options.m_id << std::endl;
     m_signingInfo.setSha256Signing();
 
-    m_svspubsub->subscribeToProducer(ndn::Name("/ndn"), [&] (SVSPubSub::SubscriptionData subData)
+    m_svspubsub->subscribeToProducer(ndn::Name("/ndn"), [] (const auto& subData)
     {
-      const size_t data_size = subData.data.getContent().value_size();
-      const std::string content_str((char *) subData.data.getContent().value(), data_size);
-
+      const std::string content(reinterpret_cast<const char*>(subData.data.getContent().value()),
+                                subData.data.getContent().value_size());
       std::cout << subData.producerPrefix << "[" << subData.seqNo << "] : " <<
-                   subData.data.getName() << " : " << content_str << std::endl;
+                   subData.data.getName() << " : " << content << std::endl;
     }, true);
   }
 
@@ -82,16 +77,15 @@ public:
 
 protected:
   void
-  onMissingData(const std::vector<MissingDataInfo>& v)
+  onMissingData(const std::vector<MissingDataInfo>&)
   {
   }
 
   void
-  publishMsg(std::string msg)
+  publishMsg(const std::string& msg)
   {
     // Content block
-    ndn::Block block = ndn::encoding::makeBinaryBlock(
-      ndn::tlv::Content, reinterpret_cast<const uint8_t*>(msg.c_str()), msg.size());
+    auto block = ndn::encoding::makeBinaryBlock(ndn::tlv::Content, msg.data(), msg.size());
 
     // Data packet
     ndn::Name name(m_options.m_id);
@@ -105,7 +99,7 @@ protected:
     m_svspubsub->publishData(data);
   }
 
-public:
+private:
   const Options m_options;
   ndn::Face face;
   std::shared_ptr<SVSPubSub> m_svspubsub;
