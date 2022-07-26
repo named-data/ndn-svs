@@ -22,8 +22,7 @@
 
 #include <map>
 
-namespace ndn {
-namespace svs {
+namespace ndn::svs {
 
 class MappingList
 {
@@ -42,9 +41,8 @@ public:
   encode() const;
 
 public:
-  using PairType = std::pair<SeqNo, Name>;
   NodeID nodeId;
-  std::vector<PairType> pairs;
+  std::vector<std::pair<SeqNo, Name>> pairs;
 };
 
 /**
@@ -129,7 +127,6 @@ private:
   std::map<NodeID, Name> m_map;
 };
 
-} // namespace svs
-} // namespace ndn
+} // namespace ndn::svs
 
 #endif // NDN_SVS_MAPPING_PROVIDER_HPP

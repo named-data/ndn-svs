@@ -19,8 +19,7 @@
 
 #include "svsync-base.hpp"
 
-namespace ndn {
-namespace svs {
+namespace ndn::svs {
 
 /**
  * @brief SVSync using arbitrary prefix for data delivery
@@ -49,7 +48,6 @@ public:
   }
 };
 
-} // namespace svs
-} // namespace ndn
+} // namespace ndn::svs
 
 #endif // NDN_SVS_SVSYNC_HPP

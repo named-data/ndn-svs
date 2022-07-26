@@ -14,13 +14,12 @@
  * PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
  */
 
-#ifndef NDN_SVS_SIGNING_OPTIONS_HPP
-#define NDN_SVS_SIGNING_OPTIONS_HPP
+#ifndef NDN_SVS_SECURITY_OPTIONS_HPP
+#define NDN_SVS_SECURITY_OPTIONS_HPP
 
 #include "common.hpp"
 
-namespace ndn {
-namespace svs {
+namespace ndn::svs {
 
 /**
  * A simple interface for a validator for data and interests
@@ -65,7 +64,7 @@ class BaseSigner : noncopyable
 {
 public:
   virtual
-  ~BaseSigner() = default;
+  ~BaseSigner();
 
   virtual void
   sign(Interest& interest) const {}
@@ -73,6 +72,7 @@ public:
   virtual void
   sign(Data& data) const {}
 
+public:
   security::SigningInfo signingInfo;
 };
 
@@ -83,7 +83,9 @@ class KeyChainSigner : public BaseSigner
 {
 public:
   explicit
-  KeyChainSigner(KeyChain& keyChain) : m_keyChain(keyChain) {}
+  KeyChainSigner(KeyChain& keyChain)
+    : m_keyChain(keyChain)
+  {}
 
   void
   sign(Interest& interest) const override;
@@ -122,11 +124,10 @@ public:
   /** Interval before validation fail retry */
   int millisBeforeRetryOnValidationFail = 300;
 
-  static KeyChain DEFAULT_KEYCHAIN;
+  static inline KeyChain DEFAULT_KEYCHAIN;
   static const SecurityOptions DEFAULT;
 };
 
-}  // namespace svs
-}  // namespace ndn
+} // namespace ndn::svs
 
-#endif // NDN_SVS_SIGNING_OPTIONS_HPP
+#endif // NDN_SVS_SECURITY_OPTIONS_HPP

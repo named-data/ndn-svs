@@ -24,8 +24,7 @@
 
 #include <queue>
 
-namespace ndn {
-namespace svs {
+namespace ndn::svs {
 
 class Fetcher
 {
@@ -92,7 +91,6 @@ private:
   std::queue<QueuedInterest> m_interestQueue;
 };
 
-}  // namespace svs
-}  // namespace ndn
+} // namespace ndn::svs
 
 #endif // NDN_SVS_FETCHER_HPP

@@ -19,8 +19,7 @@
 
 #include "svsync-base.hpp"
 
-namespace ndn {
-namespace svs {
+namespace ndn::svs {
 
 /**
  * @brief SVSync using shared prefix for data delivery
@@ -59,7 +58,7 @@ public:
 
 private:
   bool
-  shouldCache(const Data& data) const override
+  shouldCache(const Data&) const override
   {
     return m_cacheAll;
   }
@@ -68,7 +67,6 @@ private:
   bool m_cacheAll = false;
 };
 
-} // namespace svs
-} // namespace ndn
+} // namespace ndn::svs
 
 #endif // NDN_SVS_SVSYNC_SHARED_HPP

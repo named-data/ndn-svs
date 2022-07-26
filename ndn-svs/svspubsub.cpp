@@ -18,10 +18,7 @@
 #include "store-memory.hpp"
 #include "tlv.hpp"
 
-namespace ndn {
-namespace svs {
-
-const Name SVSPubSub::EMPTY_NAME;
+namespace ndn::svs {
 
 SVSPubSub::SVSPubSub(const Name& syncPrefix,
                      const Name& nodePrefix,
@@ -51,7 +48,7 @@ SVSPubSub::publishData(const Data& data, const Name& nodePrefix)
   if (m_notificationMappingList.nodeId == EMPTY_NAME || m_notificationMappingList.nodeId == nid)
   {
     m_notificationMappingList.nodeId = nid;
-    m_notificationMappingList.pairs.push_back(std::make_pair(seqNo, data.getName()));
+    m_notificationMappingList.pairs.emplace_back(seqNo, data.getName());
   }
 
   m_mappingProvider.insertMapping(nid, seqNo, data.getName());
@@ -72,8 +69,7 @@ uint32_t
 SVSPubSub::subscribeToPrefix(const Name& prefix, const SubscriptionCallback& callback)
 {
   uint32_t handle = ++m_subscriptionCount;
-  Subscription sub = { handle, prefix, callback };
-  m_prefixSubscriptions.push_back(sub);
+  m_prefixSubscriptions.push_back(Subscription{handle, prefix, callback});
   return handle;
 }
 
@@ -164,20 +160,20 @@ SVSPubSub::updateCallbackInternal(const std::vector<ndn::svs::MissingDataInfo>& 
           truncatedRemainingInfo.high = truncatedRemainingInfo.low + 10;
         }
 
-        m_mappingProvider.fetchNameMapping(truncatedRemainingInfo, [this, remainingInfo, streamName] (MappingList list)
-        {
-          for (const auto& sub : m_prefixSubscriptions)
-          {
-            for (const auto& entry : list.pairs)
+        m_mappingProvider.fetchNameMapping(truncatedRemainingInfo,
+          [this, remainingInfo, streamName] (const MappingList& list) {
+            for (const auto& sub : m_prefixSubscriptions)
             {
-              if (sub.prefix.isPrefixOf(entry.second))
+              for (const auto& [seq, name] : list.pairs)
               {
-                m_svsync.fetchData(remainingInfo.nodeId, entry.first,
-                                   std::bind(&SVSPubSub::onSyncData, this, _1, sub, streamName, entry.first), -1);
+                if (sub.prefix.isPrefixOf(name))
+                {
+                  m_svsync.fetchData(remainingInfo.nodeId, seq,
+                                     std::bind(&SVSPubSub::onSyncData, this, _1, sub, streamName, seq), -1);
+                }
               }
             }
-          }
-        }, -1);
+          }, -1);
 
         remainingInfo.low += 11;
       }
@@ -208,7 +204,8 @@ SVSPubSub::onSyncData(const Data& syncData, const Subscription& subscription,
 
     try {
       m_mappingProvider.getMapping(streamName, seqNo);
-    } catch (const std::exception& ex) {
+    }
+    catch (const std::exception&) {
       m_mappingProvider.insertMapping(streamName, seqNo, encapsulatedData.getName());
     }
 
@@ -252,5 +249,4 @@ SVSPubSub::onRecvExtraData(const Block& block)
   catch (const std::exception&) {}
 }
 
-}  // namespace svs
-}  // namespace ndn
+} // namespace ndn::svs

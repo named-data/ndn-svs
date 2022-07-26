@@ -21,8 +21,7 @@
 
 #include <ndn-cxx/ims/in-memory-storage-persistent.hpp>
 
-namespace ndn {
-namespace svs {
+namespace ndn::svs {
 
 class MemoryDataStore : public DataStore
 {
@@ -43,7 +42,6 @@ private:
   InMemoryStoragePersistent m_ims;
 };
 
-} // namespace svs
-} // namespace ndn
+} // namespace ndn::svs
 
 #endif // NDN_SVS_STORE_MEMORY_HPP

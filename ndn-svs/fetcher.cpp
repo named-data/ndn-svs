@@ -17,8 +17,7 @@
 #include "fetcher.hpp"
 #include "security-options.hpp"
 
-namespace ndn {
-namespace svs {
+namespace ndn::svs {
 
 Fetcher::Fetcher(Face& face,
                  const SecurityOptions& securityOptions)
@@ -140,5 +139,4 @@ Fetcher::onTimeout(const Interest& interest,
   expressInterest(qiNew);
 }
 
-}  // namespace svs
-}  // namespace ndn
+} // namespace ndn::svs

@@ -21,8 +21,7 @@
 
 #include <map>
 
-namespace ndn {
-namespace svs {
+namespace ndn::svs {
 
 class VersionVector
 {
@@ -33,7 +32,6 @@ public:
     using std::runtime_error::runtime_error;
   };
 
-public:
   using const_iterator = std::map<NodeID, SeqNo>::const_iterator;
 
   VersionVector() = default;
@@ -65,13 +63,13 @@ public:
   }
 
   const_iterator
-  begin() const
+  begin() const noexcept
   {
     return m_map.begin();
   }
 
   const_iterator
-  end() const
+  end() const noexcept
   {
     return m_map.end();
   }
@@ -86,7 +84,6 @@ private:
   std::map<NodeID, SeqNo> m_map;
 };
 
-} // namespace ndn
-} // namespace svs
+} // namespace ndn::svs
 
 #endif // NDN_SVS_VERSION_VECTOR_HPP

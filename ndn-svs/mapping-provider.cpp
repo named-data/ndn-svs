@@ -17,8 +17,7 @@
 #include "mapping-provider.hpp"
 #include "tlv.hpp"
 
-namespace ndn {
-namespace svs {
+namespace ndn::svs {
 
 MappingProvider::MappingProvider(const Name& syncPrefix,
                                  const NodeID& id,
@@ -59,7 +58,8 @@ MappingProvider::onMappingQuery(const Interest& interest)
     try {
       Name name = getMapping(query.nodeId, i);
       queryResponse.pairs.emplace_back(i, name);
-    } catch (const std::exception& ex) {
+    }
+    catch (const std::exception&) {
       // TODO: don't give up if not everything is found
       // Instead return whatever we have and let the client request
       // the remaining mappings again
@@ -105,11 +105,12 @@ MappingProvider::fetchNameMapping(const MissingDataInfo& info,
     MappingList list(block);
 
     // Add all mappings to self
-    for (const auto& entry : list.pairs) {
+    for (const auto& [seq, name] : list.pairs) {
       try {
-        getMapping(info.nodeId, entry.first);
-      } catch (const std::exception& ex) {
-        insertMapping(info.nodeId, entry.first, entry.second);
+        getMapping(info.nodeId, seq);
+      }
+      catch (const std::exception&) {
+        insertMapping(info.nodeId, seq, name);
       }
     }
 
@@ -145,13 +146,13 @@ MappingList::encode() const
   ndn::encoding::EncodingBuffer enc;
   size_t totalLength = 0;
 
-  for (const auto& p : pairs)
+  for (const auto& [seq, name] : pairs)
   {
     // Name
-    size_t entryLength = ndn::encoding::prependBlock(enc, p.second.wireEncode());
+    size_t entryLength = ndn::encoding::prependBlock(enc, name.wireEncode());
 
     // SeqNo
-    entryLength += ndn::encoding::prependNonNegativeIntegerBlock(enc, tlv::SeqNo, p.first);
+    entryLength += ndn::encoding::prependNonNegativeIntegerBlock(enc, tlv::SeqNo, seq);
 
     totalLength += enc.prependVarNumber(entryLength);
     totalLength += enc.prependVarNumber(tlv::MappingEntry);
@@ -194,5 +195,4 @@ MappingList::MappingList(const Block& block)
   }
 }
 
-}  // namespace svs
-}  // namespace ndn
+} // namespace ndn::svs

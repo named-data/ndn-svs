@@ -28,8 +28,7 @@
 #include <chrono>
 #include <mutex>
 
-namespace ndn {
-namespace svs {
+namespace ndn::svs {
 
 class MissingDataInfo
 {
@@ -235,13 +234,9 @@ NDN_SVS_PUBLIC_WITH_TESTS_ELSE_PRIVATE:
   getCurrentTime() const;
 
 public:
-  static const NodeID EMPTY_NODE_ID;
+  static inline const NodeID EMPTY_NODE_ID;
 
 private:
-  static const ConstBufferPtr EMPTY_DIGEST;
-  static const ndn::name::Component RESET_COMPONENT;
-  static const ndn::name::Component RECOVERY_COMPONENT;
-
   // Communication
   ndn::Face& m_face;
   const Name m_syncPrefix;
@@ -284,14 +279,10 @@ private:
   // Time at which the next sync interest will be sent
   std::atomic_long m_nextSyncInterest;
 
-  int m_instanceId;
-  static int s_instanceCounter;
-
   // Prevent sending interests before initialization
   bool m_initialized = false;
 };
 
-}  // namespace svs
-}  // namespace ndn
+} // namespace ndn::svs
 
 #endif // NDN_SVS_CORE_HPP

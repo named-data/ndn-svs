@@ -19,12 +19,7 @@
 #include <ndn-cxx/security/signing-helpers.hpp>
 #include <ndn-cxx/security/verification-helpers.hpp>
 
-namespace ndn {
-namespace svs {
-
-int SVSyncCore::s_instanceCounter = 0;
-
-const NodeID SVSyncCore::EMPTY_NODE_ID;
+namespace ndn::svs {
 
 SVSyncCore::SVSyncCore(ndn::Face& face,
                        const Name& syncPrefix,
@@ -42,7 +37,6 @@ SVSyncCore::SVSyncCore(ndn::Face& face,
   , m_intrReplyDist(50 * 0.9, 50 * 1.1)
   , m_keyChainMem("pib-memory:", "tpm-memory:")
   , m_scheduler(m_face.getIoService())
-  , m_instanceId(s_instanceCounter++)
 {
   // Register sync interest filter
   m_syncRegisteredPrefix =
@@ -112,7 +106,8 @@ SVSyncCore::onSyncInterestValidated(const Interest &interest)
   {
     try {
       m_recvExtraBlock(interest.getApplicationParameters().blockFromValue(), *vvOther);
-    } catch (std::exception&) {}
+    }
+    catch (std::exception&) {}
   }
 
   // Merge state vector
@@ -347,5 +342,4 @@ SVSyncCore::enterSuppressionState(const VersionVector &vvOther)
     m_recordedVv = std::make_unique<VersionVector>(vvOther);
 }
 
-}  // namespace svs
-}  // namespace ndn
+} // namespace ndn::svs
