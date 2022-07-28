@@ -22,8 +22,7 @@
 #include "store.hpp"
 #include "security-options.hpp"
 
-namespace ndn {
-namespace svs {
+namespace ndn::svs {
 
 /**
  * @brief A simple interface to interact with SVS
@@ -150,8 +149,8 @@ protected:
   getDataName(const NodeID& nid, const SeqNo& seqNo) = 0;
 
 public:
-  static const NodeID EMPTY_NODE_ID;
-  static const std::shared_ptr<DataStore> DEFAULT_DATASTORE;
+  static inline const NodeID EMPTY_NODE_ID;
+  static inline const std::shared_ptr<DataStore> DEFAULT_DATASTORE;
 
 private:
   void
@@ -190,11 +189,9 @@ private:
   const UpdateCallback m_onUpdate;
 
   std::shared_ptr<DataStore> m_dataStore;
-
   SVSyncCore m_core;
 };
 
-} // namespace svs
-} // namespace ndn
+} // namespace ndn::svs
 
 #endif // NDN_SVS_SVSYNC_BASE_HPP

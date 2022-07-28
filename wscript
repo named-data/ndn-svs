@@ -56,7 +56,12 @@ def configure(conf):
     conf.env.WITH_EXAMPLES = conf.options.with_examples
     conf.env.WITH_TESTS = conf.options.with_tests
 
-    conf.find_program('dot', var='DOT', mandatory=False)
+    conf.find_program('dot', mandatory=False)
+
+    # Prefer pkgconf if it's installed, because it gives more correct results
+    # on Fedora/CentOS/RHEL/etc. See https://bugzilla.redhat.com/show_bug.cgi?id=1953348
+    # Store the result in env.PKGCONFIG, which is the variable used inside check_cfg()
+    conf.find_program(['pkgconf', 'pkg-config'], var='PKGCONFIG')
 
     pkg_config_path = os.environ.get('PKG_CONFIG_PATH', f'{conf.env.LIBDIR}/pkgconfig')
     conf.check_cfg(package='libndn-cxx', args=['libndn-cxx >= 0.8.0', '--cflags', '--libs'],
@@ -111,9 +116,8 @@ def build(bld):
     if bld.env.WITH_EXAMPLES:
         bld.recurse('examples')
 
-    bld.install_files('${INCLUDEDIR}',
-                      bld.path.ant_glob('ndn-svs/**/*.hpp'),
-                      relative_trick=True)
+    headers = bld.path.ant_glob('ndn-svs/**/*.hpp')
+    bld.install_files('${INCLUDEDIR}', headers, relative_trick=True)
 
     bld.install_files('${INCLUDEDIR}/ndn-svs',
                       bld.path.find_resource('config.hpp'))

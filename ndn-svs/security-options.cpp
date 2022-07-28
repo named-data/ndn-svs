@@ -16,11 +16,11 @@
 
 #include "security-options.hpp"
 
-namespace ndn {
-namespace svs {
+namespace ndn::svs {
 
-KeyChain SecurityOptions::DEFAULT_KEYCHAIN;
-const SecurityOptions SecurityOptions::DEFAULT(SecurityOptions::DEFAULT_KEYCHAIN);
+const SecurityOptions SecurityOptions::DEFAULT{SecurityOptions::DEFAULT_KEYCHAIN};
+
+BaseSigner::~BaseSigner() = default;
 
 void
 KeyChainSigner::sign(Interest& interest) const
@@ -42,5 +42,4 @@ SecurityOptions::SecurityOptions(KeyChain& keyChain)
   interestSigner->signingInfo.setSignedInterestFormat(security::SignedInterestFormat::V03);
 }
 
-}  // namespace svs
-}  // namespace ndn
+} // namespace ndn::svs

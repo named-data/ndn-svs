@@ -20,11 +20,7 @@
 
 #include <ndn-cxx/security/signing-helpers.hpp>
 
-namespace ndn {
-namespace svs {
-
-const NodeID SVSyncBase::EMPTY_NODE_ID;
-const std::shared_ptr<DataStore> SVSyncBase::DEFAULT_DATASTORE;
+namespace ndn::svs {
 
 SVSyncBase::SVSyncBase(const Name& syncPrefix,
                        const Name& dataPrefix,
@@ -136,5 +132,4 @@ SVSyncBase::onDataValidationFailed(const Data& data,
 {
 }
 
-}  // namespace svs
-}  // namespace ndn
+} // namespace ndn::svs

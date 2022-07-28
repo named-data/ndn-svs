@@ -1,9 +1,7 @@
 #ifndef NDN_SVS_TLV_HPP
 #define NDN_SVS_TLV_HPP
 
-namespace ndn {
-namespace svs {
-namespace tlv {
+namespace ndn::svs::tlv {
 
 enum {
   StateVector = 201,
@@ -13,8 +11,6 @@ enum {
   MappingEntry = 206,
 };
 
-} // namespace tlv
-} // namespace svs
-} // namespace ndn
+} // namespace ndn::svs::tlv
 
 #endif // NDN_SVS_TLV_HPP

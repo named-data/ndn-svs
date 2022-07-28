@@ -17,8 +17,7 @@
 #include "version-vector.hpp"
 #include "tlv.hpp"
 
-namespace ndn {
-namespace svs {
+namespace ndn::svs {
 
 VersionVector::VersionVector(const ndn::Block& block)
 {
@@ -74,5 +73,4 @@ VersionVector::toStr() const
   return stream.str();
 }
 
-} // namespace svs
-} // namespace ndn
+} // namespace ndn::svs

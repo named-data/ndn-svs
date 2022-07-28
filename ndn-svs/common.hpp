@@ -35,8 +35,7 @@
 #define NDN_SVS_PUBLIC_WITH_TESTS_ELSE_PRIVATE private
 #endif
 
-namespace ndn {
-namespace svs {
+namespace ndn::svs {
 
 // Type and constant declarations for State Vector Sync (SVS)
 using NodeID = ndn::Name;
@@ -47,7 +46,6 @@ using ndn::security::ValidationError;
 using DataValidatedCallback = std::function<void(const Data&)>;
 using DataValidationErrorCallback = std::function<void(const Data&, const ValidationError&)> ;
 
-} // namespace svs
-} // namespace ndn
+} // namespace ndn::svs
 
 #endif // NDN_SVS_COMMON_HPP

@@ -14,8 +14,8 @@
  * PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
  */
 
-#ifndef NDN_SVS_SVSPS_HPP
-#define NDN_SVS_SVSPS_HPP
+#ifndef NDN_SVS_SVSPUBSUB_HPP
+#define NDN_SVS_SVSPUBSUB_HPP
 
 #include "core.hpp"
 #include "mapping-provider.hpp"
@@ -27,8 +27,7 @@
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/sequenced_index.hpp>
 
-namespace ndn {
-namespace svs {
+namespace ndn::svs {
 
 /**
  * @brief A pub/sub interface for SVS
@@ -143,7 +142,7 @@ private:
   onRecvExtraData(const Block& block);
 
 public:
-  static const Name EMPTY_NAME;
+  static inline const Name EMPTY_NAME;
 
 private:
   const Name m_syncPrefix;
@@ -174,7 +173,6 @@ private:
   > m_receivedObjectIds;
 };
 
-}  // namespace svs
-}  // namespace ndn
+} // namespace ndn::svs
 
-#endif // NDN_SVS_SVSPS_HPP
+#endif // NDN_SVS_SVSPUBSUB_HPP
