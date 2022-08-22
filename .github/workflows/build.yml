@@ -2,9 +2,8 @@ name: Build
 
 on:
   push:
-    branches: [ master ]
   pull_request:
-    branches: [ master ]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -22,8 +21,6 @@ jobs:
 
     env:
       CXX: ${{ matrix.compiler }}
-      NODE_LABELS: Linux Ubuntu
-      WAF_JOBS: 3
 
     steps:
     - name: Checkout
@@ -67,10 +64,6 @@ jobs:
         include:
         - os: macos-12
           xcode: '13.4'
-
-    env:
-      NODE_LABELS: OSX
-      WAF_JOBS: 4
 
     steps:
     - name: Set up Xcode
