@@ -14,30 +14,118 @@
  * PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
  */
 
-#include "chat.hpp"
+#include <iostream>
+#include <string>
+#include <thread>
+#include <vector>
 
 #include <ndn-svs/svsync.hpp>
 
-class ProgramPrefix : public Program
+struct Options
+{
+  std::string prefix;
+  std::string m_id;
+};
+
+class Program
 {
 public:
-  ProgramPrefix(const Options &options) : Program(options)
+  Program(const Options &options) : m_options(options)
   {
-    // Use HMAC signing
+    // Use HMAC signing for Sync Interests
+    // Note: this is not generally recommended, but is used here for simplicity
     ndn::svs::SecurityOptions securityOptions(m_keyChain);
     securityOptions.interestSigner->signingInfo.setSigningHmacKey("dGhpcyBpcyBhIHNlY3JldCBtZXNzYWdl");
 
+    // Create the SVSync instance
     m_svs = std::make_shared<ndn::svs::SVSync>(
-      ndn::Name(m_options.prefix),
-      ndn::Name(m_options.m_id),
-      face,
-      std::bind(&ProgramPrefix::onMissingData, this, _1),
-      securityOptions);
+      ndn::Name(m_options.prefix),                        // Sync prefix, common for all nodes in the group
+      ndn::Name(m_options.m_id),                          // Unique data prefix for this node
+      face,                                               // Shared NDN face
+      std::bind(&Program::onMissingData, this, _1),       // Callback on learning new sequence numbers from SVS
+      securityOptions);                                   // Security configuration
+
+    std::cout << "SVS client starting:" << m_options.m_id << std::endl;
   }
+
+  void
+  run()
+  {
+    // Begin processing face events in a separate thread
+    std::thread thread_svs([this] { face.processEvents(); });
+
+    // Announce our presence.
+    // Note that the SVSync instance is thread-safe
+    std::string init_msg = "User " + m_options.m_id + " has joined the groupchat";
+    publishMsg(init_msg);
+
+    // Read from stdin and publish messages
+    std::string userInput = "";
+    while (true) {
+      std::getline(std::cin, userInput);
+      publishMsg(userInput);
+    }
+
+    // Wait for the SVSync thread to finish on exit
+    thread_svs.join();
+  }
+
+protected:
+  /**
+   * Callback on receving a new State Vector from another node
+   */
+  void
+  onMissingData(const std::vector<ndn::svs::MissingDataInfo>& v)
+  {
+    // Iterate over the entire difference set
+    for (size_t i = 0; i < v.size(); i++)
+    {
+      // Iterate over each new sequence number that we learned
+      for (ndn::svs::SeqNo s = v[i].low; s <= v[i].high; ++s)
+      {
+        // Request a single data packet using the SVSync API
+        ndn::svs::NodeID nid = v[i].nodeId;
+        m_svs->fetchData(nid, s, [nid] (const ndn::Data& data)
+          {
+            const std::string content(reinterpret_cast<const char*>(data.getContent().value()),
+                                      data.getContent().value_size());
+            std::cout << data.getName() << " : " << content << std::endl;
+          });
+      }
+    }
+  }
+
+  /**
+   * Publish a string message to the SVSync group
+   */
+  void
+  publishMsg(const std::string& msg)
+  {
+    // Encode the message into a Content TLV block, which is what the SVSync API expects
+    auto block = ndn::encoding::makeBinaryBlock(ndn::tlv::Content, msg.data(), msg.size());
+    m_svs->publishData(block, ndn::time::milliseconds(1000));
+  }
+
+public:
+  const Options m_options;
+  ndn::Face face;
+  std::shared_ptr<ndn::svs::SVSyncBase> m_svs;
+  ndn::KeyChain m_keyChain;
 };
 
 int
 main(int argc, char **argv)
 {
-  return callMain<ProgramPrefix>(argc, argv);
+  if (argc != 2) {
+    std::cout << "Usage: client <prefix>" << std::endl;
+    exit(1);
+  }
+
+  Options opt;
+  opt.prefix = "/ndn/svs";
+  opt.m_id = argv[1];
+
+  Program program(opt);
+  program.run();
+  return 0;
 }
