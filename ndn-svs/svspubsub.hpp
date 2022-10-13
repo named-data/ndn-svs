@@ -94,7 +94,6 @@ public:
    * @brief Sign and publish a binary BLOB on the pub/sub group.
    *
    * The blob must fit inside a single Data packet.
-   * TODO: segmentation
    *
    * @param name name for the publication
    * @param value raw buffer
