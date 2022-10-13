@@ -242,9 +242,10 @@ SVSPubSub::updateCallbackInternal(const std::vector<ndn::svs::MissingDataInfo>& 
 void
 SVSPubSub::fetchAll()
 {
-  for (const auto& [key, subs] : m_fetchMap)
+  for (const auto& pair : m_fetchMap)
   {
     // Check if already fetching this publication
+    auto key = pair.first;
     if (m_fetchingMap.find(key) != m_fetchingMap.end())
       continue;
     m_fetchingMap[key] = true;
