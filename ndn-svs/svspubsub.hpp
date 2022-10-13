@@ -108,6 +108,43 @@ public:
           const time::milliseconds freshnessPeriod = FRESH_FOREVER);
 
   /**
+   * @brief Subscribe to a application name prefix.
+   *
+   * @param prefix Prefix of the application data
+   * @param callback Callback when new data is received
+   * @param packets Subscribe to the raw Data packets instead of BLOBs
+   *
+   * @returns Handle to the subscription
+   */
+  uint32_t
+  subscribe(const Name& prefix, const SubscriptionCallback& callback, const bool packets = false);
+
+  /**
+   * @brief Subscribe to a data producer
+   *
+   * This method provides a low level API to receive Data packets.
+   * Use subscribeToProducer instead if you want to receive binary BLOBs.
+   *
+   * @param nodePrefix Prefix of the producer
+   * @param callback Callback when new data is received from the producer
+   * @param prefetch Mark as low latency stream(s)
+   * @param packets Subscribe to the raw Data packets instead of BLOBs
+   *
+   * @returns Handle to the subscription
+   */
+  uint32_t
+  subscribeToProducer(const Name& nodePrefix, const SubscriptionCallback& callback,
+                      const bool prefetch = false, const bool packets = false);
+
+  /**
+   * @brief Unsubscribe from a stream using a handle
+   *
+   * @param handle Handle received during subscription
+   */
+  void
+  unsubscribe(uint32_t handle);
+
+  /**
    * @brief Sign and publish an NDN block on the pub/sub group.
    *
    * @param name name for the publication
@@ -132,43 +169,6 @@ public:
    */
   SeqNo
   publishPacket(const Data& data, const Name& nodePrefix = EMPTY_NAME);
-
-  /**
-   * @brief Subscribe to a application name prefix.
-   *
-   * @param prefix Prefix of the application data
-   * @param callback Callback when new data is received
-   * @param packets Subscribe to the raw Data packets instead of BLOBs
-   *
-   * @returns Handle to the subscription
-   */
-  uint32_t
-  subscribe(const Name& prefix, const SubscriptionCallback& callback, const bool packets = false);
-
-  /**
-   * @brief Subscribe to a producer for Data packets
-   *
-   * This method provides a low level API to receive Data packets.
-   * Use subscribeToProducer instead if you want to receive binary BLOBs.
-   *
-   * @param nodePrefix Prefix of the producer
-   * @param callback Callback when new data is received from the producer
-   * @param prefetch Mark as low latency stream(s)
-   * @param packets Subscribe to the raw Data packets instead of BLOBs
-   *
-   * @returns Handle to the subscription
-   */
-  uint32_t
-  subscribeToProducer(const Name& nodePrefix, const SubscriptionCallback& callback,
-                      const bool prefetch = false, const bool packets = false);
-
-  /**
-   * @brief Unsubscribe from a stream using a handle
-   *
-   * @param handle Handle received during subscription
-   */
-  void
-  unsubscribe(uint32_t handle);
 
   /** @brief Get the underlying sync */
   SVSync&
