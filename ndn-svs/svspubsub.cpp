@@ -59,8 +59,11 @@ SVSPubSub::publish(const Name& name, const uint8_t* value, const size_t length,
       auto segmentName = Name(name).appendVersion(0).appendSegment(i);
       auto segment = Data(segmentName);
       segment.setFreshnessPeriod(freshnessPeriod);
-      segment.setContent({value + i * MAX_DATA_SIZE,
-                          std::min(length - i * MAX_DATA_SIZE, MAX_DATA_SIZE)});
+
+      const uint8_t* segVal = value + i * MAX_DATA_SIZE;
+      const size_t segValSize = std::min(length - i * MAX_DATA_SIZE, MAX_DATA_SIZE);
+      segment.setContent(ndn::make_span(segVal, segValSize));
+
       segment.setFinalBlock(finalBlock);
       m_securityOptions.dataSigner->sign(segment);
 
