@@ -53,12 +53,19 @@ public:
     std::cout << "SVS client starting:" << m_options.m_id << std::endl;
 
     // Subscribe to all data packets with prefix /chat (the "topic")
-    m_svsps->subscribeToPackets(ndn::Name("/chat"), [] (const auto& subData)
+    m_svsps->subscribe(ndn::Name("/chat"), [] (const auto& subData)
     {
-      const std::string content(reinterpret_cast<const char*>(subData.data.getContent().value()),
-                                subData.data.getContent().value_size());
+      std::string content(reinterpret_cast<const char*>(subData.data), subData.length);
       std::cout << subData.producerPrefix << "[" << subData.seqNo << "] : " <<
-                   subData.data.getName() << " : " << content << std::endl;
+                   subData.name << " : " << content << std::endl;
+    });
+
+    // Subscribe to all data packets with producer prefix /ndn
+    m_svsps->subscribeToProducer(ndn::Name("/ndn"), [] (const auto& subData)
+    {
+      std::string content(reinterpret_cast<const char*>(subData.data), subData.length);
+      std::cout << subData.producerPrefix << ":+:[" << subData.seqNo << "] : " <<
+                   subData.name << " : " << content << std::endl;
     });
   }
 
@@ -108,7 +115,7 @@ protected:
     name.append(m_options.m_id);  // who sent this
     name.appendTimestamp();       // and when
 
-    m_svsps->publish(name, msg.data(), msg.size());
+    m_svsps->publish(name, reinterpret_cast<const uint8_t*>(msg.data()), msg.size());
   }
 
 private:

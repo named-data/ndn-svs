@@ -56,16 +56,37 @@ public:
   virtual
   ~SVSPubSub() = default;
 
-  /** Subscription Data type */
-  struct SubscriptionPacket
+  struct SubscriptionData
   {
-    const Data& data;
+    /** @brief The name of the received publication */
+    const Name& name;
+
+    /** @brief Raw buffer of the received data */
+    const uint8_t* data;
+
+    /** @brief Length of the received data */
+    const size_t length;
+
+    /** @brief Block of received data packet
+     * If the subscription is for BLOBs, this will be the block in the first data packet.
+     */
+    const Block& block;
+
+    /**
+     * @brief Received data packet.
+     * If the subscription is for BLOBs, this will be the first data packet.
+     */
+    const Data& packet;
+
+    /** @brief Producer of the publication */
     const Name& producerPrefix;
+
+    /** @brief The sequence number of the publication */
     const SeqNo seqNo;
   };
 
   /** Callback returning the received data, producer and sequence number and validated */
-  using PacketSubscriptionCallback = std::function<void(const SubscriptionPacket&)>;
+  using SubscriptionCallback = std::function<void(const SubscriptionData&)>;
 
   /**
    * @brief Sign and publish a binary BLOB on the pub/sub group.
@@ -80,12 +101,12 @@ public:
    * @param freshnessPeriod freshness period for the data
    */
   SeqNo
-  publish(const Name& name, const char* value, size_t length,
+  publish(const Name& name, const uint8_t* value, const size_t length,
           const Name& nodePrefix = EMPTY_NAME,
           const time::milliseconds freshnessPeriod = DEFAULT_FRESHNESS_PERIOD);
 
   /**
-   * @brief Sign and publish a NDN block on the pub/sub group.
+   * @brief Sign and publish an NDN block on the pub/sub group.
    *
    * @param name name for the publication
    * @param block NDN block
@@ -111,18 +132,16 @@ public:
   publishPacket(const Data& data, const Name& nodePrefix = EMPTY_NAME);
 
   /**
-   * @brief Subscribe to a application name prefix for Data packets
-   *
-   * This method provides a low level API to receive Data packets.
-   * Use subscribe instead if you want to receive binary BLOBs.
+   * @brief Subscribe to a application name prefix.
    *
    * @param prefix Prefix of the application data
    * @param callback Callback when new data is received
+   * @param packets Subscribe to the raw Data packets instead of BLOBs
    *
    * @returns Handle to the subscription
    */
   uint32_t
-  subscribeToPackets(const Name& prefix, const PacketSubscriptionCallback& callback);
+  subscribe(const Name& prefix, const SubscriptionCallback& callback, const bool packets = false);
 
   /**
    * @brief Subscribe to a producer for Data packets
@@ -133,12 +152,13 @@ public:
    * @param nodePrefix Prefix of the producer
    * @param callback Callback when new data is received from the producer
    * @param prefetch Mark as low latency stream(s)
+   * @param packets Subscribe to the raw Data packets instead of BLOBs
    *
    * @returns Handle to the subscription
    */
   uint32_t
-  subscribeToProducerPackets(const Name& nodePrefix, const PacketSubscriptionCallback& callback,
-                             bool prefetch = false);
+  subscribeToProducer(const Name& nodePrefix, const SubscriptionCallback& callback,
+                      const bool prefetch = false, const bool packets = false);
 
   /**
    * @brief Unsubscribe from a stream using a handle
@@ -156,16 +176,17 @@ public:
   }
 
 private:
-  struct PacketSubscription
+  struct Subscription
   {
     uint32_t id;
     Name prefix;
-    PacketSubscriptionCallback callback;
-    bool prefetch = false;
+    SubscriptionCallback callback;
+    bool isPacketSubscription;
+    bool prefetch;
   };
 
   bool
-  onSyncData(const Data& syncData, const PacketSubscription& subscription,
+  onSyncData(const Data& syncData, const Subscription& subscription,
              const Name& streamName, SeqNo seqNo);
 
   void
@@ -194,20 +215,8 @@ private:
   MappingList m_notificationMappingList;
 
   uint32_t m_subscriptionCount;
-  std::vector<PacketSubscription> m_producerSubscriptions;
-  std::vector<PacketSubscription> m_prefixSubscriptions;
-
-  struct Sequence {};
-  struct Hashtable {};
-  boost::multi_index_container<
-    size_t,
-    boost::multi_index::indexed_by<
-      boost::multi_index::sequenced<boost::multi_index::tag<Sequence>>,
-      boost::multi_index::hashed_non_unique<boost::multi_index::tag<Hashtable>,
-                                            boost::multi_index::identity<size_t>>
-    >
-  > m_receivedObjectIds;
-  static constexpr size_t MAX_OBJECT_IDS = 1024;
+  std::vector<Subscription> m_producerSubscriptions;
+  std::vector<Subscription> m_prefixSubscriptions;
 };
 
 } // namespace ndn::svs

@@ -40,11 +40,11 @@ SVSPubSub::SVSPubSub(const Name& syncPrefix,
 }
 
 SeqNo
-SVSPubSub::publish(const Name& name, const char* value, size_t length,
+SVSPubSub::publish(const Name& name, const uint8_t* value, const size_t length,
                    const Name& nodePrefix,
                    const time::milliseconds freshnessPeriod)
 {
-  auto block = ndn::encoding::makeBinaryBlock(ndn::tlv::Content, value, length);
+  auto block =  makeBinaryBlock(ndn::tlv::Content, {value, length});
   return publish(name, block, nodePrefix, freshnessPeriod);
 }
 
@@ -78,27 +78,28 @@ SVSPubSub::publishPacket(const Data& data, const Name& nodePrefix)
 }
 
 uint32_t
-SVSPubSub::subscribeToProducerPackets(const Name& nodePrefix, const PacketSubscriptionCallback& callback,
-                                      bool prefetch)
+SVSPubSub::subscribe(const Name& prefix, const SubscriptionCallback& callback, const bool packets)
 {
   uint32_t handle = ++m_subscriptionCount;
-  PacketSubscription sub = { handle, nodePrefix, callback, prefetch };
-  m_producerSubscriptions.push_back(sub);
+  Subscription sub = Subscription{handle, prefix, callback, packets, false};
+  m_prefixSubscriptions.push_back(sub);
   return handle;
 }
 
 uint32_t
-SVSPubSub::subscribeToPackets(const Name& prefix, const PacketSubscriptionCallback& callback)
+SVSPubSub::subscribeToProducer(const Name& nodePrefix, const SubscriptionCallback& callback,
+                               const bool prefetch, const bool packets)
 {
   uint32_t handle = ++m_subscriptionCount;
-  m_prefixSubscriptions.push_back(PacketSubscription{handle, prefix, callback});
+  Subscription sub = { handle, nodePrefix, callback, packets, prefetch };
+  m_producerSubscriptions.push_back(sub);
   return handle;
 }
 
 void
 SVSPubSub::unsubscribe(uint32_t handle)
 {
-  auto unsub = [](uint32_t handle, std::vector<PacketSubscription> subs)
+  auto unsub = [](uint32_t handle, std::vector<Subscription> subs)
   {
     for (size_t i = 0; i < subs.size(); i++)
     {
@@ -206,22 +207,9 @@ SVSPubSub::updateCallbackInternal(const std::vector<ndn::svs::MissingDataInfo>& 
 }
 
 bool
-SVSPubSub::onSyncData(const Data& syncData, const PacketSubscription& subscription,
+SVSPubSub::onSyncData(const Data& syncData, const Subscription& subscription,
                       const Name& streamName, SeqNo seqNo)
 {
-  // Check for duplicate calls and push into queue
-  {
-    const size_t hash = std::hash<Name>{}(Name(streamName).appendNumber(seqNo));
-    const auto& ht = m_receivedObjectIds.get<Hashtable>();
-    if (ht.find(hash) != ht.end())
-      return false;
-    m_receivedObjectIds.get<Sequence>().push_back(hash);
-
-    // Pop out the oldest entry if the queue is full
-    if (m_receivedObjectIds.get<Sequence>().size() > MAX_OBJECT_IDS)
-      m_receivedObjectIds.get<Sequence>().pop_front();
-  }
-
   // Check if data in encapsulated
   if (syncData.getContentType() == ndn::tlv::Data)
   {
@@ -235,16 +223,24 @@ SVSPubSub::onSyncData(const Data& syncData, const PacketSubscription& subscripti
     }
 
     // Return data
-    SubscriptionPacket subPack = { encapsulatedData, streamName, seqNo };
+    SubscriptionData subData = {
+      encapsulatedData.getName(),
+      encapsulatedData.getContent().value(),
+      encapsulatedData.getContent().value_size(),
+      encapsulatedData.getContent(),
+      encapsulatedData,
+      streamName,
+      seqNo
+    };
 
     if (static_cast<bool>(m_securityOptions.encapsulatedDataValidator)) {
       m_securityOptions.encapsulatedDataValidator->validate(
         encapsulatedData,
-        [&] (const Data&) { subscription.callback(subPack); },
+        [&] (const Data&) { subscription.callback(subData); },
         [] (auto&&...) {});
     }
     else {
-      subscription.callback(subPack);
+      subscription.callback(subData);
     }
     return true;
   }
