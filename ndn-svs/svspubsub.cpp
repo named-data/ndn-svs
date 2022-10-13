@@ -356,10 +356,10 @@ SVSPubSub::onSyncData(const Data& firstData, const std::pair<Name, SeqNo>& publi
             // Validate inner data
             if (hasValidator) {
               this->m_securityOptions.encapsulatedDataValidator->validate(innerData,
-                [this, sendFinalBuffer, numValidated, numFailed, i, numElem] (auto&&...) {
+                [sendFinalBuffer, numValidated] (auto&&...) {
                   *numValidated += 1;
                   sendFinalBuffer();
-                }, [this, sendFinalBuffer, numValidated, numFailed, i, numElem] (auto&&...) {
+                }, [sendFinalBuffer, numFailed] (auto&&...) {
                   *numFailed += 1;
                   sendFinalBuffer();
                 });
