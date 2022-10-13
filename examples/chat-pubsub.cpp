@@ -39,6 +39,9 @@ public:
     SecurityOptions securityOptions(m_keyChain);
     securityOptions.interestSigner->signingInfo.setSigningHmacKey("dGhpcyBpcyBhIHNlY3JldCBtZXNzYWdl");
 
+    // Sign data packets using SHA256 (for simplicity)
+    securityOptions.dataSigner->signingInfo.setSha256Signing();
+
     // Create the Pub/Sub instance
     m_svsps = std::make_shared<SVSPubSub>(
       ndn::Name(m_options.prefix),
@@ -49,11 +52,8 @@ public:
 
     std::cout << "SVS client starting:" << m_options.m_id << std::endl;
 
-    // Sign data packets using SHA256 (for simplicity)
-    m_signingInfo.setSha256Signing();
-
-    // Subscribe to all data with prefix /chat (the "topic")
-    m_svsps->subscribe(ndn::Name("/chat"), [] (const auto& subData)
+    // Subscribe to all data packets with prefix /chat (the "topic")
+    m_svsps->subscribeToPackets(ndn::Name("/chat"), [] (const auto& subData)
     {
       const std::string content(reinterpret_cast<const char*>(subData.data.getContent().value()),
                                 subData.data.getContent().value_size());
@@ -102,26 +102,13 @@ protected:
   void
   publishMsg(const std::string& msg)
   {
-    // Create content block
-    auto block = ndn::encoding::makeBinaryBlock(ndn::tlv::Content, msg.data(), msg.size());
-
-    // Create and sign the data packet to publish.
-    // Unlike the SVSync API, SVS-PS expects signed data packets.
-    ndn::Name name;
-
-    // The "topic" of the message. Note that unlike SVSync, the data names can be
-    // arbitrary, and need not be prefixed with the producer prefix.
-    name.append("chat");
-    name.append(m_options.m_id);  // Identify who sent this message
+    // Note that unlike SVSync, names can be arbitrary,
+    // and need not be prefixed with the producer prefix.
+    ndn::Name name("chat");       // topic of publication
+    name.append(m_options.m_id);  // who sent this
     name.appendTimestamp();       // and when
 
-    ndn::Data data(name);
-    data.setContent(block);
-    data.setFreshnessPeriod(ndn::time::milliseconds(1000));
-    m_keyChain.sign(data, m_signingInfo);
-
-    // Publish the data packet
-    m_svsps->publishData(data);
+    m_svsps->publish(name, msg.data(), msg.size());
   }
 
 private:
@@ -129,7 +116,6 @@ private:
   ndn::Face face;
   std::shared_ptr<SVSPubSub> m_svsps;
   ndn::KeyChain m_keyChain;
-  ndn::security::SigningInfo m_signingInfo;
 };
 
 int main(int argc, char **argv)

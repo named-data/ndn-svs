@@ -40,7 +40,29 @@ SVSPubSub::SVSPubSub(const Name& syncPrefix,
 }
 
 SeqNo
-SVSPubSub::publishData(const Data& data, const Name& nodePrefix)
+SVSPubSub::publish(const Name& name, const char* value, size_t length,
+                   const Name& nodePrefix,
+                   const time::milliseconds freshnessPeriod)
+{
+  auto block = ndn::encoding::makeBinaryBlock(ndn::tlv::Content, value, length);
+  return publish(name, block, nodePrefix, freshnessPeriod);
+}
+
+SeqNo
+SVSPubSub::publish(const Name& name, const Block& block,
+                   const Name& nodePrefix,
+                   const time::milliseconds freshnessPeriod)
+{
+  ndn::Data data(name);
+  data.setContent(block);
+  data.setFreshnessPeriod(freshnessPeriod);
+  m_securityOptions.dataSigner->sign(data);
+
+  return publishPacket(data, nodePrefix);
+}
+
+SeqNo
+SVSPubSub::publishPacket(const Data& data, const Name& nodePrefix)
 {
   NodeID nid = nodePrefix == EMPTY_NAME ? m_dataPrefix : nodePrefix;
   SeqNo seqNo = m_svsync.publishData(data.wireEncode(), data.getFreshnessPeriod(), nid, ndn::tlv::Data);
@@ -56,27 +78,27 @@ SVSPubSub::publishData(const Data& data, const Name& nodePrefix)
 }
 
 uint32_t
-SVSPubSub::subscribeToProducer(const Name& nodePrefix, const SubscriptionCallback& callback,
-                               bool prefetch)
+SVSPubSub::subscribeToProducerPackets(const Name& nodePrefix, const PacketSubscriptionCallback& callback,
+                                      bool prefetch)
 {
   uint32_t handle = ++m_subscriptionCount;
-  Subscription sub = { handle, nodePrefix, callback, prefetch };
+  PacketSubscription sub = { handle, nodePrefix, callback, prefetch };
   m_producerSubscriptions.push_back(sub);
   return handle;
 }
 
 uint32_t
-SVSPubSub::subscribe(const Name& prefix, const SubscriptionCallback& callback)
+SVSPubSub::subscribeToPackets(const Name& prefix, const PacketSubscriptionCallback& callback)
 {
   uint32_t handle = ++m_subscriptionCount;
-  m_prefixSubscriptions.push_back(Subscription{handle, prefix, callback});
+  m_prefixSubscriptions.push_back(PacketSubscription{handle, prefix, callback});
   return handle;
 }
 
 void
 SVSPubSub::unsubscribe(uint32_t handle)
 {
-  auto unsub = [](uint32_t handle, std::vector<Subscription> subs)
+  auto unsub = [](uint32_t handle, std::vector<PacketSubscription> subs)
   {
     for (size_t i = 0; i < subs.size(); i++)
     {
@@ -184,17 +206,20 @@ SVSPubSub::updateCallbackInternal(const std::vector<ndn::svs::MissingDataInfo>& 
 }
 
 bool
-SVSPubSub::onSyncData(const Data& syncData, const Subscription& subscription,
+SVSPubSub::onSyncData(const Data& syncData, const PacketSubscription& subscription,
                       const Name& streamName, SeqNo seqNo)
 {
   // Check for duplicate calls and push into queue
-  // TODO: save memory by popping out from the queue after some time?
   {
     const size_t hash = std::hash<Name>{}(Name(streamName).appendNumber(seqNo));
     const auto& ht = m_receivedObjectIds.get<Hashtable>();
     if (ht.find(hash) != ht.end())
       return false;
     m_receivedObjectIds.get<Sequence>().push_back(hash);
+
+    // Pop out the oldest entry if the queue is full
+    if (m_receivedObjectIds.get<Sequence>().size() > MAX_OBJECT_IDS)
+      m_receivedObjectIds.get<Sequence>().pop_front();
   }
 
   // Check if data in encapsulated
@@ -210,16 +235,16 @@ SVSPubSub::onSyncData(const Data& syncData, const Subscription& subscription,
     }
 
     // Return data
-    SubscriptionData subData = { encapsulatedData, streamName, seqNo };
+    SubscriptionPacket subPack = { encapsulatedData, streamName, seqNo };
 
     if (static_cast<bool>(m_securityOptions.encapsulatedDataValidator)) {
       m_securityOptions.encapsulatedDataValidator->validate(
         encapsulatedData,
-        [&] (const Data&) { subscription.callback(subData); },
+        [&] (const Data&) { subscription.callback(subPack); },
         [] (auto&&...) {});
     }
     else {
-      subscription.callback(subData);
+      subscription.callback(subPack);
     }
     return true;
   }

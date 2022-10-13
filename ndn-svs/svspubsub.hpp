@@ -57,7 +57,7 @@ public:
   ~SVSPubSub() = default;
 
   /** Subscription Data type */
-  struct SubscriptionData
+  struct SubscriptionPacket
   {
     const Data& data;
     const Name& producerPrefix;
@@ -65,23 +65,70 @@ public:
   };
 
   /** Callback returning the received data, producer and sequence number and validated */
-  //using SubscriptionCallback = std::function<void(const Data&, const Name&, SeqNo, bool)>;
-  using SubscriptionCallback = std::function<void(const SubscriptionData&)>;
+  using PacketSubscriptionCallback = std::function<void(const SubscriptionPacket&)>;
+
+  /**
+   * @brief Sign and publish a binary BLOB on the pub/sub group.
+   *
+   * The blob must fit inside a single Data packet.
+   * TODO: segmentation
+   *
+   * @param name name for the publication
+   * @param value raw buffer
+   * @param length length of buffer
+   * @param nodePrefix Name to publish the data under
+   * @param freshnessPeriod freshness period for the data
+   */
+  SeqNo
+  publish(const Name& name, const char* value, size_t length,
+          const Name& nodePrefix = EMPTY_NAME,
+          const time::milliseconds freshnessPeriod = DEFAULT_FRESHNESS_PERIOD);
+
+  /**
+   * @brief Sign and publish a NDN block on the pub/sub group.
+   *
+   * @param name name for the publication
+   * @param block NDN block
+   * @param nodePrefix Name to publish the data under
+   * @param freshnessPeriod freshness period for the data
+   */
+  SeqNo
+  publish(const Name& name, const Block& block,
+          const Name& nodePrefix = EMPTY_NAME,
+          const time::milliseconds freshnessPeriod = DEFAULT_FRESHNESS_PERIOD);
 
   /**
    * @brief Publish a encapsulated Data packet in the session and trigger
-   * synchronization updates.
+   * synchronization updates. The encapsulated packet MUST be signed.
    *
-   * The encapsulated packet MUST be signed
+   * This method provides a low level API to publish signed Data packets.
+   * Use publish to publish a binary BLOB using the signing options provided.
    *
    * @param data Data packet to publish
    * @param nodePrefix Name to publish the data under
    */
   SeqNo
-  publishData(const Data& data, const Name& nodePrefix = EMPTY_NAME);
+  publishPacket(const Data& data, const Name& nodePrefix = EMPTY_NAME);
 
   /**
-   * @brief Subscribe to a data producer
+   * @brief Subscribe to a application name prefix for Data packets
+   *
+   * This method provides a low level API to receive Data packets.
+   * Use subscribe instead if you want to receive binary BLOBs.
+   *
+   * @param prefix Prefix of the application data
+   * @param callback Callback when new data is received
+   *
+   * @returns Handle to the subscription
+   */
+  uint32_t
+  subscribeToPackets(const Name& prefix, const PacketSubscriptionCallback& callback);
+
+  /**
+   * @brief Subscribe to a producer for Data packets
+   *
+   * This method provides a low level API to receive Data packets.
+   * Use subscribeToProducer instead if you want to receive binary BLOBs.
    *
    * @param nodePrefix Prefix of the producer
    * @param callback Callback when new data is received from the producer
@@ -90,19 +137,8 @@ public:
    * @returns Handle to the subscription
    */
   uint32_t
-  subscribeToProducer(const Name& nodePrefix, const SubscriptionCallback& callback,
-                      bool prefetch = false);
-
-  /**
-   * @brief Subscribe to a data prefix
-   *
-   * @param prefix Prefix of the application data
-   * @param callback Callback when new data is received
-   *
-   * @returns Handle to the subscription
-   */
-  uint32_t
-  subscribe(const Name& prefix, const SubscriptionCallback& callback);
+  subscribeToProducerPackets(const Name& nodePrefix, const PacketSubscriptionCallback& callback,
+                             bool prefetch = false);
 
   /**
    * @brief Unsubscribe from a stream using a handle
@@ -120,16 +156,16 @@ public:
   }
 
 private:
-  struct Subscription
+  struct PacketSubscription
   {
     uint32_t id;
     Name prefix;
-    SubscriptionCallback callback;
+    PacketSubscriptionCallback callback;
     bool prefetch = false;
   };
 
   bool
-  onSyncData(const Data& syncData, const Subscription& subscription,
+  onSyncData(const Data& syncData, const PacketSubscription& subscription,
              const Name& streamName, SeqNo seqNo);
 
   void
@@ -158,8 +194,8 @@ private:
   MappingList m_notificationMappingList;
 
   uint32_t m_subscriptionCount;
-  std::vector<Subscription> m_producerSubscriptions;
-  std::vector<Subscription> m_prefixSubscriptions;
+  std::vector<PacketSubscription> m_producerSubscriptions;
+  std::vector<PacketSubscription> m_prefixSubscriptions;
 
   struct Sequence {};
   struct Hashtable {};
@@ -171,6 +207,7 @@ private:
                                             boost::multi_index::identity<size_t>>
     >
   > m_receivedObjectIds;
+  static constexpr size_t MAX_OBJECT_IDS = 1024;
 };
 
 } // namespace ndn::svs
