@@ -90,7 +90,24 @@ public:
   SeqNo
   publishData(const Block& content, const ndn::time::milliseconds& freshness,
               const NodeID& nid = EMPTY_NODE_ID,
-              uint32_t contentType = ndn::tlv::Invalid);
+              uint32_t contentType = ndn::tlv::Content);
+
+  /**
+   * Insert segment into the store without changing the sequence number.
+   * Intended for inserting segments of a large publication.
+   *
+   * @param content Block that will be set as the content of the data packet.
+   * @param nid NodeID to publish the data under
+   * @param seq Sequence number of the data packet (defaults to )
+   * @param segNo Segment number of the data packet
+   * @param finalBlock FinalBlockId of the data packet
+   * @param contentType Content type of the data packet
+   */
+  void
+  insertDataSegment(const Block& content, const ndn::time::milliseconds& freshness,
+                    const NodeID& nid, const SeqNo seq, const size_t segNo,
+                    const Name::Component& finalBlock,
+                    uint32_t contentType = ndn::tlv::Content);
 
   /**
    * @brief Retrive a data packet with a particular seqNo from a session

@@ -23,6 +23,8 @@
 #include "security-options.hpp"
 #include "svsync.hpp"
 
+#include <ndn-cxx/security/validator-null.hpp>
+
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/sequenced_index.hpp>
@@ -85,7 +87,7 @@ public:
     const SeqNo seqNo;
   };
 
-  /** Callback returning the received data, producer and sequence number and validated */
+  /** Callback returning the received data, producer and sequence number */
   using SubscriptionCallback = std::function<void(const SubscriptionData&)>;
 
   /**
@@ -103,7 +105,7 @@ public:
   SeqNo
   publish(const Name& name, const uint8_t* value, const size_t length,
           const Name& nodePrefix = EMPTY_NAME,
-          const time::milliseconds freshnessPeriod = DEFAULT_FRESHNESS_PERIOD);
+          const time::milliseconds freshnessPeriod = FRESH_FOREVER);
 
   /**
    * @brief Sign and publish an NDN block on the pub/sub group.
@@ -116,7 +118,7 @@ public:
   SeqNo
   publish(const Name& name, const Block& block,
           const Name& nodePrefix = EMPTY_NAME,
-          const time::milliseconds freshnessPeriod = DEFAULT_FRESHNESS_PERIOD);
+          const time::milliseconds freshnessPeriod = FRESH_FOREVER);
 
   /**
    * @brief Publish a encapsulated Data packet in the session and trigger
@@ -185,9 +187,8 @@ private:
     bool prefetch;
   };
 
-  bool
-  onSyncData(const Data& syncData, const Subscription& subscription,
-             const Name& streamName, SeqNo seqNo);
+  void
+  onSyncData(const Data& syncData, const std::pair<Name, SeqNo>& publication);
 
   void
   updateCallbackInternal(const std::vector<ndn::svs::MissingDataInfo>& info);
@@ -198,15 +199,30 @@ private:
   void
   onRecvExtraData(const Block& block);
 
+  void
+  insertMapping(const NodeID& nid, const SeqNo seqNo, const Name& name);
+
+  void
+  fetchAll();
+
+  void
+  cleanUpFetch(const std::pair<Name, SeqNo>& publication);
+
 public:
   static inline const Name EMPTY_NAME;
+  static inline const size_t MAX_DATA_SIZE = 8000;
+  static inline const time::milliseconds FRESH_FOREVER = time::years(10000); // well ...
 
 private:
+  Face& m_face;
   const Name m_syncPrefix;
   const Name m_dataPrefix;
   const UpdateCallback m_onUpdate;
   const SecurityOptions m_securityOptions;
   SVSync m_svsync;
+
+  // Null validator for segment fetcher
+  ndn::security::v2::ValidatorNull m_nullValidator;
 
   // Provider for mapping interests
   MappingProvider m_mappingProvider;
@@ -217,6 +233,10 @@ private:
   uint32_t m_subscriptionCount;
   std::vector<Subscription> m_producerSubscriptions;
   std::vector<Subscription> m_prefixSubscriptions;
+
+  // Queue of publications to fetch
+  std::map<std::pair<Name, SeqNo>, std::vector<Subscription>> m_fetchMap;
+  std::map<std::pair<Name, SeqNo>, bool> m_fetchingMap;
 };
 
 } // namespace ndn::svs

@@ -28,6 +28,27 @@ struct Options
   std::string m_id;
 };
 
+class DummyValidator : public BaseValidator
+{
+public:
+  DummyValidator() = default;
+
+  void
+  validate(const ndn::Data& data,
+           const ndn::security::DataValidationSuccessCallback& successCb,
+           const ndn::security::DataValidationFailureCallback& failureCb) override
+  {
+    // Fail validation if content starts with "FAILME"
+    if (data.getContent().value_size() >= 6 &&
+        std::string(reinterpret_cast<const char*>(data.getContent().value()), 6) == "FAILME") {
+      failureCb(data, ValidationError(1, "Invalid content"));
+    }
+    else {
+      successCb(data);
+    }
+  }
+};
+
 class Program
 {
 public:
@@ -41,6 +62,7 @@ public:
 
     // Sign data packets using SHA256 (for simplicity)
     securityOptions.dataSigner->signingInfo.setSha256Signing();
+    securityOptions.encapsulatedDataValidator = std::make_shared<DummyValidator>();
 
     // Create the Pub/Sub instance
     m_svsps = std::make_shared<SVSPubSub>(
@@ -56,16 +78,14 @@ public:
     m_svsps->subscribe(ndn::Name("/chat"), [] (const auto& subData)
     {
       std::string content(reinterpret_cast<const char*>(subData.data), subData.length);
-      std::cout << subData.producerPrefix << "[" << subData.seqNo << "] : " <<
-                   subData.name << " : " << content << std::endl;
-    });
-
-    // Subscribe to all data packets with producer prefix /ndn
-    m_svsps->subscribeToProducer(ndn::Name("/ndn"), [] (const auto& subData)
-    {
-      std::string content(reinterpret_cast<const char*>(subData.data), subData.length);
-      std::cout << subData.producerPrefix << ":+:[" << subData.seqNo << "] : " <<
-                   subData.name << " : " << content << std::endl;
+      std::cout << subData.producerPrefix << " [" << subData.seqNo << "] : " <<
+                   subData.name << " : ";
+      if (content.length() > 200) {
+        std::cout << "[LONG] " << content.length() << " bytes";
+      } else {
+        std::cout << content;
+      }
+      std::cout << std::endl;
     });
   }
 
@@ -109,13 +129,23 @@ protected:
   void
   publishMsg(const std::string& msg)
   {
+    // Message to send
+    std::string content = msg;
+
+    // If the message starts with "SEND " generate a new message
+    // with random content with length after send
+    if (msg.length() > 5 && msg.substr(0, 5) == "SEND ") {
+      auto len = std::stoi(msg.substr(5));
+      content = std::string(len, 'a');    // TODO: randomize
+    }
+
     // Note that unlike SVSync, names can be arbitrary,
     // and need not be prefixed with the producer prefix.
     ndn::Name name("chat");       // topic of publication
     name.append(m_options.m_id);  // who sent this
     name.appendTimestamp();       // and when
 
-    m_svsps->publish(name, reinterpret_cast<const uint8_t*>(msg.data()), msg.size());
+    m_svsps->publish(name, reinterpret_cast<const uint8_t*>(content.data()), content.size());
   }
 
 private:
