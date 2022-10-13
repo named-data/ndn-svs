@@ -66,7 +66,7 @@ SVSPubSub::subscribeToProducer(const Name& nodePrefix, const SubscriptionCallbac
 }
 
 uint32_t
-SVSPubSub::subscribeToPrefix(const Name& prefix, const SubscriptionCallback& callback)
+SVSPubSub::subscribe(const Name& prefix, const SubscriptionCallback& callback)
 {
   uint32_t handle = ++m_subscriptionCount;
   m_prefixSubscriptions.push_back(Subscription{handle, prefix, callback});

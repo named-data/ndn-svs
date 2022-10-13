@@ -102,7 +102,7 @@ public:
    * @returns Handle to the subscription
    */
   uint32_t
-  subscribeToPrefix(const Name& prefix, const SubscriptionCallback& callback);
+  subscribe(const Name& prefix, const SubscriptionCallback& callback);
 
   /**
    * @brief Unsubscribe from a stream using a handle
