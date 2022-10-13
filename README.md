@@ -37,6 +37,10 @@ Configure NFD to be multicast:
 
     nfdc strategy set <sync-prefix> /localhost/nfd/strategy/multicast
 
+Clear the content store of NFD if you restart the example:
+
+    nfdc cs erase /
+
 where `sync-prefix` is `/ndn/svs` for the example application.
 
 ## Contributing
