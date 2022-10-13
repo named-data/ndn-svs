@@ -222,7 +222,7 @@ private:
   SVSync m_svsync;
 
   // Null validator for segment fetcher
-  ndn::security::v2::ValidatorNull m_nullValidator;
+  ndn::security::ValidatorNull m_nullValidator;
 
   // Provider for mapping interests
   MappingProvider m_mappingProvider;
