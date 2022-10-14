@@ -25,10 +25,6 @@
 
 #include <ndn-cxx/security/validator-null.hpp>
 
-#include <boost/multi_index_container.hpp>
-#include <boost/multi_index/hashed_index.hpp>
-#include <boost/multi_index/sequenced_index.hpp>
-
 namespace ndn::svs {
 
 /**
