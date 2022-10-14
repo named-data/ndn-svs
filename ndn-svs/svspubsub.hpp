@@ -23,9 +23,7 @@
 #include "security-options.hpp"
 #include "svsync.hpp"
 
-#include <boost/multi_index_container.hpp>
-#include <boost/multi_index/hashed_index.hpp>
-#include <boost/multi_index/sequenced_index.hpp>
+#include <ndn-cxx/security/validator-null.hpp>
 
 namespace ndn::svs {
 
@@ -56,53 +54,65 @@ public:
   virtual
   ~SVSPubSub() = default;
 
-  /** Subscription Data type */
   struct SubscriptionData
   {
-    const Data& data;
+    /** @brief Name of the received publication */
+    const Name& name;
+
+    /** @brief Payload of received data */
+    const span<const uint8_t>& data;
+
+    /** @brief Producer of the publication */
     const Name& producerPrefix;
+
+    /** @brief The sequence number of the publication */
     const SeqNo seqNo;
+
+    /** @brief Received data packet, only for "packet" subscriptions */
+    const std::optional<Data>& packet;
   };
 
-  /** Callback returning the received data, producer and sequence number and validated */
-  //using SubscriptionCallback = std::function<void(const Data&, const Name&, SeqNo, bool)>;
+  /** Callback returning the received data, producer and sequence number */
   using SubscriptionCallback = std::function<void(const SubscriptionData&)>;
 
   /**
-   * @brief Publish a encapsulated Data packet in the session and trigger
-   * synchronization updates.
+   * @brief Sign and publish a binary BLOB on the pub/sub group.
    *
-   * The encapsulated packet MUST be signed
-   *
-   * @param data Data packet to publish
+   * @param name name for the publication
+   * @param value data buffer
    * @param nodePrefix Name to publish the data under
+   * @param freshnessPeriod freshness period for the data
    */
   SeqNo
-  publishData(const Data& data, const Name& nodePrefix = EMPTY_NAME);
+  publish(const Name& name, const span<const uint8_t>& value,
+          const Name& nodePrefix = EMPTY_NAME,
+          const time::milliseconds freshnessPeriod = FRESH_FOREVER);
+
+  /**
+   * @brief Subscribe to a application name prefix.
+   *
+   * @param prefix Prefix of the application data
+   * @param callback Callback when new data is received
+   * @param packets Subscribe to the raw Data packets instead of BLOBs
+   *
+   * @returns Handle to the subscription
+   */
+  uint32_t
+  subscribe(const Name& prefix, const SubscriptionCallback& callback, const bool packets = false);
 
   /**
    * @brief Subscribe to a data producer
    *
    * @param nodePrefix Prefix of the producer
    * @param callback Callback when new data is received from the producer
-   * @param prefetch Mark as low latency stream(s)
+   * @param prefetch Mark as low latency stream and prefetch data
+   * @param packets Subscribe to the raw Data packets instead of BLOBs
    *
    * @returns Handle to the subscription
    */
   uint32_t
   subscribeToProducer(const Name& nodePrefix, const SubscriptionCallback& callback,
-                      bool prefetch = false);
-
-  /**
-   * @brief Subscribe to a data prefix
-   *
-   * @param prefix Prefix of the application data
-   * @param callback Callback when new data is received
-   *
-   * @returns Handle to the subscription
-   */
-  uint32_t
-  subscribeToPrefix(const Name& prefix, const SubscriptionCallback& callback);
+                      const bool prefetch = false, const bool packets = false);
 
   /**
    * @brief Unsubscribe from a stream using a handle
@@ -111,6 +121,19 @@ public:
    */
   void
   unsubscribe(uint32_t handle);
+
+  /**
+   * @brief Publish a encapsulated Data packet in the session and trigger
+   * synchronization updates. The encapsulated packet MUST be signed.
+   *
+   * This method provides a low level API to publish signed Data packets.
+   * Using the publish method is recommended for most applications.
+   *
+   * @param data Data packet to publish
+   * @param nodePrefix Name to publish the data under
+   */
+  SeqNo
+  publishPacket(const Data& data, const Name& nodePrefix = EMPTY_NAME);
 
   /** @brief Get the underlying sync */
   SVSync&
@@ -125,12 +148,12 @@ private:
     uint32_t id;
     Name prefix;
     SubscriptionCallback callback;
-    bool prefetch = false;
+    bool isPacketSubscription;
+    bool prefetch;
   };
 
-  bool
-  onSyncData(const Data& syncData, const Subscription& subscription,
-             const Name& streamName, SeqNo seqNo);
+  void
+  onSyncData(const Data& syncData, const std::pair<Name, SeqNo>& publication);
 
   void
   updateCallbackInternal(const std::vector<ndn::svs::MissingDataInfo>& info);
@@ -141,15 +164,31 @@ private:
   void
   onRecvExtraData(const Block& block);
 
+  void
+  insertMapping(const NodeID& nid, const SeqNo seqNo, const Name& name);
+
+  void
+  fetchAll();
+
+  void
+  cleanUpFetch(const std::pair<Name, SeqNo>& publication);
+
 public:
   static inline const Name EMPTY_NAME;
+  static inline const size_t MAX_DATA_SIZE = 8000;
+  static inline const time::milliseconds FRESH_FOREVER = time::years(10000); // well ...
 
 private:
+  Face& m_face;
   const Name m_syncPrefix;
   const Name m_dataPrefix;
   const UpdateCallback m_onUpdate;
   const SecurityOptions m_securityOptions;
   SVSync m_svsync;
+
+  // Null validator for segment fetcher
+  // TODO: use a real validator here
+  ndn::security::ValidatorNull m_nullValidator;
 
   // Provider for mapping interests
   MappingProvider m_mappingProvider;
@@ -161,16 +200,9 @@ private:
   std::vector<Subscription> m_producerSubscriptions;
   std::vector<Subscription> m_prefixSubscriptions;
 
-  struct Sequence {};
-  struct Hashtable {};
-  boost::multi_index_container<
-    size_t,
-    boost::multi_index::indexed_by<
-      boost::multi_index::sequenced<boost::multi_index::tag<Sequence>>,
-      boost::multi_index::hashed_non_unique<boost::multi_index::tag<Hashtable>,
-                                            boost::multi_index::identity<size_t>>
-    >
-  > m_receivedObjectIds;
+  // Queue of publications to fetch
+  std::map<std::pair<Name, SeqNo>, std::vector<Subscription>> m_fetchMap;
+  std::map<std::pair<Name, SeqNo>, bool> m_fetchingMap;
 };
 
 } // namespace ndn::svs

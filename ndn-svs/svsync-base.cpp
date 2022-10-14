@@ -68,9 +68,7 @@ SVSyncBase::publishData(const Block& content, const ndn::time::milliseconds& fre
   auto data = std::make_shared<Data>(dataName);
   data->setContent(content);
   data->setFreshnessPeriod(freshness);
-
-  if (contentType != ndn::tlv::Invalid)
-    data->setContentType(contentType);
+  data->setContentType(contentType);
 
   m_securityOptions.dataSigner->sign(*data);
 
@@ -79,6 +77,21 @@ SVSyncBase::publishData(const Block& content, const ndn::time::milliseconds& fre
   m_face.put(*data);
 
   return newSeq;
+}
+
+void
+SVSyncBase::insertDataSegment(const Block& content, const ndn::time::milliseconds& freshness,
+                              const NodeID& nid, const SeqNo seq, const size_t segNo,
+                              const Name::Component& finalBlock, uint32_t contentType)
+{
+  Name dataName = getDataName(nid, seq).appendVersion(0).appendSegment(segNo);
+  auto data = std::make_shared<Data>(dataName);
+  data->setContent(content);
+  data->setFreshnessPeriod(freshness);
+  data->setContentType(contentType);
+  data->setFinalBlock(finalBlock);
+  m_securityOptions.dataSigner->sign(*data);
+  m_dataStore->insert(*data);
 }
 
 void
@@ -108,6 +121,7 @@ SVSyncBase::fetchData(const NodeID& nid, const SeqNo& seqNo,
 {
   Name interestName = getDataName(nid, seqNo);
   Interest interest(interestName);
+  interest.setCanBePrefix(true);
   interest.setInterestLifetime(ndn::time::milliseconds(2000));
 
   m_fetcher.expressInterest(interest,

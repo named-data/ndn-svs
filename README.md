@@ -3,8 +3,9 @@
 [![Build](https://github.com/named-data/ndn-svs/actions/workflows/build.yml/badge.svg)](https://github.com/named-data/ndn-svs/actions/workflows/build.yml)
 ![Language](https://img.shields.io/badge/C%2B%2B-17-blue)
 
-This library implements the [State Vector Sync (SVS)](https://named-data.github.io/StateVectorSync/)
-protocol to synchronise state between multiple clients over NDN.
+This library provides an implementation of the [State Vector Sync (SVS)](https://named-data.github.io/StateVectorSync/)
+protocol and the [Pub/Sub API](https://dl.acm.org/doi/abs/10.1145/3460417.3483376) for state
+synchronization between multiple clients over NDN.
 
 ndn-svs uses the [ndn-cxx](https://github.com/named-data/ndn-cxx) library.
 
@@ -36,6 +37,10 @@ To try out the demo CLI chat application:
 Configure NFD to be multicast:
 
     nfdc strategy set <sync-prefix> /localhost/nfd/strategy/multicast
+
+Clear the content store of NFD if you restart the example:
+
+    nfdc cs erase /
 
 where `sync-prefix` is `/ndn/svs` for the example application.
 
