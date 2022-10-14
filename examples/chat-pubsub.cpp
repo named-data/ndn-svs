@@ -30,27 +30,6 @@ struct Options
   std::string m_id;
 };
 
-class DummyValidator : public BaseValidator
-{
-public:
-  DummyValidator() = default;
-
-  void
-  validate(const ndn::Data& data,
-           const ndn::security::DataValidationSuccessCallback& successCb,
-           const ndn::security::DataValidationFailureCallback& failureCb) override
-  {
-    // Fail validation if content starts with "FAILME"
-    if (data.getContent().value_size() >= 6 &&
-        std::string(reinterpret_cast<const char*>(data.getContent().value()), 6) == "FAILME") {
-      failureCb(data, ValidationError(1, "Invalid content"));
-    }
-    else {
-      successCb(data);
-    }
-  }
-};
-
 class Program
 {
 public:
@@ -64,7 +43,6 @@ public:
 
     // Sign data packets using SHA256 (for simplicity)
     securityOptions.dataSigner->signingInfo.setSha256Signing();
-    securityOptions.encapsulatedDataValidator = std::make_shared<DummyValidator>();
 
     // Create the Pub/Sub instance
     m_svsps = std::make_shared<SVSPubSub>(
