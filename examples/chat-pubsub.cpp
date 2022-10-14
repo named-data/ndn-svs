@@ -18,6 +18,8 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include <functional>
+#include <ctime>
 #include <ndn-svs/svspubsub.hpp>
 
 using namespace ndn::svs;
@@ -81,7 +83,8 @@ public:
       std::cout << subData.producerPrefix << " [" << subData.seqNo << "] : " <<
                    subData.name << " : ";
       if (content.length() > 200) {
-        std::cout << "[LONG] " << content.length() << " bytes";
+        std::cout << "[LONG] " << content.length() << " bytes"
+                  << " [" << std::hash<std::string>{}(content) << "]";
       } else {
         std::cout << content;
       }
@@ -136,7 +139,13 @@ protected:
     // with random content with length after send
     if (msg.length() > 5 && msg.substr(0, 5) == "SEND ") {
       auto len = std::stoi(msg.substr(5));
-      content = std::string(len, 'a');    // TODO: randomize
+
+      content = std::string(len, 'a');
+      std::srand(std::time(nullptr));
+      for (auto& c : content)
+        c = std::rand() % 26 + 'a';
+
+      std::cout << "> Sending random message with hash [" << std::hash<std::string>{}(content) << "]" << std::endl;
     }
 
     // Note that unlike SVSync, names can be arbitrary,
