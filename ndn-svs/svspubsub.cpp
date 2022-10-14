@@ -111,7 +111,7 @@ uint32_t
 SVSPubSub::subscribe(const Name& prefix, const SubscriptionCallback& callback, const bool packets)
 {
   uint32_t handle = ++m_subscriptionCount;
-  Subscription sub = Subscription{handle, prefix, callback, packets, false};
+  Subscription sub = { handle, prefix, callback, packets, false };
   m_prefixSubscriptions.push_back(sub);
   return handle;
 }
