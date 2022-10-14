@@ -257,11 +257,12 @@ SVSPubSub::onSyncData(const Data& firstData, const std::pair<Name, SeqNo>& publi
 
   // Unwrap
   Data innerData(firstData.getContent().blockFromValue());
+  auto innerContent = innerData.getContent();
 
   // Return data to packet subscriptions
   SubscriptionData subData = {
     innerData.getName(),
-    innerData.getContent().value_bytes(),
+    ndn::make_span(innerContent.value(), innerContent.value_size()),
     publication.first,
     publication.second,
     innerData,
