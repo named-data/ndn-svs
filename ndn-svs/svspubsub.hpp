@@ -82,11 +82,8 @@ public:
   /**
    * @brief Sign and publish a binary BLOB on the pub/sub group.
    *
-   * The blob must fit inside a single Data packet.
-   *
    * @param name name for the publication
-   * @param value raw buffer
-   * @param length length of buffer
+   * @param value data buffer
    * @param nodePrefix Name to publish the data under
    * @param freshnessPeriod freshness period for the data
    */
@@ -110,12 +107,9 @@ public:
   /**
    * @brief Subscribe to a data producer
    *
-   * This method provides a low level API to receive Data packets.
-   * Use subscribeToProducer instead if you want to receive binary BLOBs.
-   *
    * @param nodePrefix Prefix of the producer
    * @param callback Callback when new data is received from the producer
-   * @param prefetch Mark as low latency stream(s)
+   * @param prefetch Mark as low latency stream and prefetch data
    * @param packets Subscribe to the raw Data packets instead of BLOBs
    *
    * @returns Handle to the subscription
@@ -137,7 +131,7 @@ public:
    * synchronization updates. The encapsulated packet MUST be signed.
    *
    * This method provides a low level API to publish signed Data packets.
-   * Use publish to publish a binary BLOB using the signing options provided.
+   * Using the publish method is recommended for most applications.
    *
    * @param data Data packet to publish
    * @param nodePrefix Name to publish the data under
