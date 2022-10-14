@@ -77,7 +77,7 @@ public:
     // Subscribe to all data packets with prefix /chat (the "topic")
     m_svsps->subscribe(ndn::Name("/chat"), [] (const auto& subData)
     {
-      std::string content(reinterpret_cast<const char*>(subData.data), subData.length);
+      std::string content(reinterpret_cast<const char*>(subData.data.data()), subData.data.size());
       std::cout << subData.producerPrefix << " [" << subData.seqNo << "] : " <<
                    subData.name << " : ";
       if (content.length() > 200) {
@@ -145,7 +145,7 @@ protected:
     name.append(m_options.m_id);  // who sent this
     name.appendTimestamp();       // and when
 
-    m_svsps->publish(name, reinterpret_cast<const uint8_t*>(content.data()), content.size());
+    m_svsps->publish(name, ndn::make_span(reinterpret_cast<const uint8_t*>(content.data()), content.size()));
   }
 
 private:

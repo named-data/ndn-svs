@@ -60,31 +60,20 @@ public:
 
   struct SubscriptionData
   {
-    /** @brief The name of the received publication */
+    /** @brief Name of the received publication */
     const Name& name;
 
-    /** @brief Raw buffer of the received data */
-    const uint8_t* data;
-
-    /** @brief Length of the received data */
-    const size_t length;
-
-    /** @brief Block of received data packet
-     * If the subscription is for BLOBs, this will be the block in the first data packet.
-     */
-    const Block& block;
-
-    /**
-     * @brief Received data packet.
-     * If the subscription is for BLOBs, this will be the first data packet.
-     */
-    const Data& packet;
+    /** @brief Payload of received data */
+    const span<const uint8_t>& data;
 
     /** @brief Producer of the publication */
     const Name& producerPrefix;
 
     /** @brief The sequence number of the publication */
     const SeqNo seqNo;
+
+    /** @brief Received data packet, only for "packet" subscriptions */
+    const std::optional<Data>& packet;
   };
 
   /** Callback returning the received data, producer and sequence number */
@@ -102,7 +91,7 @@ public:
    * @param freshnessPeriod freshness period for the data
    */
   SeqNo
-  publish(const Name& name, const uint8_t* value, const size_t length,
+  publish(const Name& name, const span<const uint8_t>& value,
           const Name& nodePrefix = EMPTY_NAME,
           const time::milliseconds freshnessPeriod = FRESH_FOREVER);
 
@@ -142,19 +131,6 @@ public:
    */
   void
   unsubscribe(uint32_t handle);
-
-  /**
-   * @brief Sign and publish an NDN block on the pub/sub group.
-   *
-   * @param name name for the publication
-   * @param block NDN block
-   * @param nodePrefix Name to publish the data under
-   * @param freshnessPeriod freshness period for the data
-   */
-  SeqNo
-  publish(const Name& name, const Block& block,
-          const Name& nodePrefix = EMPTY_NAME,
-          const time::milliseconds freshnessPeriod = FRESH_FOREVER);
 
   /**
    * @brief Publish a encapsulated Data packet in the session and trigger

@@ -42,13 +42,13 @@ SVSPubSub::SVSPubSub(const Name& syncPrefix,
 }
 
 SeqNo
-SVSPubSub::publish(const Name& name, const uint8_t* value, const size_t length,
+SVSPubSub::publish(const Name& name, const span<const uint8_t>& value,
                    const Name& nodePrefix,
                    const time::milliseconds freshnessPeriod)
 {
   // Segment the data if larger than MAX_DATA_SIZE
-  if (length > MAX_DATA_SIZE) {
-    size_t nSegments = (length / MAX_DATA_SIZE) + 1;
+  if (value.size() > MAX_DATA_SIZE) {
+    size_t nSegments = (value.size() / MAX_DATA_SIZE) + 1;
     auto finalBlock = name::Component::fromSegment(nSegments - 1);
 
     NodeID nid = nodePrefix == EMPTY_NAME ? m_dataPrefix : nodePrefix;
@@ -60,8 +60,8 @@ SVSPubSub::publish(const Name& name, const uint8_t* value, const size_t length,
       auto segment = Data(segmentName);
       segment.setFreshnessPeriod(freshnessPeriod);
 
-      const uint8_t* segVal = value + i * MAX_DATA_SIZE;
-      const size_t segValSize = std::min(length - i * MAX_DATA_SIZE, MAX_DATA_SIZE);
+      const uint8_t* segVal = value.data() + i * MAX_DATA_SIZE;
+      const size_t segValSize = std::min(value.size() - i * MAX_DATA_SIZE, MAX_DATA_SIZE);
       segment.setContent(ndn::make_span(segVal, segValSize));
 
       segment.setFinalBlock(finalBlock);
@@ -78,22 +78,12 @@ SVSPubSub::publish(const Name& name, const uint8_t* value, const size_t length,
     return seqNo;
   }
   else {
-    auto block =  makeBinaryBlock(ndn::tlv::Content, {value, length});
-    return publish(name, block, nodePrefix, freshnessPeriod);
+    ndn::Data data(name);
+    data.setContent(value);
+    data.setFreshnessPeriod(freshnessPeriod);
+    m_securityOptions.dataSigner->sign(data);
+    return publishPacket(data, nodePrefix);
   }
-}
-
-SeqNo
-SVSPubSub::publish(const Name& name, const Block& block,
-                   const Name& nodePrefix,
-                   const time::milliseconds freshnessPeriod)
-{
-  ndn::Data data(name);
-  data.setContent(block);
-  data.setFreshnessPeriod(freshnessPeriod);
-  m_securityOptions.dataSigner->sign(data);
-
-  return publishPacket(data, nodePrefix);
 }
 
 SeqNo
@@ -271,18 +261,16 @@ SVSPubSub::onSyncData(const Data& firstData, const std::pair<Name, SeqNo>& publi
   // Return data to packet subscriptions
   SubscriptionData subData = {
     innerData.getName(),
-    innerData.getContent().value(),
-    innerData.getContent().value_size(),
-    innerData.getContent(),
-    innerData,
+    innerData.getContent().value_bytes(),
     publication.first,
     publication.second,
+    innerData,
   };
 
   // Function to return data to subscriptions
   auto returnData = [this, firstData, subData, publication] ()
   {
-    bool hasFinalBlock = subData.packet.getFinalBlock().has_value();
+    bool hasFinalBlock = subData.packet.value().getFinalBlock().has_value();
     bool hasBlobSubcriptions = false;
 
     for (const auto& sub : this->m_fetchMap[publication])
@@ -302,7 +290,7 @@ SVSPubSub::onSyncData(const Data& firstData, const std::pair<Name, SeqNo>& publi
       ndn::util::SegmentFetcher::Options opts;
       auto fetcher = ndn::util::SegmentFetcher::start(m_face, interest, m_nullValidator, opts);
 
-      fetcher->onComplete.connectSingleShot([this, firstData, pubName, publication] (const ndn::ConstBufferPtr& data) {
+      fetcher->onComplete.connectSingleShot([this, publication] (const ndn::ConstBufferPtr& data) {
         try {
           // Binary BLOB to return to app
           auto finalBuffer = std::make_shared<std::vector<uint8_t>>(std::vector<uint8_t>(data->size()));
@@ -318,8 +306,14 @@ SVSPubSub::onSyncData(const Data& firstData, const std::pair<Name, SeqNo>& publi
           auto numFailed = std::make_shared<size_t>(0);
           auto numElem = block.elements_size();
 
+          if (numElem == 0)
+            return this->cleanUpFetch(publication);
+
+          // Get name of inner data
+          auto innerName = Data(block.elements()[0]).getName().getPrefix(-2);
+
           // Function to send final buffer to subscriptions if possible
-          auto sendFinalBuffer = [this, firstData, pubName, publication, finalBuffer, bufSize, numFailed, numValidated, numElem] ()
+          auto sendFinalBuffer = [this, innerName, publication, finalBuffer, bufSize, numFailed, numValidated, numElem] ()
           {
             if (*numValidated + *numFailed != numElem)
               return;
@@ -332,13 +326,11 @@ SVSPubSub::onSyncData(const Data& firstData, const std::pair<Name, SeqNo>& publi
 
             // Return data to packet subscriptions
             SubscriptionData subData = {
-              pubName,
-              finalBuffer->data(),
-              *bufSize,
-              firstData.getContent(),
-              firstData,
+              innerName,
+              *finalBuffer,
               publication.first,
               publication.second,
+              std::nullopt,
             };
 
             for (const auto& sub : this->m_fetchMap[publication])
