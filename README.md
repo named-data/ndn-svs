@@ -1,6 +1,6 @@
 # ndn-svs: State Vector Sync library for distributed realtime applications for NDN
 
-[![Build](https://github.com/named-data/ndn-svs/actions/workflows/build.yml/badge.svg)](https://github.com/named-data/ndn-svs/actions/workflows/build.yml)
+[![CI](https://github.com/named-data/ndn-svs/actions/workflows/ci.yml/badge.svg)](https://github.com/named-data/ndn-svs/actions/workflows/ci.yml)
 ![Language](https://img.shields.io/badge/C%2B%2B-17-blue)
 
 This library provides an implementation of the [State Vector Sync (SVS)](https://named-data.github.io/StateVectorSync/)
@@ -13,18 +13,18 @@ ndn-svs uses the [ndn-cxx](https://github.com/named-data/ndn-cxx) library.
 
 ### Prerequisites
 
-* [ndn-cxx and its dependencies](https://named-data.net/doc/ndn-cxx/current/INSTALL.html)
+* [ndn-cxx and its dependencies](https://docs.named-data.net/ndn-cxx/current/INSTALL.html)
 
 ### Build
 
-To build ndn-svs from the source:
+To build ndn-svs from source:
 
     ./waf configure
     ./waf
     sudo ./waf install
 
-To build on memory constrained platform, please use `./waf -j1` instead of `./waf`. The
-command will disable parallel compilation.
+To build on memory constrained systems, please use `./waf -j1` instead of `./waf`. This
+will disable parallel compilation.
 
 ### Examples
 
@@ -46,15 +46,9 @@ where `sync-prefix` is `/ndn/svs` for the example application.
 
 ## Contributing
 
-We greatly appreciate contributions to the ndn-svs code base, provided that they are
-licensed under the LGPL 2.1+ or a compatible license (see below).
-If you are new to the NDN software community, please read the
-[Contributor's Guide](https://github.com/named-data/.github/blob/master/CONTRIBUTING.md)
-to get started.
-
 Contributions are welcome through GitHub.
 
 ## License
 
-ndn-svs is an open source project licensed under the LGPL version 2.1.
-See [`COPYING.md`](COPYING.md) for more information.
+ndn-svs is free software distributed under the GNU Lesser General Public License version 2.1.
+See [`COPYING.md`](COPYING.md) for details.
