@@ -34,7 +34,7 @@ SVSyncCore::SVSyncCore(ndn::Face& face,
   , m_rng(ndn::random::getRandomNumberEngine())
   , m_packetDist(10, 15)
   , m_retxDist(30000 * 0.9, 30000 * 1.1)
-  , m_intrReplyDist(50 * 0.9, 50 * 1.1)
+  , m_intrReplyDist(0, 75)
   , m_keyChainMem("pib-memory:", "tpm-memory:")
   , m_scheduler(m_face.getIoService())
 {
