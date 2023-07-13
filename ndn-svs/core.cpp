@@ -40,9 +40,12 @@ SVSyncCore::SVSyncCore(ndn::Face& face,
   , m_securityOptions(securityOptions)
   , m_id(nid)
   , m_onUpdate(onUpdate)
+  , m_maxSuppressionTime(100)
+  , m_periodicSyncTime(30000)
+  , m_periodicSyncJitter(0.1)
   , m_rng(ndn::random::getRandomNumberEngine())
-  , m_retxDist(30000 * 0.9, 30000 * 1.1)
-  , m_intrReplyDist(0, 75)
+  , m_retxDist(m_periodicSyncTime * (1.0 - m_periodicSyncJitter), m_periodicSyncTime * (1.0 + m_periodicSyncJitter))
+  , m_intrReplyDist(0, m_maxSuppressionTime)
   , m_keyChainMem("pib-memory:", "tpm-memory:")
   , m_scheduler(m_face.getIoService())
 {
@@ -54,6 +57,24 @@ SVSyncCore::SVSyncCore(ndn::Face& face,
                              [] (auto&&...) {
                                 NDN_THROW(Error("Failed to register sync prefix"));
                              });
+}
+
+inline int
+suppressionCurve(int constFactor, int value)
+{
+  /**
+   * This curve increases the probability that only one or a few
+   * nodes pick lower values for timers compared to other nodes.
+   * This leads to better suppression results.
+   * Increasing the curve factor makes the curve steeper =>
+   * better for more nodes, but worse for fewer nodes.
+   */
+
+  double c = constFactor;
+  double v = value;
+  double f = 10.0; // curve factor
+
+  return (int) (c * (1.0 - std::exp((v - c) / (c / f))));
 }
 
 void
@@ -161,6 +182,11 @@ SVSyncCore::onSyncInterestValidated(const Interest &interest)
     // Check how much time is left on the timer,
     // reset to ~m_intrReplyDist if more than that.
     int delay = m_intrReplyDist(m_rng);
+
+    // Curve the delay for better suppression in large groups
+    // TODO: efficient curve depends on number of active nodes
+    delay = suppressionCurve(m_maxSuppressionTime, delay);
+
     if (getCurrentTime() + delay * 1000 < m_nextSyncInterest)
     {
       retxSyncInterest(false, delay);
