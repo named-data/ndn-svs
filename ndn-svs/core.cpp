@@ -15,9 +15,18 @@
  */
 
 #include "core.hpp"
+#include "tlv.hpp"
 
 #include <ndn-cxx/security/signing-helpers.hpp>
 #include <ndn-cxx/security/verification-helpers.hpp>
+#include <ndn-cxx/encoding/buffer-stream.hpp>
+
+#ifdef NDN_SVS_COMPRESSION
+#include <boost/iostreams/filter/lzma.hpp>
+#include <boost/iostreams/copy.hpp>
+#include <boost/iostreams/device/array.hpp>
+#include <boost/iostreams/filtering_stream.hpp>
+#endif
 
 namespace ndn::svs {
 
@@ -32,7 +41,6 @@ SVSyncCore::SVSyncCore(ndn::Face& face,
   , m_id(nid)
   , m_onUpdate(onUpdate)
   , m_rng(ndn::random::getRandomNumberEngine())
-  , m_packetDist(10, 15)
   , m_retxDist(30000 * 0.9, 30000 * 1.1)
   , m_intrReplyDist(0, 75)
   , m_keyChainMem("pib-memory:", "tpm-memory:")
@@ -95,10 +103,33 @@ SVSyncCore::onSyncInterestValidated(const Interest &interest)
   std::shared_ptr<VersionVector> vvOther;
   try
   {
-    vvOther = std::make_shared<VersionVector>(n.get(-2));
+    ndn::Block vvBlock = n.get(-2);
+
+    // Decompress if necessary
+    if (vvBlock.type() == 211) {
+#ifdef NDN_SVS_COMPRESSION
+      boost::iostreams::filtering_istreambuf in;
+      in.push(boost::iostreams::lzma_decompressor());
+      in.push(boost::iostreams::array_source(reinterpret_cast<const char*>(vvBlock.value()), vvBlock.value_size()));
+      ndn::OBufferStream decompressed;
+      boost::iostreams::copy(in, decompressed);
+
+      auto inner = ndn::Block::fromBuffer(decompressed.buf());
+      if (!std::get<0>(inner)) {
+        throw ndn::tlv::Error("Failed to decode inner block");
+      }
+
+      vvBlock = std::get<1>(inner);
+#else
+      throw ndn::tlv::Error("SVS was compiled without compression support");
+#endif
+    }
+
+    vvOther = std::make_shared<VersionVector>(vvBlock);
   }
   catch (ndn::tlv::Error&)
   {
+    // TODO: log error
     return;
   }
 
@@ -171,21 +202,35 @@ SVSyncCore::sendSyncInterest()
   if (!m_initialized)
     return;
 
-  Name syncName(m_syncPrefix);
   Interest interest;
+  interest.setApplicationParameters(span<const uint8_t>{'0'});
 
+  ndn::Block vvWire;
   {
     std::lock_guard<std::mutex> lock(m_vvMutex);
-    syncName.append(Name::Component(m_vv.encode()));
+    vvWire = m_vv.encode();
 
     // Add parameters digest
-    interest.setApplicationParameters(span<const uint8_t>{'0'});
-
     if (m_getExtraBlock)
     {
       interest.setApplicationParameters(m_getExtraBlock(m_vv));
     }
   }
+
+  // Create sync interest name
+  Name syncName(m_syncPrefix);
+
+#ifdef NDN_SVS_COMPRESSION
+    vvWire.encode();
+    boost::iostreams::filtering_istreambuf in;
+    in.push(boost::iostreams::lzma_compressor(boost::iostreams::lzma::best_compression));
+    in.push(boost::iostreams::array_source(reinterpret_cast<const char*>(vvWire.data()), vvWire.size()));
+    ndn::OBufferStream compressed;
+    boost::iostreams::copy(in, compressed);
+    vvWire = ndn::Block(svs::tlv::StateVectorLzma, compressed.buf());
+#endif
+
+  syncName.append(Name::Component(vvWire));
 
   interest.setName(syncName);
   interest.setInterestLifetime(time::milliseconds(1));

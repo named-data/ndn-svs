@@ -9,6 +9,7 @@ enum {
   SeqNo = 204,
   MappingData = 205,
   MappingEntry = 206,
+  StateVectorLzma = 211,
 };
 
 } // namespace ndn::svs::tlv

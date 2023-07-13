@@ -31,6 +31,9 @@ def options(opt):
     optgrp.add_option('--with-tests', action='store_true', default=False,
                       help='Build unit tests')
 
+    optgrp.add_option('--with-compression', action='store_true', default=False,
+                      dest='with_compression', help='Build with state vector compression extension')
+
 def configure(conf):
     conf.start_msg('Building static library')
     if conf.options.enable_static:
@@ -70,6 +73,10 @@ def configure(conf):
     boost_libs = ['system']
     if conf.env.WITH_TESTS:
         boost_libs.append('unit_test_framework')
+
+    if conf.options.with_compression:
+        boost_libs.append('iostreams')
+        conf.define('COMPRESSION', 1)
 
     conf.check_boost(lib=boost_libs, mt=True)
 
