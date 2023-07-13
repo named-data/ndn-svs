@@ -188,7 +188,7 @@ SVSyncCore::sendSyncInterest()
   }
 
   interest.setName(syncName);
-  interest.setInterestLifetime(time::milliseconds(0));
+  interest.setInterestLifetime(time::milliseconds(1));
 
   switch (m_securityOptions.interestSigner->signingInfo.getSignerType())
   {
