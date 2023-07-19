@@ -34,13 +34,9 @@ struct TestCoreFixture
   Name m_syncPrefix;
   SVSyncCore m_core;
 
-  std::vector<MissingDataInfo> missingData;
-
   void
   update(const std::vector<MissingDataInfo>& v)
   {
-    for (auto m : v)
-      missingData.push_back(m);
   }
 };
 
@@ -48,6 +44,8 @@ BOOST_FIXTURE_TEST_SUITE(TestCore, TestCoreFixture)
 
 BOOST_AUTO_TEST_CASE(mergeStateVector)
 {
+  std::vector<MissingDataInfo> missingData;
+
   VersionVector v = m_core.getState();
   BOOST_CHECK_EQUAL(v.get("one"), 0);
   BOOST_CHECK_EQUAL(v.get("two"), 0);
@@ -57,7 +55,7 @@ BOOST_AUTO_TEST_CASE(mergeStateVector)
   VersionVector v1;
   v1.set("one", 1);
   v1.set("two", 2);
-  m_core.mergeStateVector(v1);
+  missingData = std::get<2>(m_core.mergeStateVector(v1));
 
   v = m_core.getState();
   BOOST_CHECK_EQUAL(v.get("one"), 1);
@@ -69,8 +67,7 @@ BOOST_AUTO_TEST_CASE(mergeStateVector)
   v2.set("one", 1);
   v2.set("two", 1);
   v2.set("three", 3);
-  missingData.clear();
-  m_core.mergeStateVector(v2);
+  missingData = std::get<2>(m_core.mergeStateVector(v2));
 
   v = m_core.getState();
   BOOST_CHECK_EQUAL(v.get("one"), 1);
