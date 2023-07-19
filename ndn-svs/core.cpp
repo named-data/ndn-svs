@@ -247,13 +247,13 @@ SVSyncCore::sendSyncInterest()
   Name syncName(m_syncPrefix);
 
 #ifdef NDN_SVS_COMPRESSION
-    vvWire.encode();
-    boost::iostreams::filtering_istreambuf in;
-    in.push(boost::iostreams::lzma_compressor(boost::iostreams::lzma::best_compression));
-    in.push(boost::iostreams::array_source(reinterpret_cast<const char*>(vvWire.data()), vvWire.size()));
-    ndn::OBufferStream compressed;
-    boost::iostreams::copy(in, compressed);
-    vvWire = ndn::Block(svs::tlv::StateVectorLzma, compressed.buf());
+  vvWire.encode();
+  boost::iostreams::filtering_istreambuf in;
+  in.push(boost::iostreams::lzma_compressor());
+  in.push(boost::iostreams::array_source(reinterpret_cast<const char*>(vvWire.data()), vvWire.size()));
+  ndn::OBufferStream compressed;
+  boost::iostreams::copy(in, compressed);
+  vvWire = ndn::Block(svs::tlv::StateVectorLzma, compressed.buf());
 #endif
 
   syncName.append(Name::Component(vvWire));
