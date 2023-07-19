@@ -39,6 +39,8 @@ public:
   SeqNo low;
   /// @brief the highest one of missing sequence numbers
   SeqNo high;
+  /// @brief ndn::lp::IncomingFaceIdTag
+  uint64_t incomingFace;
 };
 
 /**
@@ -196,10 +198,10 @@ NDN_SVS_PUBLIC_WITH_TESTS_ELSE_PRIVATE:
    *
    * @param vvOther state vector to merge in
    *
-   * @returns a pair of boolean representing:
-   *    <my vector new, other vector new>.
+   * @returns a tuple of representing:
+   *    <my vector new, other vector new, missinginfo>.
    */
-  std::pair<bool, bool>
+  std::tuple<bool, bool, std::vector<MissingDataInfo>>
   mergeStateVector(const VersionVector& vvOther);
 
   /**

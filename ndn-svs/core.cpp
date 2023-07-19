@@ -20,6 +20,7 @@
 #include <ndn-cxx/security/signing-helpers.hpp>
 #include <ndn-cxx/security/verification-helpers.hpp>
 #include <ndn-cxx/encoding/buffer-stream.hpp>
+#include <ndn-cxx/lp/tags.hpp>
 
 #ifdef NDN_SVS_COMPRESSION
 #include <boost/iostreams/filter/lzma.hpp>
@@ -120,6 +121,15 @@ SVSyncCore::onSyncInterestValidated(const Interest &interest)
 {
   const auto &n = interest.getName();
 
+  // Get incoming face
+  uint64_t incomingFace = 0;
+  {
+    auto tag = interest.getTag<ndn::lp::IncomingFaceIdTag>();
+    if (tag) {
+      incomingFace = tag->get();
+    }
+  }
+
   // Get state vector
   std::shared_ptr<VersionVector> vvOther;
   try
@@ -163,8 +173,18 @@ SVSyncCore::onSyncInterestValidated(const Interest &interest)
   }
 
   // Merge state vector
-  bool myVectorNew, otherVectorNew;
-  std::tie(myVectorNew, otherVectorNew) = mergeStateVector(*vvOther);
+  auto result = mergeStateVector(*vvOther);
+
+  bool myVectorNew = std::get<0>(result);
+  auto missingData = std::get<2>(result);
+
+  // Callback if missing data found
+  if (!missingData.empty())
+  {
+    for (auto &e : missingData)
+      e.incomingFace = incomingFace;
+    m_onUpdate(missingData);
+  }
 
   // Try to record; the call will check if in suppression state
   if (recordVector(*vvOther))
@@ -203,7 +223,7 @@ SVSyncCore::retxSyncInterest(bool send, unsigned int delay)
 
     // Only send interest if in steady state or local vector has newer state
     // than recorded interests
-    if (!m_recordedVv || mergeStateVector(*m_recordedVv).first)
+    if (!m_recordedVv || std::get<0>(mergeStateVector(*m_recordedVv)))
       sendSyncInterest();
     m_recordedVv = nullptr;
   }
@@ -278,7 +298,7 @@ SVSyncCore::sendSyncInterest()
   m_face.expressInterest(interest, nullptr, nullptr, nullptr);
 }
 
-std::pair<bool, bool>
+std::tuple<bool, bool, std::vector<MissingDataInfo>>
 SVSyncCore::mergeStateVector(const VersionVector &vvOther)
 {
   std::lock_guard<std::mutex> lock(m_vvMutex);
@@ -287,7 +307,7 @@ SVSyncCore::mergeStateVector(const VersionVector &vvOther)
        otherVectorNew = false;
 
   // New data found in vvOther
-  std::vector<MissingDataInfo> v;
+  std::vector<MissingDataInfo> missingData;
 
   // Check if other vector has newer state
   for (const auto& entry : vvOther)
@@ -301,16 +321,10 @@ SVSyncCore::mergeStateVector(const VersionVector &vvOther)
       otherVectorNew = true;
 
       SeqNo startSeq = m_vv.get(nidOther) + 1;
-      v.push_back({nidOther, startSeq, seqOther});
+      missingData.push_back({nidOther, startSeq, seqOther, 0});
 
       m_vv.set(nidOther, seqOther);
     }
-  }
-
-  // Callback if missing data found
-  if (!v.empty())
-  {
-    m_onUpdate(v);
   }
 
   // Check if I have newer state
@@ -327,7 +341,7 @@ SVSyncCore::mergeStateVector(const VersionVector &vvOther)
     }
   }
 
-  return {myVectorNew, otherVectorNew};
+  return {myVectorNew, otherVectorNew, missingData};
 }
 
 void
