@@ -41,12 +41,12 @@ SVSyncCore::SVSyncCore(ndn::Face& face,
   , m_securityOptions(securityOptions)
   , m_id(nid)
   , m_onUpdate(onUpdate)
-  , m_maxSuppressionTime(100)
-  , m_periodicSyncTime(30000)
+  , m_maxSuppressionTime(500_ms)
+  , m_periodicSyncTime(30_s)
   , m_periodicSyncJitter(0.1)
   , m_rng(ndn::random::getRandomNumberEngine())
-  , m_retxDist(m_periodicSyncTime * (1.0 - m_periodicSyncJitter), m_periodicSyncTime * (1.0 + m_periodicSyncJitter))
-  , m_intrReplyDist(0, m_maxSuppressionTime)
+  , m_retxDist(m_periodicSyncTime.count() * (1.0 - m_periodicSyncJitter), m_periodicSyncTime.count() * (1.0 + m_periodicSyncJitter))
+  , m_intrReplyDist(0, m_maxSuppressionTime.count())
   , m_keyChainMem("pib-memory:", "tpm-memory:")
   , m_scheduler(m_face.getIoService())
 {
@@ -205,7 +205,7 @@ SVSyncCore::onSyncInterestValidated(const Interest &interest)
 
     // Curve the delay for better suppression in large groups
     // TODO: efficient curve depends on number of active nodes
-    delay = suppressionCurve(m_maxSuppressionTime, delay);
+    delay = suppressionCurve(m_maxSuppressionTime.count(), delay);
 
     if (getCurrentTime() + delay * 1000 < m_nextSyncInterest)
     {

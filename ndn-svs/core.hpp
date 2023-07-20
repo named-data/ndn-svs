@@ -260,13 +260,13 @@ private:
   RecvExtraBlockCallback m_recvExtraBlock;
 
   // Max suppression time; this value is roughly
-  // correlated to the network diameter
-  int m_maxSuppressionTime;
+  // positively correlated to the network diameter
+  time::milliseconds m_maxSuppressionTime;
   // Periodic timer value; can be set to lower
   // for highly lossy networks.
-  int m_periodicSyncTime;
+  time::milliseconds m_periodicSyncTime;
   // Fraction of jitter in the periodic timer value.
-  // Correlated to network diameter.
+  // Positively correlated to network diameter.
   double m_periodicSyncJitter;
 
   // Random Engine
