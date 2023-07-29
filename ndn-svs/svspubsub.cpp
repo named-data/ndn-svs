@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2022 University of California, Los Angeles
+ * Copyright (c) 2021-2023 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -15,8 +15,7 @@
  */
 
 #include "svspubsub.hpp"
-#include "store-memory.hpp"
-#include "tlv.hpp"
+
 #include <ndn-cxx/util/segment-fetcher.hpp>
 
 namespace ndn::svs {
@@ -24,13 +23,13 @@ namespace ndn::svs {
 SVSPubSub::SVSPubSub(const Name& syncPrefix,
                      const Name& nodePrefix,
                      ndn::Face& face,
-                     const UpdateCallback& updateCallback,
+                     UpdateCallback updateCallback,
                      const SecurityOptions& securityOptions,
                      std::shared_ptr<DataStore> dataStore)
   : m_face(face)
   , m_syncPrefix(syncPrefix)
   , m_dataPrefix(nodePrefix)
-  , m_onUpdate(updateCallback)
+  , m_onUpdate(std::move(updateCallback))
   , m_securityOptions(securityOptions)
   , m_svsync(syncPrefix, nodePrefix, face,
              std::bind(&SVSPubSub::updateCallbackInternal, this, _1),

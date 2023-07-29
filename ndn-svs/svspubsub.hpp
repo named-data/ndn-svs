@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2022 University of California, Los Angeles
+ * Copyright (c) 2021-2023 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -28,26 +28,28 @@
 namespace ndn::svs {
 
 /**
- * @brief A pub/sub interface for SVS
+ * @brief A pub/sub interface for SVS.
  *
  * This interface provides a high level API to use SVS for pub/sub applications.
  * Every node can produce data under a prefix which is served to subscribers
  * for that stream.
- *
- * @param syncPrefix The prefix of the sync group
- * @param nodePrefix Default prefix to publish data under
- * @param face The face used to communication
- * @param updateCallback The callback function to handle state updates
- * @param securityOptions Signing and validation for sync interests and data
- * @param dataStore Interface to store data packets
  */
 class SVSPubSub : noncopyable
 {
 public:
+  /**
+   * @brief Constructor.
+   * @param syncPrefix The prefix of the sync group
+   * @param nodePrefix Default prefix to publish data under
+   * @param face The face used to communication
+   * @param updateCallback The callback function to handle state updates
+   * @param securityOptions Signing and validation for sync interests and data
+   * @param dataStore Interface to store data packets
+   */
   SVSPubSub(const Name& syncPrefix,
             const Name& nodePrefix,
             ndn::Face& face,
-            const UpdateCallback& updateCallback,
+            UpdateCallback updateCallback,
             const SecurityOptions& securityOptions = SecurityOptions::DEFAULT,
             std::shared_ptr<DataStore> dataStore = SVSync::DEFAULT_DATASTORE);
 
