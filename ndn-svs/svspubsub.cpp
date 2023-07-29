@@ -41,9 +41,8 @@ SVSPubSub::SVSPubSub(const Name& syncPrefix,
 }
 
 SeqNo
-SVSPubSub::publish(const Name& name, const span<const uint8_t>& value,
-                   const Name& nodePrefix,
-                   const time::milliseconds freshnessPeriod)
+SVSPubSub::publish(const Name& name, span<const uint8_t> value,
+                   const Name& nodePrefix, time::milliseconds freshnessPeriod)
 {
   // Segment the data if larger than MAX_DATA_SIZE
   if (value.size() > MAX_DATA_SIZE) {

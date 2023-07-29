@@ -62,7 +62,7 @@ public:
     const Name& name;
 
     /** @brief Payload of received data */
-    const span<const uint8_t>& data;
+    const span<const uint8_t> data;
 
     /** @brief Producer of the publication */
     const Name& producerPrefix;
@@ -86,9 +86,9 @@ public:
    * @param freshnessPeriod freshness period for the data
    */
   SeqNo
-  publish(const Name& name, const span<const uint8_t>& value,
+  publish(const Name& name, span<const uint8_t> value,
           const Name& nodePrefix = EMPTY_NAME,
-          const time::milliseconds freshnessPeriod = FRESH_FOREVER);
+          time::milliseconds freshnessPeriod = FRESH_FOREVER);
 
   /**
    * @brief Subscribe to a application name prefix.
