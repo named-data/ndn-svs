@@ -94,7 +94,7 @@ SVSPubSub::publishPacket(const Data& data, const Name& nodePrefix)
 }
 
 void
-SVSPubSub::insertMapping(const NodeID& nid, const SeqNo seqNo, const Name& name)
+SVSPubSub::insertMapping(const NodeID& nid, SeqNo seqNo, const Name& name)
 {
   if (m_notificationMappingList.nodeId == EMPTY_NAME || m_notificationMappingList.nodeId == nid)
   {
@@ -106,7 +106,7 @@ SVSPubSub::insertMapping(const NodeID& nid, const SeqNo seqNo, const Name& name)
 }
 
 uint32_t
-SVSPubSub::subscribe(const Name& prefix, const SubscriptionCallback& callback, const bool packets)
+SVSPubSub::subscribe(const Name& prefix, const SubscriptionCallback& callback, bool packets)
 {
   uint32_t handle = ++m_subscriptionCount;
   Subscription sub = { handle, prefix, callback, packets, false };
@@ -116,7 +116,7 @@ SVSPubSub::subscribe(const Name& prefix, const SubscriptionCallback& callback, c
 
 uint32_t
 SVSPubSub::subscribeToProducer(const Name& nodePrefix, const SubscriptionCallback& callback,
-                               const bool prefetch, const bool packets)
+                               bool prefetch, bool packets)
 {
   uint32_t handle = ++m_subscriptionCount;
   Subscription sub = { handle, nodePrefix, callback, packets, prefetch };
@@ -161,7 +161,7 @@ SVSPubSub::updateCallbackInternal(const std::vector<ndn::svs::MissingDataInfo>& 
 
         // Prefetch next available data
         if (sub.prefetch)
-          m_svsync.fetchData(stream.nodeId, stream.high + 1, [](const ndn::Data&) {}); // do nothing with prefetch
+          m_svsync.fetchData(stream.nodeId, stream.high + 1, [] (auto&&...) {}); // do nothing with prefetch
       }
     }
 
@@ -294,7 +294,7 @@ SVSPubSub::onSyncData(const Data& firstData, const std::pair<Name, SeqNo>& publi
           // Binary BLOB to return to app
           auto finalBuffer = std::make_shared<std::vector<uint8_t>>(std::vector<uint8_t>(data->size()));
           auto bufSize = std::make_shared<size_t>(0);
-          bool hasValidator = static_cast<bool>(m_securityOptions.encapsulatedDataValidator);
+          bool hasValidator = !!m_securityOptions.encapsulatedDataValidator;
 
           // Read all TLVs as Data packets till the end of data buffer
           ndn::Block block(6, data);
@@ -354,7 +354,8 @@ SVSPubSub::onSyncData(const Data& firstData, const std::pair<Name, SeqNo>& publi
                 [sendFinalBuffer, numValidated] (auto&&...) {
                   *numValidated += 1;
                   sendFinalBuffer();
-                }, [sendFinalBuffer, numFailed] (auto&&...) {
+                },
+                [sendFinalBuffer, numFailed] (auto&&...) {
                   *numFailed += 1;
                   sendFinalBuffer();
                 });
@@ -378,10 +379,10 @@ SVSPubSub::onSyncData(const Data& firstData, const std::pair<Name, SeqNo>& publi
   };
 
   // Validate encapsulated packet
-  if (static_cast<bool>(m_securityOptions.encapsulatedDataValidator)) {
+  if (m_securityOptions.encapsulatedDataValidator) {
     m_securityOptions.encapsulatedDataValidator->validate(
       innerData,
-      [&] (const Data&) { returnData(); },
+      [&] (auto&&...) { returnData(); },
       [] (auto&&...) {});
   }
   else {

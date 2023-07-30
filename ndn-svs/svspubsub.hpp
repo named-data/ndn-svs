@@ -100,7 +100,7 @@ public:
    * @returns Handle to the subscription
    */
   uint32_t
-  subscribe(const Name& prefix, const SubscriptionCallback& callback, const bool packets = false);
+  subscribe(const Name& prefix, const SubscriptionCallback& callback, bool packets = false);
 
   /**
    * @brief Subscribe to a data producer
@@ -114,7 +114,7 @@ public:
    */
   uint32_t
   subscribeToProducer(const Name& nodePrefix, const SubscriptionCallback& callback,
-                      const bool prefetch = false, const bool packets = false);
+                      bool prefetch = false, bool packets = false);
 
   /**
    * @brief Unsubscribe from a stream using a handle
@@ -167,7 +167,7 @@ private:
   onRecvExtraData(const Block& block);
 
   void
-  insertMapping(const NodeID& nid, const SeqNo seqNo, const Name& name);
+  insertMapping(const NodeID& nid, SeqNo seqNo, const Name& name);
 
   void
   fetchAll();
@@ -177,8 +177,8 @@ private:
 
 public:
   static inline const Name EMPTY_NAME;
-  static inline const size_t MAX_DATA_SIZE = 8000;
-  static inline const time::milliseconds FRESH_FOREVER = time::years(10000); // well ...
+  static constexpr size_t MAX_DATA_SIZE = 8000;
+  static constexpr time::milliseconds FRESH_FOREVER = time::years(10000); // well ...
 
 private:
   Face& m_face;
