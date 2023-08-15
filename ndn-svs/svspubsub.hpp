@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2022 University of California, Los Angeles
+ * Copyright (c) 2021-2023 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -28,26 +28,28 @@
 namespace ndn::svs {
 
 /**
- * @brief A pub/sub interface for SVS
+ * @brief A pub/sub interface for SVS.
  *
  * This interface provides a high level API to use SVS for pub/sub applications.
  * Every node can produce data under a prefix which is served to subscribers
  * for that stream.
- *
- * @param syncPrefix The prefix of the sync group
- * @param nodePrefix Default prefix to publish data under
- * @param face The face used to communication
- * @param updateCallback The callback function to handle state updates
- * @param securityOptions Signing and validation for sync interests and data
- * @param dataStore Interface to store data packets
  */
 class SVSPubSub : noncopyable
 {
 public:
+  /**
+   * @brief Constructor.
+   * @param syncPrefix The prefix of the sync group
+   * @param nodePrefix Default prefix to publish data under
+   * @param face The face used to communication
+   * @param updateCallback The callback function to handle state updates
+   * @param securityOptions Signing and validation for sync interests and data
+   * @param dataStore Interface to store data packets
+   */
   SVSPubSub(const Name& syncPrefix,
             const Name& nodePrefix,
             ndn::Face& face,
-            const UpdateCallback& updateCallback,
+            UpdateCallback updateCallback,
             const SecurityOptions& securityOptions = SecurityOptions::DEFAULT,
             std::shared_ptr<DataStore> dataStore = SVSync::DEFAULT_DATASTORE);
 
@@ -60,7 +62,7 @@ public:
     const Name& name;
 
     /** @brief Payload of received data */
-    const span<const uint8_t>& data;
+    const span<const uint8_t> data;
 
     /** @brief Producer of the publication */
     const Name& producerPrefix;
@@ -84,9 +86,9 @@ public:
    * @param freshnessPeriod freshness period for the data
    */
   SeqNo
-  publish(const Name& name, const span<const uint8_t>& value,
+  publish(const Name& name, span<const uint8_t> value,
           const Name& nodePrefix = EMPTY_NAME,
-          const time::milliseconds freshnessPeriod = FRESH_FOREVER);
+          time::milliseconds freshnessPeriod = FRESH_FOREVER);
 
   /**
    * @brief Subscribe to a application name prefix.
@@ -98,7 +100,7 @@ public:
    * @returns Handle to the subscription
    */
   uint32_t
-  subscribe(const Name& prefix, const SubscriptionCallback& callback, const bool packets = false);
+  subscribe(const Name& prefix, const SubscriptionCallback& callback, bool packets = false);
 
   /**
    * @brief Subscribe to a data producer
@@ -112,7 +114,7 @@ public:
    */
   uint32_t
   subscribeToProducer(const Name& nodePrefix, const SubscriptionCallback& callback,
-                      const bool prefetch = false, const bool packets = false);
+                      bool prefetch = false, bool packets = false);
 
   /**
    * @brief Unsubscribe from a stream using a handle
@@ -165,7 +167,7 @@ private:
   onRecvExtraData(const Block& block);
 
   void
-  insertMapping(const NodeID& nid, const SeqNo seqNo, const Name& name);
+  insertMapping(const NodeID& nid, SeqNo seqNo, const Name& name);
 
   void
   fetchAll();
@@ -175,8 +177,8 @@ private:
 
 public:
   static inline const Name EMPTY_NAME;
-  static inline const size_t MAX_DATA_SIZE = 8000;
-  static inline const time::milliseconds FRESH_FOREVER = time::years(10000); // well ...
+  static constexpr size_t MAX_DATA_SIZE = 8000;
+  static constexpr time::milliseconds FRESH_FOREVER = time::years(10000); // well ...
 
 private:
   Face& m_face;
