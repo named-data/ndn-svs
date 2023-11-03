@@ -124,7 +124,7 @@ private:
 
   ndn::ScopedRegisteredPrefixHandle m_registeredPrefix;
 
-  std::map<NodeID, Name> m_map;
+  std::map<Name, Name> m_map;
 };
 
 } // namespace ndn::svs
