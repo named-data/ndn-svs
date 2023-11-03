@@ -24,6 +24,9 @@
 
 namespace ndn::svs {
 
+/**
+ * @brief TLV type for mapping list
+ */
 class MappingList
 {
 public:

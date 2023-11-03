@@ -19,6 +19,61 @@
 
 namespace ndn::svs {
 
+MappingList::MappingList() = default;
+
+MappingList::MappingList(const NodeID& nid)
+  : nodeId(nid)
+{}
+
+MappingList::MappingList(const Block& block)
+{
+  block.parse();
+
+  for (auto it = block.elements_begin(); it != block.elements_end(); it++) {
+    if (it->type() == ndn::tlv::Name)
+    {
+      nodeId = NodeID(*it);
+      continue;
+    }
+
+    if (it->type() == tlv::MappingEntry)
+    {
+      it->parse();
+
+      SeqNo seqNo = ndn::encoding::readNonNegativeInteger(it->elements().at(0));
+      Name name(it->elements().at(1));
+      pairs.emplace_back(seqNo, name);
+      continue;
+    }
+  }
+}
+
+Block
+MappingList::encode() const
+{
+  ndn::encoding::EncodingBuffer enc;
+  size_t totalLength = 0;
+
+  for (const auto& [seq, name] : pairs)
+  {
+    // Name
+    size_t entryLength = ndn::encoding::prependBlock(enc, name.wireEncode());
+
+    // SeqNo
+    entryLength += ndn::encoding::prependNonNegativeIntegerBlock(enc, tlv::SeqNo, seq);
+
+    totalLength += enc.prependVarNumber(entryLength);
+    totalLength += enc.prependVarNumber(tlv::MappingEntry);
+    totalLength += entryLength;
+  }
+
+  totalLength += ndn::encoding::prependBlock(enc, nodeId.wireEncode());
+
+  enc.prependVarNumber(totalLength);
+  enc.prependVarNumber(tlv::MappingData);
+  return enc.block();
+}
+
 MappingProvider::MappingProvider(const Name& syncPrefix,
                                  const NodeID& id,
                                  ndn::Face& face,
@@ -138,61 +193,6 @@ MappingProvider::parseMappingQueryDataName(const Name& name)
   info.high = name.get(-1).toNumber();
   info.nodeId = name.getPrefix(-3 - m_syncPrefix.size());
   return info;
-}
-
-Block
-MappingList::encode() const
-{
-  ndn::encoding::EncodingBuffer enc;
-  size_t totalLength = 0;
-
-  for (const auto& [seq, name] : pairs)
-  {
-    // Name
-    size_t entryLength = ndn::encoding::prependBlock(enc, name.wireEncode());
-
-    // SeqNo
-    entryLength += ndn::encoding::prependNonNegativeIntegerBlock(enc, tlv::SeqNo, seq);
-
-    totalLength += enc.prependVarNumber(entryLength);
-    totalLength += enc.prependVarNumber(tlv::MappingEntry);
-    totalLength += entryLength;
-  }
-
-  totalLength += ndn::encoding::prependBlock(enc, nodeId.wireEncode());
-
-  enc.prependVarNumber(totalLength);
-  enc.prependVarNumber(tlv::MappingData);
-  return enc.block();
-}
-
-MappingList::MappingList() = default;
-
-MappingList::MappingList(const NodeID& nid)
-  : nodeId(nid)
-{}
-
-MappingList::MappingList(const Block& block)
-{
-  block.parse();
-
-  for (auto it = block.elements_begin(); it != block.elements_end(); it++) {
-    if (it->type() == ndn::tlv::Name)
-    {
-      nodeId = NodeID(*it);
-      continue;
-    }
-
-    if (it->type() == tlv::MappingEntry)
-    {
-      it->parse();
-
-      SeqNo seqNo = ndn::encoding::readNonNegativeInteger(it->elements().at(0));
-      Name name(it->elements().at(1));
-      pairs.emplace_back(seqNo, name);
-      continue;
-    }
-  }
 }
 
 } // namespace ndn::svs
