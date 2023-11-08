@@ -102,7 +102,7 @@ protected:
   publishMsg(const std::string& msg)
   {
     // Encode the message into a Content TLV block, which is what the SVSync API expects
-    auto block = ndn::encoding::makeBinaryBlock(ndn::tlv::Content, msg.data(), msg.size());
+    auto block = ndn::encoding::makeStringBlock(ndn::tlv::Content, msg);
     m_svs->publishData(block, ndn::time::milliseconds(1000));
   }
 
