@@ -38,11 +38,16 @@ public:
   {
     // Use HMAC signing for Sync Interests
     // Note: this is not generally recommended, but is used here for simplicity
-    SecurityOptions securityOptions(m_keyChain);
-    securityOptions.interestSigner->signingInfo.setSigningHmacKey("dGhpcyBpcyBhIHNlY3JldCBtZXNzYWdl");
+    SecurityOptions secOpts(m_keyChain);
+    secOpts.interestSigner->signingInfo.setSigningHmacKey("dGhpcyBpcyBhIHNlY3JldCBtZXNzYWdl");
 
     // Sign data packets using SHA256 (for simplicity)
-    securityOptions.dataSigner->signingInfo.setSha256Signing();
+    secOpts.dataSigner->signingInfo.setSha256Signing();
+
+    // Do not fetch publications older than 10 seconds
+    SVSPubSubOptions opts;
+    opts.UseTimestamp = true;
+    opts.MaxPubAge = ndn::time::milliseconds(10000);
 
     // Create the Pub/Sub instance
     m_svsps = std::make_shared<SVSPubSub>(
@@ -50,7 +55,8 @@ public:
       ndn::Name(m_options.m_id),
       face,
       std::bind(&Program::onMissingData, this, _1),
-      securityOptions);
+      opts,
+      secOpts);
 
     std::cout << "SVS client starting:" << m_options.m_id << std::endl;
 

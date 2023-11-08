@@ -24,6 +24,8 @@
 
 namespace ndn::svs {
 
+using MappingEntryPair = std::pair<Name, std::vector<Block>>;
+
 /**
  * @brief TLV type for mapping list
  */
@@ -45,7 +47,7 @@ public:
 
 public:
   NodeID nodeId;
-  std::vector<std::pair<SeqNo, Name>> pairs;
+  std::vector<std::pair<SeqNo, MappingEntryPair>> pairs;
 };
 
 /**
@@ -65,17 +67,17 @@ public:
   using MappingListCallback = std::function<void(const MappingList&)>;
 
   /**
-   * @brief Insert a mapping into the store
+   * @brief Insert a mapping entry into the store
    */
   void
-  insertMapping(const NodeID& nodeId, const SeqNo& seqNo, const Name& appName);
+  insertMapping(const NodeID& nodeId, const SeqNo& seqNo, const MappingEntryPair& entry);
 
   /**
    * @brief Get a mapping and throw if not found
    *
    * @returns Corresponding application name
    */
-  Name
+  MappingEntryPair
   getMapping(const NodeID& nodeId, const SeqNo& seqNo);
 
   /**
@@ -127,7 +129,7 @@ private:
 
   ndn::ScopedRegisteredPrefixHandle m_registeredPrefix;
 
-  std::map<Name, Name> m_map;
+  std::map<Name, MappingEntryPair> m_map;
 };
 
 } // namespace ndn::svs

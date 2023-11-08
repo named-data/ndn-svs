@@ -24,16 +24,17 @@ SVSPubSub::SVSPubSub(const Name& syncPrefix,
                      const Name& nodePrefix,
                      ndn::Face& face,
                      UpdateCallback updateCallback,
-                     const SecurityOptions& securityOptions,
-                     std::shared_ptr<DataStore> dataStore)
+                     const SVSPubSubOptions& options,
+                     const SecurityOptions& securityOptions)
   : m_face(face)
   , m_syncPrefix(syncPrefix)
   , m_dataPrefix(nodePrefix)
   , m_onUpdate(std::move(updateCallback))
+  , m_opts(options)
   , m_securityOptions(securityOptions)
   , m_svsync(syncPrefix, nodePrefix, face,
              std::bind(&SVSPubSub::updateCallbackInternal, this, _1),
-             securityOptions, std::move(dataStore))
+             securityOptions, options.dataStore)
   , m_mappingProvider(syncPrefix, nodePrefix, face, securityOptions)
 {
   m_svsync.getCore().setGetExtraBlockCallback(std::bind(&SVSPubSub::onGetExtraData, this, _1));
@@ -42,7 +43,8 @@ SVSPubSub::SVSPubSub(const Name& syncPrefix,
 
 SeqNo
 SVSPubSub::publish(const Name& name, span<const uint8_t> value,
-                   const Name& nodePrefix, time::milliseconds freshnessPeriod)
+                   const Name& nodePrefix, time::milliseconds freshnessPeriod,
+                   std::vector<Block> mappingBlocks)
 {
   // Segment the data if larger than MAX_DATA_SIZE
   if (value.size() > MAX_DATA_SIZE) {
@@ -52,7 +54,8 @@ SVSPubSub::publish(const Name& name, span<const uint8_t> value,
     NodeID nid = nodePrefix == EMPTY_NAME ? m_dataPrefix : nodePrefix;
     SeqNo seqNo = m_svsync.getCore().getSeqNo(nid) + 1;
 
-    for (size_t i = 0; i < nSegments; i++) {
+    for (size_t i = 0; i < nSegments; i++)
+    {
       // Create encapsulated segment
       auto segmentName = Name(name).appendVersion(0).appendSegment(i);
       auto segment = Data(segmentName);
@@ -71,11 +74,12 @@ SVSPubSub::publish(const Name& name, span<const uint8_t> value,
     }
 
     // Insert mapping and manually update the sequence number
-    insertMapping(nid, seqNo, name);
+    insertMapping(nid, seqNo, name, mappingBlocks);
     m_svsync.getCore().updateSeqNo(seqNo, nid);
     return seqNo;
   }
-  else {
+  else
+  {
     ndn::Data data(name);
     data.setContent(value);
     data.setFreshnessPeriod(freshnessPeriod);
@@ -85,24 +89,43 @@ SVSPubSub::publish(const Name& name, span<const uint8_t> value,
 }
 
 SeqNo
-SVSPubSub::publishPacket(const Data& data, const Name& nodePrefix)
+SVSPubSub::publishPacket(const Data& data, const Name& nodePrefix,
+                         std::vector<Block> mappingBlocks)
 {
   NodeID nid = nodePrefix == EMPTY_NAME ? m_dataPrefix : nodePrefix;
   SeqNo seqNo = m_svsync.publishData(data.wireEncode(), data.getFreshnessPeriod(), nid, ndn::tlv::Data);
-  insertMapping(nid, seqNo, data.getName());
+  insertMapping(nid, seqNo, data.getName(), mappingBlocks);
   return seqNo;
 }
 
 void
-SVSPubSub::insertMapping(const NodeID& nid, SeqNo seqNo, const Name& name)
+SVSPubSub::insertMapping(const NodeID& nid, SeqNo seqNo, const Name& name,
+                         std::vector<Block> additional)
 {
+  // additional is a copy deliberately
+  // this way we can add well-known mappings to the list
+
+  // add timestamp block
+  if (m_opts.UseTimestamp) {
+    unsigned long now =
+      std::chrono::duration_cast<std::chrono::microseconds>
+        (std::chrono::system_clock::now().time_since_epoch()).count();
+    auto timestamp = Name::Component::fromNumber(now, tlv::TimestampNameComponent);
+    additional.push_back(timestamp);
+  }
+
+  // create mapping entry
+  MappingEntryPair entry = { name, additional };
+
+  // notify subscribers in next sync interest
   if (m_notificationMappingList.nodeId == EMPTY_NAME || m_notificationMappingList.nodeId == nid)
   {
     m_notificationMappingList.nodeId = nid;
-    m_notificationMappingList.pairs.emplace_back(seqNo, name);
+    m_notificationMappingList.pairs.push_back({ seqNo, entry });
   }
 
-  m_mappingProvider.insertMapping(nid, seqNo, name);
+  // send mapping to provider
+  m_mappingProvider.insertMapping(nid, seqNo, entry);
 }
 
 uint32_t
@@ -171,18 +194,14 @@ SVSPubSub::updateCallbackInternal(const std::vector<ndn::svs::MissingDataInfo>& 
       MissingDataInfo remainingInfo = stream;
 
       // Attemt to find what we already know about mapping
+      // This typically refers to the Sync Interest mapping optimization,
+      // where the Sync Interest contains the notification mapping list
       for (SeqNo i = remainingInfo.low; i <= remainingInfo.high; i++)
       {
         try
         {
-          Name mapping = m_mappingProvider.getMapping(stream.nodeId, i);
-          for (const auto& sub : m_prefixSubscriptions)
-          {
-           if (sub.prefix.isPrefixOf(mapping))
-            {
-              m_fetchMap[std::pair(stream.nodeId, i)].push_back(sub);
-            }
-          }
+          // throws if mapping not found
+          this->processMapping(stream.nodeId, i);
           remainingInfo.low++;
         }
         catch (const std::exception&)
@@ -205,17 +224,12 @@ SVSPubSub::updateCallbackInternal(const std::vector<ndn::svs::MissingDataInfo>& 
 
         m_mappingProvider.fetchNameMapping(truncatedRemainingInfo,
           [this, remainingInfo, streamName] (const MappingList& list) {
-            for (const auto& sub : m_prefixSubscriptions)
-            {
-              for (const auto& [seq, name] : list.pairs)
-              {
-                if (sub.prefix.isPrefixOf(name))
-                {
-                  m_fetchMap[std::pair(streamName, seq)].push_back(sub);
-                  fetchAll();
-                }
-              }
-            }
+            bool queued = false;
+            for (const auto& [seq, mapping] : list.pairs)
+              queued |= this->processMapping(streamName, seq);
+
+            if (queued)
+              this->fetchAll();
           }, -1);
 
         remainingInfo.low += 11;
@@ -225,6 +239,48 @@ SVSPubSub::updateCallbackInternal(const std::vector<ndn::svs::MissingDataInfo>& 
 
   fetchAll();
   m_onUpdate(info);
+}
+
+bool
+SVSPubSub::processMapping(const NodeID& nodeId, SeqNo seqNo)
+{
+  // this will throw if mapping not found
+  auto mapping = m_mappingProvider.getMapping(nodeId, seqNo);
+
+  // check if timestamp is too old
+  if (m_opts.MaxPubAge > time::milliseconds::zero())
+  {
+    // look for the additional timestamp block
+    // if no timestamp block is present, we just skip this step
+    for (const auto& block : mapping.second)
+    {
+      if (block.type() != tlv::TimestampNameComponent)
+        continue;
+
+      unsigned long now =
+        std::chrono::duration_cast<std::chrono::microseconds>
+          (std::chrono::system_clock::now().time_since_epoch()).count();
+
+      unsigned long pubTime = Name::Component(block).toNumber();
+      unsigned long maxAge = time::microseconds(m_opts.MaxPubAge).count();
+
+      if (now - pubTime > maxAge)
+        return false;
+    }
+  }
+
+  // check if known mapping matches subscription
+  bool queued = false;
+  for (const auto& sub : m_prefixSubscriptions)
+  {
+    if (sub.prefix.isPrefixOf(mapping.first))
+    {
+      m_fetchMap[std::pair(nodeId, seqNo)].push_back(sub);
+      queued = true;
+    }
+  }
+
+  return queued;
 }
 
 void

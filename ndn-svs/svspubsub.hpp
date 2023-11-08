@@ -28,6 +28,28 @@
 namespace ndn::svs {
 
 /**
+ * @brief Options for SVS pub/sub constructor
+ */
+struct SVSPubSubOptions
+{
+  /// @brief Interface to store data packets
+  std::shared_ptr<DataStore> dataStore = SVSync::DEFAULT_DATASTORE;
+
+  /**
+   * @brief Send publication timestamp in mapping blocks.
+   * This option should be enabled in all instances for
+   * correct usage of the MaxPubAge option.
+   */
+  bool UseTimestamp = true;
+
+  /**
+   * @brief Maximum age of publications to be fetched.
+   * The UseTimestamp option should be enabled for this to work.
+   */
+  time::milliseconds MaxPubAge = time::milliseconds::zero();
+};
+
+/**
  * @brief A pub/sub interface for SVS.
  *
  * This interface provides a high level API to use SVS for pub/sub applications.
@@ -50,8 +72,8 @@ public:
             const Name& nodePrefix,
             ndn::Face& face,
             UpdateCallback updateCallback,
-            const SecurityOptions& securityOptions = SecurityOptions::DEFAULT,
-            std::shared_ptr<DataStore> dataStore = SVSync::DEFAULT_DATASTORE);
+            const SVSPubSubOptions& options = SVSPubSubOptions(),
+            const SecurityOptions& securityOptions = SecurityOptions::DEFAULT);
 
   virtual
   ~SVSPubSub() = default;
@@ -84,11 +106,13 @@ public:
    * @param value data buffer
    * @param nodePrefix Name to publish the data under
    * @param freshnessPeriod freshness period for the data
+   * @param mappingBlocks Additional blocks to be published with the mapping (use sparingly)
    */
   SeqNo
   publish(const Name& name, span<const uint8_t> value,
           const Name& nodePrefix = EMPTY_NAME,
-          time::milliseconds freshnessPeriod = FRESH_FOREVER);
+          time::milliseconds freshnessPeriod = FRESH_FOREVER,
+          std::vector<Block> mappingBlocks = {});
 
   /**
    * @brief Subscribe to a application name prefix.
@@ -133,9 +157,12 @@ public:
    *
    * @param data Data packet to publish
    * @param nodePrefix Name to publish the data under
+   * @param mappingBlocks Additional blocks to be published with the mapping (use sparingly)
    */
   SeqNo
-  publishPacket(const Data& data, const Name& nodePrefix = EMPTY_NAME);
+  publishPacket(const Data& data,
+                const Name& nodePrefix = EMPTY_NAME,
+                std::vector<Block> mappingBlocks = {});
 
   /** @brief Get the underlying sync */
   SVSync&
@@ -166,8 +193,18 @@ private:
   void
   onRecvExtraData(const Block& block);
 
+  /// @brief Insert a mapping entry into the store
   void
-  insertMapping(const NodeID& nid, SeqNo seqNo, const Name& name);
+  insertMapping(const NodeID& nid, SeqNo seqNo, const Name& name,
+                std::vector<Block> additional);
+
+  /**
+   * @brief Get and process mapping from store.
+   * @returns true if new publications were queued for fetch
+   * @throws std::exception error if mapping is not found
+   */
+  bool
+  processMapping(const NodeID& nodeId, SeqNo seqNo);
 
   void
   fetchAll();
@@ -185,6 +222,7 @@ private:
   const Name m_syncPrefix;
   const Name m_dataPrefix;
   const UpdateCallback m_onUpdate;
+  const SVSPubSubOptions m_opts;
   const SecurityOptions m_securityOptions;
   SVSync m_svsync;
 

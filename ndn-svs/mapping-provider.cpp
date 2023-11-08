@@ -40,9 +40,16 @@ MappingList::MappingList(const Block& block)
     {
       it->parse();
 
+      // SeqNo and ApplicationName
       SeqNo seqNo = ndn::encoding::readNonNegativeInteger(it->elements().at(0));
       Name name(it->elements().at(1));
-      pairs.emplace_back(seqNo, name);
+
+      // Additional blocks
+      std::vector<Block> blocks;
+      for (auto it2 = it->elements().begin() + 2; it2 != it->elements().end(); it2++)
+        blocks.push_back(*it2);
+
+      pairs.push_back({ seqNo, std::make_pair(name, blocks) });
       continue;
     }
   }
@@ -54,10 +61,16 @@ MappingList::encode() const
   ndn::encoding::EncodingBuffer enc;
   size_t totalLength = 0;
 
-  for (const auto& [seq, name] : pairs)
+  for (const auto& [seq, mapping] : pairs)
   {
+    size_t entryLength = 0;
+
+    // Additional blocks
+    for (const auto& block : mapping.second)
+      entryLength += ndn::encoding::prependBlock(enc, block);
+
     // Name
-    size_t entryLength = ndn::encoding::prependBlock(enc, name.wireEncode());
+    entryLength += ndn::encoding::prependBlock(enc, mapping.first.wireEncode());
 
     // SeqNo
     entryLength += ndn::encoding::prependNonNegativeIntegerBlock(enc, tlv::SeqNo, seq);
@@ -91,12 +104,12 @@ MappingProvider::MappingProvider(const Name& syncPrefix,
 }
 
 void
-MappingProvider::insertMapping(const NodeID& nodeId, const SeqNo& seqNo, const Name& appName)
+MappingProvider::insertMapping(const NodeID& nodeId, const SeqNo& seqNo, const MappingEntryPair& entry)
 {
-  m_map[Name(nodeId).appendNumber(seqNo)] = appName;
+  m_map[Name(nodeId).appendNumber(seqNo)] = entry;
 }
 
-Name
+MappingEntryPair
 MappingProvider::getMapping(const NodeID& nodeId, const SeqNo& seqNo)
 {
   return m_map.at(Name(nodeId).appendNumber(seqNo));
@@ -111,8 +124,8 @@ MappingProvider::onMappingQuery(const Interest& interest)
   for (SeqNo i = query.low; i <= std::max(query.high, query.low); i++)
   {
     try {
-      Name name = getMapping(query.nodeId, i);
-      queryResponse.pairs.emplace_back(i, name);
+      auto mapping = getMapping(query.nodeId, i);
+      queryResponse.pairs.emplace_back(i, mapping);
     }
     catch (const std::exception&) {
       // TODO: don't give up if not everything is found
@@ -160,12 +173,12 @@ MappingProvider::fetchNameMapping(const MissingDataInfo& info,
     MappingList list(block);
 
     // Add all mappings to self
-    for (const auto& [seq, name] : list.pairs) {
+    for (const auto& [seq, mapping] : list.pairs) {
       try {
         getMapping(info.nodeId, seq);
       }
       catch (const std::exception&) {
-        insertMapping(info.nodeId, seq, name);
+        insertMapping(info.nodeId, seq, mapping);
       }
     }
 
