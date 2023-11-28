@@ -144,15 +144,13 @@ SVSyncCore::onSyncInterestValidated(const Interest &interest)
       in.push(boost::iostreams::array_source(reinterpret_cast<const char*>(vvBlock.value()), vvBlock.value_size()));
       ndn::OBufferStream decompressed;
       boost::iostreams::copy(in, decompressed);
-
       auto inner = ndn::Block::fromBuffer(decompressed.buf());
       if (!std::get<0>(inner)) {
-        throw ndn::tlv::Error("Failed to decode inner block");
+        NDN_THROW(ndn::tlv::Error("Failed to decode inner block"));
       }
-
       vvBlock = std::get<1>(inner);
 #else
-      throw ndn::tlv::Error("SVS was compiled without compression support");
+      NDN_THROW(ndn::tlv::Error("SVS was compiled without compression support"));
 #endif
     }
 
