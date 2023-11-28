@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2022 University of California, Los Angeles
+ * Copyright (c) 2012-2023 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -22,7 +22,7 @@ namespace ndn::svs {
 Fetcher::Fetcher(Face& face,
                  const SecurityOptions& securityOptions)
   : m_face(face)
-  , m_scheduler(face.getIoService())
+  , m_scheduler(face.getIoContext())
   , m_securityOptions(securityOptions)
 {}
 
@@ -87,13 +87,11 @@ Fetcher::onData(const Interest& interest, const Data& data,
   }
   else
   {
-    auto onDataValidated = [qi] (const Data& data)
-    {
+    auto onDataValidated = [qi] (const Data& data) {
       qi.afterSatisfied(qi.interest, data);
     };
 
-    auto onValidationFailed = [this, qi] (const Data& data, const ValidationError& error)
-    {
+    auto onValidationFailed = [this, qi] (const Data& data, const ValidationError& error) {
       if (qi.nRetriesOnValidationFail > 0) {
         this->m_scheduler.schedule(ndn::time::milliseconds(this->m_securityOptions.millisBeforeRetryOnValidationFail),
           [this, qi] {

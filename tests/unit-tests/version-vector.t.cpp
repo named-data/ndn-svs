@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2021 University of California, Los Angeles
+ * Copyright (c) 2012-2023 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -23,8 +23,9 @@ namespace ndn {
 namespace svs {
 namespace test {
 
-struct TestVersionVectorFixture
+class TestVersionVectorFixture
 {
+protected:
   TestVersionVectorFixture()
   {
     v.set("one", 1);
@@ -75,8 +76,9 @@ BOOST_AUTO_TEST_CASE(EncodeDecode)
 BOOST_AUTO_TEST_CASE(DecodeStatic)
 {
   // Hex: CA0A070508036F6E65CC0101CA0A0705080374776FCC0102
-  const char* encoded = "\xCA\x0A\x07\x05\x08\x03\x6F\x6E\x65\xCC\x01\x01\xCA\x0A\x07\x05\x08\x03\x74\x77\x6F\xCC\x01\x02";
-  VersionVector dv(ndn::encoding::makeBinaryBlock(tlv::StateVector, encoded, 24));
+  constexpr std::string_view encoded{"\xCA\x0A\x07\x05\x08\x03\x6F\x6E\x65\xCC\x01\x01"
+                                     "\xCA\x0A\x07\x05\x08\x03\x74\x77\x6F\xCC\x01\x02"};
+  VersionVector dv(ndn::encoding::makeStringBlock(tlv::StateVector, encoded));
   BOOST_CHECK_EQUAL(dv.get("one"), 1);
   BOOST_CHECK_EQUAL(dv.get("two"), 2);
 }
