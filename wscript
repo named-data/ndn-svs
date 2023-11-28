@@ -1,11 +1,12 @@
 # -*- Mode: python; py-indent-offset: 4; indent-tabs-mode: nil; coding: utf-8; -*-
 
-from waflib import Context, Logs, Utils
-import os, subprocess
+import os
+import subprocess
+from waflib import Context, Logs
 
 VERSION = '0.1.0'
 APPNAME = 'ndn-svs'
-GIT_TAG_PREFIX = 'ndn-svs-'
+GIT_TAG_PREFIX = ''
 
 def options(opt):
     opt.load(['compiler_cxx', 'gnu_dirs'])
@@ -32,7 +33,7 @@ def options(opt):
                       help='Build unit tests')
 
     optgrp.add_option('--with-compression', action='store_true', default=False,
-                      dest='with_compression', help='Build with state vector compression extension')
+                      help='Build with state vector compression extension')
 
 def configure(conf):
     conf.start_msg('Building static library')
@@ -67,18 +68,21 @@ def configure(conf):
     conf.find_program(['pkgconf', 'pkg-config'], var='PKGCONFIG')
 
     pkg_config_path = os.environ.get('PKG_CONFIG_PATH', f'{conf.env.LIBDIR}/pkgconfig')
-    conf.check_cfg(package='libndn-cxx', args=['libndn-cxx >= 0.8.0', '--cflags', '--libs'],
+    conf.check_cfg(package='libndn-cxx', args=['libndn-cxx >= 0.8.1', '--cflags', '--libs'],
                    uselib_store='NDN_CXX', pkg_config_path=pkg_config_path)
 
-    boost_libs = ['system']
-    if conf.env.WITH_TESTS:
-        boost_libs.append('unit_test_framework')
-
+    boost_libs = []
     if conf.options.with_compression:
         boost_libs.append('iostreams')
-        conf.define('COMPRESSION', 1)
 
     conf.check_boost(lib=boost_libs, mt=True)
+    if conf.env.BOOST_VERSION_NUMBER < 107100:
+        conf.fatal('The minimum supported version of Boost is 1.71.0.\n'
+                   'Please upgrade your distribution or manually install a newer version of Boost.\n'
+                   'For more information, see https://redmine.named-data.net/projects/nfd/wiki/Boost')
+
+    if conf.env.WITH_TESTS:
+        conf.check_boost(lib='unit_test_framework', mt=True, uselib_store='BOOST_TESTS')
 
     conf.check_compiler_flags()
 
@@ -91,6 +95,7 @@ def configure(conf):
     # system has a different version of the ndn-svs library installed.
     conf.env.prepend_value('STLIBPATH', ['.'])
 
+    conf.define_cond('COMPRESSION', conf.options.with_compression)
     conf.define_cond('HAVE_TESTS', conf.env.WITH_TESTS)
     # The config header will contain all defines that were added using conf.define()
     # or conf.define_cond().  Everything that was added directly to conf.env.DEFINES
@@ -101,21 +106,23 @@ def configure(conf):
 def build(bld):
     libndn_svs = dict(
         target='ndn-svs',
-        vnum=VERSION,
-        cnum=VERSION,
         source=bld.path.ant_glob('ndn-svs/**/*.cpp'),
-        use='NDN_CXX BOOST',
+        use='BOOST NDN_CXX',
         includes='ndn-svs .',
         export_includes='ndn-svs .',
         install_path='${LIBDIR}')
 
     if bld.env.enable_shared:
-        bld.shlib(name='ndn-svs',
-                  **libndn_svs)
+        bld.shlib(
+            name='ndn-svs',
+            vnum=VERSION,
+            cnum=VERSION,
+            **libndn_svs)
 
     if bld.env.enable_static:
-        bld.stlib(name='ndn-svs-static' if bld.env.enable_shared else 'ndn-svs',
-                  **libndn_svs)
+        bld.stlib(
+            name='ndn-svs-static' if bld.env.enable_shared else 'ndn-svs',
+            **libndn_svs)
 
     if bld.env.WITH_TESTS:
         bld.recurse('tests')
@@ -123,11 +130,10 @@ def build(bld):
     if bld.env.WITH_EXAMPLES:
         bld.recurse('examples')
 
+    # Install header files
     headers = bld.path.ant_glob('ndn-svs/**/*.hpp')
     bld.install_files('${INCLUDEDIR}', headers, relative_trick=True)
-
-    bld.install_files('${INCLUDEDIR}/ndn-svs',
-                      bld.path.find_resource('config.hpp'))
+    bld.install_files('${INCLUDEDIR}/ndn-svs', 'config.hpp')
 
     bld(features='subst',
         source='libndn-svs.pc.in',
@@ -169,16 +175,16 @@ def version(ctx):
     # first, try to get a version string from git
     gotVersionFromGit = False
     try:
-        cmd = ['git', 'describe', '--always', '--match', '%s*' % GIT_TAG_PREFIX]
-        out = subprocess.check_output(cmd, universal_newlines=True).strip()
+        cmd = ['git', 'describe', '--always', '--match', f'{GIT_TAG_PREFIX}*']
+        out = subprocess.run(cmd, capture_output=True, check=True, text=True).stdout.strip()
         if out:
             gotVersionFromGit = True
             if out.startswith(GIT_TAG_PREFIX):
                 Context.g_module.VERSION = out.lstrip(GIT_TAG_PREFIX)
             else:
                 # no tags matched
-                Context.g_module.VERSION = '%s-commit-%s' % (VERSION_BASE, out)
-    except (OSError, subprocess.CalledProcessError):
+                Context.g_module.VERSION = f'{VERSION_BASE}-commit-{out}'
+    except (OSError, subprocess.SubprocessError):
         pass
 
     versionFile = ctx.path.find_node('VERSION.info')
@@ -196,14 +202,14 @@ def version(ctx):
                 # already up-to-date
                 return
         except EnvironmentError as e:
-            Logs.warn('%s exists but is not readable (%s)' % (versionFile, e.strerror))
+            Logs.warn(f'{versionFile} exists but is not readable ({e.strerror})')
     else:
         versionFile = ctx.path.make_node('VERSION.info')
 
     try:
         versionFile.write(Context.g_module.VERSION)
     except EnvironmentError as e:
-        Logs.warn('%s is not writable (%s)' % (versionFile, e.strerror))
+        Logs.warn(f'{versionFile} is not writable ({e.strerror})')
 
 def dist(ctx):
     ctx.algo = 'tar.xz'

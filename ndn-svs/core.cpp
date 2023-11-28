@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2022 University of California, Los Angeles
+ * Copyright (c) 2012-2023 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -48,7 +48,7 @@ SVSyncCore::SVSyncCore(ndn::Face& face,
   , m_retxDist(m_periodicSyncTime.count() * (1.0 - m_periodicSyncJitter), m_periodicSyncTime.count() * (1.0 + m_periodicSyncJitter))
   , m_intrReplyDist(0, m_maxSuppressionTime.count())
   , m_keyChainMem("pib-memory:", "tpm-memory:")
-  , m_scheduler(m_face.getIoService())
+  , m_scheduler(m_face.getIoContext())
 {
   // Register sync interest filter
   m_syncRegisteredPrefix =
