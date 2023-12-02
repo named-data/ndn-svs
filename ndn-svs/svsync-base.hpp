@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2022 University of California, Los Angeles
+ * Copyright (c) 2012-2023 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -19,8 +19,8 @@
 
 #include "core.hpp"
 #include "fetcher.hpp"
-#include "store.hpp"
 #include "security-options.hpp"
+#include "store.hpp"
 
 namespace ndn::svs {
 
@@ -171,7 +171,7 @@ public:
 
 private:
   void
-  onDataInterest(const Interest &interest);
+  onDataInterest(const Interest& interest);
 
   void
   onDataValidated(const Data& data,
