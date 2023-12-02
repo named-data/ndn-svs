@@ -47,8 +47,8 @@ public:
 
     // Do not fetch publications older than 10 seconds
     SVSPubSubOptions opts;
-    opts.UseTimestamp = true;
-    opts.MaxPubAge = ndn::time::milliseconds(10000);
+    opts.useTimestamp = true;
+    opts.maxPubAge = ndn::time::seconds(10);
 
     // Create the Pub/Sub instance
     m_svsps = std::make_shared<SVSPubSub>(

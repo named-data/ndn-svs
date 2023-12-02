@@ -106,7 +106,7 @@ SVSPubSub::insertMapping(const NodeID& nid, SeqNo seqNo, const Name& name,
   // this way we can add well-known mappings to the list
 
   // add timestamp block
-  if (m_opts.UseTimestamp) {
+  if (m_opts.useTimestamp) {
     unsigned long now =
       std::chrono::duration_cast<std::chrono::microseconds>
         (std::chrono::system_clock::now().time_since_epoch()).count();
@@ -248,7 +248,7 @@ SVSPubSub::processMapping(const NodeID& nodeId, SeqNo seqNo)
   auto mapping = m_mappingProvider.getMapping(nodeId, seqNo);
 
   // check if timestamp is too old
-  if (m_opts.MaxPubAge > time::milliseconds::zero())
+  if (m_opts.maxPubAge > 0_ms)
   {
     // look for the additional timestamp block
     // if no timestamp block is present, we just skip this step
@@ -262,7 +262,7 @@ SVSPubSub::processMapping(const NodeID& nodeId, SeqNo seqNo)
           (std::chrono::system_clock::now().time_since_epoch()).count();
 
       unsigned long pubTime = Name::Component(block).toNumber();
-      unsigned long maxAge = time::microseconds(m_opts.MaxPubAge).count();
+      unsigned long maxAge = time::microseconds(m_opts.maxPubAge).count();
 
       if (now - pubTime > maxAge)
         return false;
