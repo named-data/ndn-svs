@@ -74,7 +74,7 @@ public:
             const Name& nodePrefix,
             ndn::Face& face,
             UpdateCallback updateCallback,
-            const SVSPubSubOptions& options = SVSPubSubOptions(),
+            const SVSPubSubOptions& options = {},
             const SecurityOptions& securityOptions = SecurityOptions::DEFAULT);
 
   virtual
@@ -187,7 +187,7 @@ private:
   onSyncData(const Data& syncData, const std::pair<Name, SeqNo>& publication);
 
   void
-  updateCallbackInternal(const std::vector<ndn::svs::MissingDataInfo>& info);
+  updateCallbackInternal(const std::vector<MissingDataInfo>& info);
 
   Block
   onGetExtraData(const VersionVector& vv);

@@ -150,7 +150,7 @@ SVSPubSub::subscribeToProducer(const Name& nodePrefix, const SubscriptionCallbac
 void
 SVSPubSub::unsubscribe(uint32_t handle)
 {
-  auto unsub = [](uint32_t handle, std::vector<Subscription> subs)
+  auto unsub = [handle](std::vector<Subscription> subs)
   {
     for (size_t i = 0; i < subs.size(); i++)
     {
@@ -162,12 +162,12 @@ SVSPubSub::unsubscribe(uint32_t handle)
     }
   };
 
-  unsub(handle, m_producerSubscriptions);
-  unsub(handle, m_prefixSubscriptions);
+  unsub(m_producerSubscriptions);
+  unsub(m_prefixSubscriptions);
 }
 
 void
-SVSPubSub::updateCallbackInternal(const std::vector<ndn::svs::MissingDataInfo>& info)
+SVSPubSub::updateCallbackInternal(const std::vector<MissingDataInfo>& info)
 {
   for (const auto& stream : info)
   {
@@ -368,7 +368,7 @@ SVSPubSub::onSyncData(const Data& firstData, const std::pair<Name, SeqNo>& publi
           auto innerName = Data(block.elements()[0]).getName().getPrefix(-2);
 
           // Function to send final buffer to subscriptions if possible
-          auto sendFinalBuffer = [this, innerName, publication, finalBuffer, bufSize, numFailed, numValidated, numElem] ()
+          auto sendFinalBuffer = [this, innerName, publication, finalBuffer, bufSize, numFailed, numValidated, numElem]
           {
             if (*numValidated + *numFailed != numElem)
               return;
