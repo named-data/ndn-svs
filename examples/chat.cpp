@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2021 University of California, Los Angeles
+ * Copyright (c) 2012-2023 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -16,6 +16,7 @@
 
 #include <iostream>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <vector>
 
@@ -30,7 +31,8 @@ struct Options
 class Program
 {
 public:
-  Program(const Options &options) : m_options(options)
+  Program(const Options& options)
+    : m_options(options)
   {
     // Use HMAC signing for Sync Interests
     // Note: this is not generally recommended, but is used here for simplicity
@@ -39,35 +41,34 @@ public:
 
     // Create the SVSync instance
     m_svs = std::make_shared<ndn::svs::SVSync>(
-      ndn::Name(m_options.prefix),                        // Sync prefix, common for all nodes in the group
-      ndn::Name(m_options.m_id),                          // Unique data prefix for this node
-      face,                                               // Shared NDN face
-      std::bind(&Program::onMissingData, this, _1),       // Callback on learning new sequence numbers from SVS
-      securityOptions);                                   // Security configuration
+      ndn::Name(m_options.prefix),                    // Sync prefix, common for all nodes in the group
+      ndn::Name(m_options.m_id),                      // Unique data prefix for this node
+      face,                                           // Shared NDN face
+      std::bind(&Program::onMissingData, this, _1),   // Callback on learning new sequence numbers from SVS
+      securityOptions);                               // Security configuration
 
-    std::cout << "SVS client starting:" << m_options.m_id << std::endl;
+    std::cout << "SVS client starting: " << m_options.m_id << std::endl;
   }
 
   void
   run()
   {
-    // Begin processing face events in a separate thread
-    std::thread thread_svs([this] { face.processEvents(); });
+    // Begin processing face events in a separate thread.
+    std::thread svsThread([this] { face.processEvents(); });
 
     // Announce our presence.
-    // Note that the SVSync instance is thread-safe
-    std::string init_msg = "User " + m_options.m_id + " has joined the groupchat";
-    publishMsg(init_msg);
+    // Note that the SVSync instance is thread-safe.
+    publishMsg("User " + m_options.m_id + " has joined the groupchat");
 
-    // Read from stdin and publish messages
-    std::string userInput = "";
+    // Read from stdin and publish messages.
+    std::string userInput;
     while (true) {
       std::getline(std::cin, userInput);
       publishMsg(userInput);
     }
 
-    // Wait for the SVSync thread to finish on exit
-    thread_svs.join();
+    // Wait for the SVSync thread to finish on exit.
+    svsThread.join();
   }
 
 protected:
@@ -85,12 +86,12 @@ protected:
       {
         // Request a single data packet using the SVSync API
         ndn::svs::NodeID nid = v[i].nodeId;
-        m_svs->fetchData(nid, s, [nid] (const ndn::Data& data)
-          {
-            const std::string content(reinterpret_cast<const char*>(data.getContent().value()),
-                                      data.getContent().value_size());
-            std::cout << data.getName() << " : " << content << std::endl;
-          });
+        m_svs->fetchData(nid, s, [nid] (const auto& data)
+        {
+          std::string content(reinterpret_cast<const char*>(data.getContent().value()),
+                              data.getContent().value_size());
+          std::cout << data.getName() << " : " << content << std::endl;
+        });
       }
     }
   }
@@ -99,11 +100,11 @@ protected:
    * Publish a string message to the SVSync group
    */
   void
-  publishMsg(const std::string& msg)
+  publishMsg(std::string_view msg)
   {
     // Encode the message into a Content TLV block, which is what the SVSync API expects
     auto block = ndn::encoding::makeStringBlock(ndn::tlv::Content, msg);
-    m_svs->publishData(block, ndn::time::milliseconds(1000));
+    m_svs->publishData(block, ndn::time::seconds(1));
   }
 
 public:
@@ -114,11 +115,11 @@ public:
 };
 
 int
-main(int argc, char **argv)
+main(int argc, char** argv)
 {
   if (argc != 2) {
-    std::cout << "Usage: client <prefix>" << std::endl;
-    exit(1);
+    std::cerr << "Usage: " << argv[0] << " <prefix>" << std::endl;
+    return 1;
   }
 
   Options opt;
@@ -127,5 +128,6 @@ main(int argc, char **argv)
 
   Program program(opt);
   program.run();
+
   return 0;
 }

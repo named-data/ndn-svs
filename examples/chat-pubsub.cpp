@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2022 University of California, Los Angeles
+ * Copyright (c) 2012-2023 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -14,12 +14,13 @@
  * PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
  */
 
+#include <ctime>
+#include <functional>
 #include <iostream>
 #include <string>
 #include <thread>
 #include <vector>
-#include <functional>
-#include <ctime>
+
 #include <ndn-svs/svspubsub.hpp>
 
 using namespace ndn::svs;
@@ -33,7 +34,7 @@ struct Options
 class Program
 {
 public:
-  Program(const Options &options)
+  Program(const Options& options)
     : m_options(options)
   {
     // Use HMAC signing for Sync Interests
@@ -58,7 +59,7 @@ public:
       opts,
       secOpts);
 
-    std::cout << "SVS client starting:" << m_options.m_id << std::endl;
+    std::cout << "SVS client starting: " << m_options.m_id << std::endl;
 
     // Subscribe to all data packets with prefix /chat (the "topic")
     m_svsps->subscribe(ndn::Name("/chat"), [] (const auto& subData)
@@ -79,23 +80,22 @@ public:
   void
   run()
   {
-    // Begin processing face events in a separate thread
-    std::thread thread_svs([this] { face.processEvents(); });
+    // Begin processing face events in a separate thread.
+    std::thread svsThread([this] { face.processEvents(); });
 
     // Announce our presence.
-    // Note that the SVS-PS instance is thread-safe
-    std::string init_msg = "User " + m_options.m_id + " has joined the groupchat";
-    publishMsg(init_msg);
+    // Note that the SVS-PS instance is thread-safe.
+    publishMsg("User " + m_options.m_id + " has joined the groupchat");
 
-    // Read from stdin and publish messages
-    std::string userInput = "";
+    // Read from stdin and publish messages.
+    std::string userInput;
     while (true) {
       std::getline(std::cin, userInput);
       publishMsg(userInput);
     }
 
-    // Wait for the SVS-PS thread to finish
-    thread_svs.join();
+    // Wait for the SVS-PS thread to finish.
+    svsThread.join();
   }
 
 protected:
@@ -148,11 +148,12 @@ private:
   ndn::KeyChain m_keyChain;
 };
 
-int main(int argc, char **argv)
+int
+main(int argc, char** argv)
 {
   if (argc != 2) {
-    std::cout << "Usage: client <prefix>" << std::endl;
-    exit(1);
+    std::cerr << "Usage: " << argv[0] << " <prefix>" << std::endl;
+    return 1;
   }
 
   Options opt;
@@ -161,5 +162,6 @@ int main(int argc, char **argv)
 
   Program program(opt);
   program.run();
+
   return 0;
 }
