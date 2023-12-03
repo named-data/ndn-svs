@@ -18,6 +18,8 @@
 
 #include <ndn-cxx/util/segment-fetcher.hpp>
 
+#include <chrono>
+
 namespace ndn::svs {
 
 SVSPubSub::SVSPubSub(const Name& syncPrefix,

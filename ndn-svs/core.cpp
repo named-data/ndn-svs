@@ -22,6 +22,8 @@
 #include <ndn-cxx/security/signing-helpers.hpp>
 #include <ndn-cxx/security/verification-helpers.hpp>
 
+#include <chrono>
+
 #ifdef NDN_SVS_COMPRESSION
 #include <boost/iostreams/copy.hpp>
 #include <boost/iostreams/device/array.hpp>
@@ -45,7 +47,8 @@ SVSyncCore::SVSyncCore(ndn::Face& face,
   , m_periodicSyncTime(30_s)
   , m_periodicSyncJitter(0.1)
   , m_rng(ndn::random::getRandomNumberEngine())
-  , m_retxDist(m_periodicSyncTime.count() * (1.0 - m_periodicSyncJitter), m_periodicSyncTime.count() * (1.0 + m_periodicSyncJitter))
+  , m_retxDist(m_periodicSyncTime.count() * (1.0 - m_periodicSyncJitter),
+               m_periodicSyncTime.count() * (1.0 + m_periodicSyncJitter))
   , m_intrReplyDist(0, m_maxSuppressionTime.count())
   , m_keyChainMem("pib-memory:", "tpm-memory:")
   , m_scheduler(m_face.getIoContext())
@@ -382,7 +385,7 @@ long
 SVSyncCore::getCurrentTime() const
 {
   return std::chrono::duration_cast<std::chrono::microseconds>(
-    m_steadyClock.now().time_since_epoch()).count();
+    std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 
 bool

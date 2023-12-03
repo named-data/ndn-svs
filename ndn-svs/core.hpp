@@ -25,7 +25,6 @@
 #include <ndn-cxx/util/scheduler.hpp>
 
 #include <atomic>
-#include <chrono>
 #include <mutex>
 
 namespace ndn::svs {
@@ -286,8 +285,6 @@ private:
   mutable std::mutex m_schedulerMutex;
   scheduler::ScopedEventId m_retxEvent;
   scheduler::ScopedEventId m_packetEvent;
-
-  std::chrono::steady_clock m_steadyClock;
 
   // Time at which the next sync interest will be sent
   std::atomic_long m_nextSyncInterest;
