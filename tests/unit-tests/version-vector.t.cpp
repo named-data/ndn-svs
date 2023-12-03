@@ -19,23 +19,24 @@
 
 #include "tests/boost-test.hpp"
 
-namespace ndn {
-namespace svs {
-namespace test {
+namespace ndn::tests {
 
-class TestVersionVectorFixture
+using namespace ndn::svs;
+
+class VersionVectorFixture
 {
 protected:
-  TestVersionVectorFixture()
+  VersionVectorFixture()
   {
     v.set("one", 1);
     v.set("two", 2);
   }
 
+protected:
   VersionVector v;
 };
 
-BOOST_FIXTURE_TEST_SUITE(TestVersionVector, TestVersionVectorFixture)
+BOOST_FIXTURE_TEST_SUITE(TestVersionVector, VersionVectorFixture)
 
 BOOST_AUTO_TEST_CASE(Get)
 {
@@ -78,7 +79,7 @@ BOOST_AUTO_TEST_CASE(DecodeStatic)
   // Hex: CA0A070508036F6E65CC0101CA0A0705080374776FCC0102
   constexpr std::string_view encoded{"\xCA\x0A\x07\x05\x08\x03\x6F\x6E\x65\xCC\x01\x01"
                                      "\xCA\x0A\x07\x05\x08\x03\x74\x77\x6F\xCC\x01\x02"};
-  VersionVector dv(ndn::encoding::makeStringBlock(tlv::StateVector, encoded));
+  VersionVector dv(ndn::encoding::makeStringBlock(svs::tlv::StateVector, encoded));
   BOOST_CHECK_EQUAL(dv.get("one"), 1);
   BOOST_CHECK_EQUAL(dv.get("two"), 2);
 }
@@ -103,6 +104,4 @@ BOOST_AUTO_TEST_CASE(Ordering)
 
 BOOST_AUTO_TEST_SUITE_END()
 
-} // namespace ndn
-} // namespace ndn
-} // namespace ndn
+} // namespace ndn::tests

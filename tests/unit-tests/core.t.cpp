@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2021 University of California, Los Angeles
+ * Copyright (c) 2012-2023 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -18,31 +18,28 @@
 
 #include "tests/boost-test.hpp"
 
-namespace ndn {
-namespace svs {
-namespace test {
+namespace ndn::tests {
 
-struct TestCoreFixture
+using namespace ndn::svs;
+
+class CoreFixture
 {
-  TestCoreFixture()
+protected:
+  CoreFixture()
     : m_syncPrefix("/ndn/test")
-    , m_core(m_face, m_syncPrefix, std::bind(&TestCoreFixture::update, this, _1))
+    , m_core(m_face, m_syncPrefix, [] (auto&&...) {})
   {
   }
 
+protected:
   Face m_face;
   Name m_syncPrefix;
   SVSyncCore m_core;
-
-  void
-  update(const std::vector<MissingDataInfo>& v)
-  {
-  }
 };
 
-BOOST_FIXTURE_TEST_SUITE(TestCore, TestCoreFixture)
+BOOST_FIXTURE_TEST_SUITE(TestCore, CoreFixture)
 
-BOOST_AUTO_TEST_CASE(mergeStateVector)
+BOOST_AUTO_TEST_CASE(MergeStateVector)
 {
   std::vector<MissingDataInfo> missingData;
 
@@ -74,7 +71,7 @@ BOOST_AUTO_TEST_CASE(mergeStateVector)
   BOOST_CHECK_EQUAL(v.get("two"), 2);
   BOOST_CHECK_EQUAL(v.get("three"), 3);
 
-  BOOST_CHECK_EQUAL(missingData.size(), 1);
+  BOOST_REQUIRE_EQUAL(missingData.size(), 1);
   BOOST_CHECK_EQUAL(missingData[0].nodeId, "three");
   BOOST_CHECK_EQUAL(missingData[0].low, 1);
   BOOST_CHECK_EQUAL(missingData[0].high, 3);
@@ -82,6 +79,4 @@ BOOST_AUTO_TEST_CASE(mergeStateVector)
 
 BOOST_AUTO_TEST_SUITE_END()
 
-} // namespace ndn
-} // namespace ndn
-} // namespace ndn
+} // namespace ndn::tests
