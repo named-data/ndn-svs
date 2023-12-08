@@ -152,13 +152,13 @@ SVSPubSub::subscribeToProducer(const Name& nodePrefix, const SubscriptionCallbac
 void
 SVSPubSub::unsubscribe(uint32_t handle)
 {
-  auto unsub = [handle](std::vector<Subscription> subs)
+  auto unsub = [handle](std::vector<Subscription>& subs)
   {
-    for (size_t i = 0; i < subs.size(); i++)
+    for (auto it = subs.begin(); it != subs.end(); ++it)
     {
-      if (subs[i].id == handle)
+      if (it->id == handle)
       {
-        subs.erase(subs.begin() + i);
+        subs.erase(it);
         return;
       }
     }
