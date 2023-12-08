@@ -37,16 +37,18 @@ struct SVSPubSubOptions
 
   /**
    * @brief Send publication timestamp in mapping blocks.
+   *
    * This option should be enabled in all instances for
-   * correct usage of the MaxPubAge option.
+   * correct usage of the maxPubAge option.
    */
-  bool UseTimestamp = true;
+  bool useTimestamp = true;
 
   /**
    * @brief Maximum age of publications to be fetched.
-   * The UseTimestamp option should be enabled for this to work.
+   *
+   * The useTimestamp option should be enabled for this to work.
    */
-  time::milliseconds MaxPubAge = time::milliseconds::zero();
+  time::milliseconds maxPubAge = 0_ms;
 };
 
 /**
@@ -72,7 +74,7 @@ public:
             const Name& nodePrefix,
             ndn::Face& face,
             UpdateCallback updateCallback,
-            const SVSPubSubOptions& options = SVSPubSubOptions(),
+            const SVSPubSubOptions& options = {},
             const SecurityOptions& securityOptions = SecurityOptions::DEFAULT);
 
   virtual
@@ -185,7 +187,7 @@ private:
   onSyncData(const Data& syncData, const std::pair<Name, SeqNo>& publication);
 
   void
-  updateCallbackInternal(const std::vector<ndn::svs::MissingDataInfo>& info);
+  updateCallbackInternal(const std::vector<MissingDataInfo>& info);
 
   Block
   onGetExtraData(const VersionVector& vv);

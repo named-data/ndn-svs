@@ -18,6 +18,8 @@
 
 #include <ndn-cxx/util/segment-fetcher.hpp>
 
+#include <chrono>
+
 namespace ndn::svs {
 
 SVSPubSub::SVSPubSub(const Name& syncPrefix,
@@ -106,7 +108,7 @@ SVSPubSub::insertMapping(const NodeID& nid, SeqNo seqNo, const Name& name,
   // this way we can add well-known mappings to the list
 
   // add timestamp block
-  if (m_opts.UseTimestamp) {
+  if (m_opts.useTimestamp) {
     unsigned long now =
       std::chrono::duration_cast<std::chrono::microseconds>
         (std::chrono::system_clock::now().time_since_epoch()).count();
@@ -150,7 +152,7 @@ SVSPubSub::subscribeToProducer(const Name& nodePrefix, const SubscriptionCallbac
 void
 SVSPubSub::unsubscribe(uint32_t handle)
 {
-  auto unsub = [](uint32_t handle, std::vector<Subscription> subs)
+  auto unsub = [handle](std::vector<Subscription> subs)
   {
     for (size_t i = 0; i < subs.size(); i++)
     {
@@ -162,12 +164,12 @@ SVSPubSub::unsubscribe(uint32_t handle)
     }
   };
 
-  unsub(handle, m_producerSubscriptions);
-  unsub(handle, m_prefixSubscriptions);
+  unsub(m_producerSubscriptions);
+  unsub(m_prefixSubscriptions);
 }
 
 void
-SVSPubSub::updateCallbackInternal(const std::vector<ndn::svs::MissingDataInfo>& info)
+SVSPubSub::updateCallbackInternal(const std::vector<MissingDataInfo>& info)
 {
   for (const auto& stream : info)
   {
@@ -248,7 +250,7 @@ SVSPubSub::processMapping(const NodeID& nodeId, SeqNo seqNo)
   auto mapping = m_mappingProvider.getMapping(nodeId, seqNo);
 
   // check if timestamp is too old
-  if (m_opts.MaxPubAge > time::milliseconds::zero())
+  if (m_opts.maxPubAge > 0_ms)
   {
     // look for the additional timestamp block
     // if no timestamp block is present, we just skip this step
@@ -262,7 +264,7 @@ SVSPubSub::processMapping(const NodeID& nodeId, SeqNo seqNo)
           (std::chrono::system_clock::now().time_since_epoch()).count();
 
       unsigned long pubTime = Name::Component(block).toNumber();
-      unsigned long maxAge = time::microseconds(m_opts.MaxPubAge).count();
+      unsigned long maxAge = time::microseconds(m_opts.maxPubAge).count();
 
       if (now - pubTime > maxAge)
         return false;
@@ -368,7 +370,7 @@ SVSPubSub::onSyncData(const Data& firstData, const std::pair<Name, SeqNo>& publi
           auto innerName = Data(block.elements()[0]).getName().getPrefix(-2);
 
           // Function to send final buffer to subscriptions if possible
-          auto sendFinalBuffer = [this, innerName, publication, finalBuffer, bufSize, numFailed, numValidated, numElem] ()
+          auto sendFinalBuffer = [this, innerName, publication, finalBuffer, bufSize, numFailed, numValidated, numElem]
           {
             if (*numValidated + *numFailed != numElem)
               return;

@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2022 University of California, Los Angeles
+ * Copyright (c) 2012-2023 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -25,7 +25,6 @@
 #include <ndn-cxx/util/scheduler.hpp>
 
 #include <atomic>
-#include <chrono>
 #include <mutex>
 
 namespace ndn::svs {
@@ -128,11 +127,13 @@ public:
   using RecvExtraBlockCallback = std::function<void(const ndn::Block&, const VersionVector&)>;
 
   /**
-  * @brief Callback to get extra data block for sync interest
-  * The version vector will be locked during the duration of this callback,
-  * so it must return FAST
-  */
-  void setGetExtraBlockCallback(const GetExtraBlockCallback& callback)
+   * @brief Callback to get extra data block for sync interest.
+   *
+   * The version vector will be locked during the duration of this callback,
+   * so it must return FAST!
+   */
+  void
+  setGetExtraBlockCallback(const GetExtraBlockCallback& callback)
   {
     m_getExtraBlock = callback;
   }
@@ -141,7 +142,8 @@ public:
    * @brief Callback on receiving extra data in a sync interest.
    * Will be called BEFORE the interest is processed.
    */
-  void setRecvExtraBlockCallback(const RecvExtraBlockCallback& callback)
+  void
+  setRecvExtraBlockCallback(const RecvExtraBlockCallback& callback)
   {
     m_recvExtraBlock = callback;
   }
@@ -162,10 +164,10 @@ public:
 
 NDN_SVS_PUBLIC_WITH_TESTS_ELSE_PRIVATE:
   void
-  onSyncInterest(const Interest &interest);
+  onSyncInterest(const Interest& interest);
 
   void
-  onSyncInterestValidated(const Interest &interest);
+  onSyncInterestValidated(const Interest& interest);
 
   /**
    * @brief Mark the instance as initialized and send the first interest
@@ -211,7 +213,7 @@ NDN_SVS_PUBLIC_WITH_TESTS_ELSE_PRIVATE:
    * @returns if recorded successfully
    */
   bool
-  recordVector(const VersionVector &vvOther);
+  recordVector(const VersionVector& vvOther);
 
   /**
    * @brief Enter suppression state by setting
@@ -222,7 +224,7 @@ NDN_SVS_PUBLIC_WITH_TESTS_ELSE_PRIVATE:
    * @param vvOther first vector to record
    */
   void
-  enterSuppressionState(const VersionVector &vvOther);
+  enterSuppressionState(const VersionVector& vvOther);
 
   /// @brief Reference to scheduler
   ndn::Scheduler&
@@ -283,8 +285,6 @@ private:
   mutable std::mutex m_schedulerMutex;
   scheduler::ScopedEventId m_retxEvent;
   scheduler::ScopedEventId m_packetEvent;
-
-  std::chrono::steady_clock m_steadyClock;
 
   // Time at which the next sync interest will be sent
   std::atomic_long m_nextSyncInterest;

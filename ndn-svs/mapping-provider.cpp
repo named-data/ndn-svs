@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2022 University of California, Los Angeles
+ * Copyright (c) 2012-2023 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -141,7 +141,7 @@ MappingProvider::onMappingQuery(const Interest& interest)
 
   Data data(interest.getName());
   data.setContent(queryResponse.encode());
-  data.setFreshnessPeriod(ndn::time::milliseconds(1000));
+  data.setFreshnessPeriod(1_s);
   m_securityOptions.dataSigner->sign(data);
   m_face.put(data);
 }
@@ -163,9 +163,9 @@ MappingProvider::fetchNameMapping(const MissingDataInfo& info,
 {
   Name queryName = getMappingQueryDataName(info);
   Interest interest(queryName);
-  interest.setMustBeFresh(false);
   interest.setCanBePrefix(false);
-  interest.setInterestLifetime(ndn::time::milliseconds(2000));
+  interest.setMustBeFresh(false);
+  interest.setInterestLifetime(2_s);
 
   auto onDataValidated = [this, onValidated, info] (const Data& data)
   {
@@ -195,7 +195,10 @@ MappingProvider::fetchNameMapping(const MissingDataInfo& info,
 Name
 MappingProvider::getMappingQueryDataName(const MissingDataInfo& info)
 {
-  return Name(info.nodeId).append(m_syncPrefix).append("MAPPING").appendNumber(info.low).appendNumber(info.high);
+  return Name(info.nodeId).append(m_syncPrefix)
+                          .append("MAPPING")
+                          .appendNumber(info.low)
+                          .appendNumber(info.high);
 }
 
 MissingDataInfo

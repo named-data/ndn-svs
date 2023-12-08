@@ -17,16 +17,18 @@
 #include "core.hpp"
 #include "tlv.hpp"
 
-#include <ndn-cxx/security/signing-helpers.hpp>
-#include <ndn-cxx/security/verification-helpers.hpp>
 #include <ndn-cxx/encoding/buffer-stream.hpp>
 #include <ndn-cxx/lp/tags.hpp>
+#include <ndn-cxx/security/signing-helpers.hpp>
+#include <ndn-cxx/security/verification-helpers.hpp>
+
+#include <chrono>
 
 #ifdef NDN_SVS_COMPRESSION
-#include <boost/iostreams/filter/lzma.hpp>
 #include <boost/iostreams/copy.hpp>
 #include <boost/iostreams/device/array.hpp>
 #include <boost/iostreams/filtering_stream.hpp>
+#include <boost/iostreams/filter/lzma.hpp>
 #endif
 
 namespace ndn::svs {
@@ -45,7 +47,8 @@ SVSyncCore::SVSyncCore(ndn::Face& face,
   , m_periodicSyncTime(30_s)
   , m_periodicSyncJitter(0.1)
   , m_rng(ndn::random::getRandomNumberEngine())
-  , m_retxDist(m_periodicSyncTime.count() * (1.0 - m_periodicSyncJitter), m_periodicSyncTime.count() * (1.0 + m_periodicSyncJitter))
+  , m_retxDist(m_periodicSyncTime.count() * (1.0 - m_periodicSyncJitter),
+               m_periodicSyncTime.count() * (1.0 + m_periodicSyncJitter))
   , m_intrReplyDist(0, m_maxSuppressionTime.count())
   , m_keyChainMem("pib-memory:", "tpm-memory:")
   , m_scheduler(m_face.getIoContext())
@@ -55,27 +58,23 @@ SVSyncCore::SVSyncCore(ndn::Face& face,
     m_face.setInterestFilter(syncPrefix,
                              std::bind(&SVSyncCore::onSyncInterest, this, _2),
                              std::bind(&SVSyncCore::sendInitialInterest, this),
-                             [] (auto&&...) {
-                                NDN_THROW(Error("Failed to register sync prefix"));
-                             });
+                             [] (auto&&...) { NDN_THROW(Error("Failed to register sync prefix")); });
 }
 
-inline int
+static inline int
 suppressionCurve(int constFactor, int value)
 {
-  /**
-   * This curve increases the probability that only one or a few
-   * nodes pick lower values for timers compared to other nodes.
-   * This leads to better suppression results.
-   * Increasing the curve factor makes the curve steeper =>
-   * better for more nodes, but worse for fewer nodes.
-   */
+  // This curve increases the probability that only one or a few
+  // nodes pick lower values for timers compared to other nodes.
+  // This leads to better suppression results.
+  // Increasing the curve factor makes the curve steeper =>
+  // better for more nodes, but worse for fewer nodes.
 
   double c = constFactor;
   double v = value;
   double f = 10.0; // curve factor
 
-  return (int) (c * (1.0 - std::exp((v - c) / (c / f))));
+  return static_cast<int>(c * (1.0 - std::exp((v - c) / (c / f))));
 }
 
 void
@@ -83,14 +82,14 @@ SVSyncCore::sendInitialInterest()
 {
   // Wait for 100ms before sending the first sync interest
   // This is necessary to give other things time to initialize
-  m_scheduler.schedule(time::milliseconds(100), [this] {
+  m_scheduler.schedule(100_ms, [this] {
     m_initialized = true;
     retxSyncInterest(true, 0);
   });
 }
 
 void
-SVSyncCore::onSyncInterest(const Interest &interest)
+SVSyncCore::onSyncInterest(const Interest& interest)
 {
   switch (m_securityOptions.interestSigner->signingInfo.getSignerType())
   {
@@ -106,7 +105,7 @@ SVSyncCore::onSyncInterest(const Interest &interest)
       return;
 
     default:
-      if (static_cast<bool>(m_securityOptions.validator))
+      if (m_securityOptions.validator)
         m_securityOptions.validator->validate(interest,
                                               std::bind(&SVSyncCore::onSyncInterestValidated, this, _1),
                                               nullptr);
@@ -117,9 +116,9 @@ SVSyncCore::onSyncInterest(const Interest &interest)
 }
 
 void
-SVSyncCore::onSyncInterestValidated(const Interest &interest)
+SVSyncCore::onSyncInterestValidated(const Interest& interest)
 {
-  const auto &n = interest.getName();
+  const auto& n = interest.getName();
 
   // Get incoming face
   uint64_t incomingFace = 0;
@@ -137,22 +136,20 @@ SVSyncCore::onSyncInterestValidated(const Interest &interest)
     ndn::Block vvBlock = n.get(-2);
 
     // Decompress if necessary
-    if (vvBlock.type() == 211) {
+    if (vvBlock.type() == tlv::StateVectorLzma) {
 #ifdef NDN_SVS_COMPRESSION
       boost::iostreams::filtering_istreambuf in;
       in.push(boost::iostreams::lzma_decompressor());
       in.push(boost::iostreams::array_source(reinterpret_cast<const char*>(vvBlock.value()), vvBlock.value_size()));
       ndn::OBufferStream decompressed;
       boost::iostreams::copy(in, decompressed);
-
       auto inner = ndn::Block::fromBuffer(decompressed.buf());
       if (!std::get<0>(inner)) {
-        throw ndn::tlv::Error("Failed to decode inner block");
+        NDN_THROW(ndn::tlv::Error("Failed to decode inner block"));
       }
-
       vvBlock = std::get<1>(inner);
 #else
-      throw ndn::tlv::Error("SVS was compiled without compression support");
+      NDN_THROW(ndn::tlv::Error("SVS was compiled without compression support"));
 #endif
     }
 
@@ -181,7 +178,7 @@ SVSyncCore::onSyncInterestValidated(const Interest &interest)
   // Callback if missing data found
   if (!missingData.empty())
   {
-    for (auto &e : missingData)
+    for (auto& e : missingData)
       e.incomingFace = incomingFace;
     m_onUpdate(missingData);
   }
@@ -273,13 +270,12 @@ SVSyncCore::sendSyncInterest()
   in.push(boost::iostreams::array_source(reinterpret_cast<const char*>(vvWire.data()), vvWire.size()));
   ndn::OBufferStream compressed;
   boost::iostreams::copy(in, compressed);
-  vvWire = ndn::Block(svs::tlv::StateVectorLzma, compressed.buf());
+  vvWire = ndn::Block(tlv::StateVectorLzma, compressed.buf());
 #endif
 
   syncName.append(Name::Component(vvWire));
-
   interest.setName(syncName);
-  interest.setInterestLifetime(time::milliseconds(1));
+  interest.setInterestLifetime(1_ms);
 
   switch (m_securityOptions.interestSigner->signingInfo.getSignerType())
   {
@@ -299,7 +295,7 @@ SVSyncCore::sendSyncInterest()
 }
 
 std::tuple<bool, bool, std::vector<MissingDataInfo>>
-SVSyncCore::mergeStateVector(const VersionVector &vvOther)
+SVSyncCore::mergeStateVector(const VersionVector& vvOther)
 {
   std::lock_guard<std::mutex> lock(m_vvMutex);
 
@@ -389,15 +385,16 @@ long
 SVSyncCore::getCurrentTime() const
 {
   return std::chrono::duration_cast<std::chrono::microseconds>(
-    m_steadyClock.now().time_since_epoch()).count();
+    std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 
 bool
-SVSyncCore::recordVector(const VersionVector &vvOther)
+SVSyncCore::recordVector(const VersionVector& vvOther)
 {
   std::lock_guard<std::mutex> lock(m_recordedVvMutex);
 
-  if (!m_recordedVv) return false;
+  if (!m_recordedVv)
+    return false;
 
   std::lock_guard<std::mutex> lock1(m_vvMutex);
 
@@ -417,7 +414,7 @@ SVSyncCore::recordVector(const VersionVector &vvOther)
 }
 
 void
-SVSyncCore::enterSuppressionState(const VersionVector &vvOther)
+SVSyncCore::enterSuppressionState(const VersionVector& vvOther)
 {
   std::lock_guard<std::mutex> lock(m_recordedVvMutex);
 

@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2022 University of California, Los Angeles
+ * Copyright (c) 2012-2023 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -16,7 +16,6 @@
 
 #include "svsync-base.hpp"
 #include "store-memory.hpp"
-#include "tlv.hpp"
 
 #include <ndn-cxx/security/signing-helpers.hpp>
 
@@ -95,7 +94,7 @@ SVSyncBase::insertDataSegment(const Block& content, const ndn::time::millisecond
 }
 
 void
-SVSyncBase::onDataInterest(const Interest &interest)
+SVSyncBase::onDataInterest(const Interest& interest)
 {
   auto data = m_dataStore->find(interest);
   if (data != nullptr)
@@ -122,7 +121,7 @@ SVSyncBase::fetchData(const NodeID& nid, const SeqNo& seqNo,
   Name interestName = getDataName(nid, seqNo);
   Interest interest(interestName);
   interest.setCanBePrefix(true);
-  interest.setInterestLifetime(ndn::time::milliseconds(2000));
+  interest.setInterestLifetime(2_s);
 
   m_fetcher.expressInterest(interest,
                             std::bind(&SVSyncBase::onDataValidated, this, _2, onValidated),
