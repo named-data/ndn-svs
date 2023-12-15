@@ -11,7 +11,7 @@ enum : uint32_t {
   SeqNo               = 204,
   MappingData         = 205,
   MappingEntry        = 206,
-  StateVectorLzma     = 211,
+  LzmaBlock           = 211,
 };
 
 } // namespace ndn::svs::tlv
