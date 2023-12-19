@@ -348,6 +348,10 @@ SVSyncCore::mergeStateVector(const VersionVector& vvOther)
     SeqNo seq = entry.second;
     SeqNo seqOther = vvOther.get(nid);
 
+    // Ignore this node if it was last updated within network RTT
+    if (time::system_clock::now() - m_vv.getLastUpdate(nid) < m_maxSuppressionTime)
+      continue;
+
     if (seqOther < seq)
     {
       myVectorNew = true;

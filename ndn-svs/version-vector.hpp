@@ -52,6 +52,7 @@ public:
   set(const NodeID& nid, SeqNo seqNo)
   {
     m_map[nid] = seqNo;
+    m_lastUpdate[nid] = time::system_clock::now();
     return seqNo;
   }
 
@@ -60,6 +61,13 @@ public:
   {
     auto elem = m_map.find(nid);
     return elem == m_map.end() ? 0 : elem->second;
+  }
+
+  time::system_clock::time_point
+  getLastUpdate(const NodeID& nid) const
+  {
+    auto elem = m_lastUpdate.find(nid);
+    return elem == m_lastUpdate.end() ? time::system_clock::time_point::min() : elem->second;
   }
 
   const_iterator
@@ -82,6 +90,7 @@ public:
 
 private:
   std::map<NodeID, SeqNo> m_map;
+  std::map<NodeID, time::system_clock::time_point> m_lastUpdate;
 };
 
 } // namespace ndn::svs
