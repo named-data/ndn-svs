@@ -129,6 +129,18 @@ public:
   subscribe(const Name& prefix, const SubscriptionCallback& callback, bool packets = false);
 
   /**
+   * @brief Subscribe with a regex to name.
+   *
+   * @param regex regex of the application data
+   * @param callback Callback when new data is received
+   * @param packets Subscribe to the raw Data packets instead of BLOBs
+   *
+   * @returns Handle to the subscription
+   */
+  uint32_t
+  subscribeWithRegex(const Regex& regex, const SubscriptionCallback& callback, bool packets = false);
+
+  /**
    * @brief Subscribe to a data producer
    *
    * @param nodePrefix Prefix of the producer
@@ -181,6 +193,7 @@ private:
     SubscriptionCallback callback;
     bool isPacketSubscription;
     bool prefetch;
+    std::shared_ptr<Regex> regex = make_shared<Regex>("^<>+$");
   };
 
   void
@@ -241,6 +254,7 @@ private:
   uint32_t m_subscriptionCount;
   std::vector<Subscription> m_producerSubscriptions;
   std::vector<Subscription> m_prefixSubscriptions;
+  std::vector<Subscription> m_regexSubscriptions;
 
   // Queue of publications to fetch
   std::map<std::pair<Name, SeqNo>, std::vector<Subscription>> m_fetchMap;
