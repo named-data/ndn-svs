@@ -117,6 +117,20 @@ public:
           std::vector<Block> mappingBlocks = {});
 
   /**
+   * @brief Publish data names only on the pub/sub group.
+   *
+   * @param name name for the publication
+   * @param nodePrefix Name to publish the data under
+   * @param freshnessPeriod freshness period for the data
+   * @param mappingBlocks Additional blocks to be published with the mapping (use sparingly)
+   */
+  SeqNo
+  publish(const Name& name,
+          const Name& nodePrefix = EMPTY_NAME,
+          time::milliseconds freshnessPeriod = FRESH_FOREVER,
+          std::vector<Block> mappingBlocks = {});
+
+  /**
    * @brief Subscribe to a application name prefix.
    *
    * @param prefix Prefix of the application data
@@ -138,7 +152,7 @@ public:
    * @returns Handle to the subscription
    */
   uint32_t
-  subscribeWithRegex(const Regex& regex, const SubscriptionCallback& callback, bool packets = false);
+  subscribeWithRegex(const Regex& regex, const SubscriptionCallback& callback, bool autofetch = true, bool packets = false);
 
   /**
    * @brief Subscribe to a data producer
@@ -194,6 +208,7 @@ private:
     bool isPacketSubscription;
     bool prefetch;
     std::shared_ptr<Regex> regex = make_shared<Regex>("^<>+$");
+    bool autofetch = true;
   };
 
   void
