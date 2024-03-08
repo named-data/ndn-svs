@@ -71,9 +71,9 @@ suppressionCurve(int constFactor, int value)
   // Increasing the curve factor makes the curve steeper =>
   // better for more nodes, but worse for fewer nodes.
 
-  double c = constFactor;
-  double v = value;
-  double f = 10.0; // curve factor
+  float c = constFactor;
+  float v = value;
+  float f = 10.0; // curve factor
 
   return static_cast<int>(c * (1.0 - std::exp((v - c) / (c / f))));
 }
@@ -182,14 +182,11 @@ SVSyncCore::onSyncInterestValidated(const Interest& interest)
   // Merge state vector
   auto result = mergeStateVector(*vvOther);
 
-  bool myVectorNew = std::get<0>(result);
-  auto missingData = std::get<2>(result);
-
   // Callback if missing data found
-  if (!missingData.empty()) {
-    for (auto& e : missingData)
+  if (!result.missingInfo.empty()) {
+    for (auto& e : result.missingInfo)
       e.incomingFace = incomingFace;
-    m_onUpdate(missingData);
+    m_onUpdate(result.missingInfo);
   }
 
   // Try to record; the call will check if in suppression state
@@ -198,7 +195,7 @@ SVSyncCore::onSyncInterestValidated(const Interest& interest)
 
   // If incoming state identical/newer to local vector, reset timer
   // If incoming state is older, send sync interest immediately
-  if (!myVectorNew) {
+  if (!result.myVectorNew) {
     retxSyncInterest(false, 0);
   } else {
     enterSuppressionState(*vvOther);
@@ -224,7 +221,7 @@ SVSyncCore::retxSyncInterest(bool send, unsigned int delay)
 
     // Only send interest if in steady state or local vector has newer state
     // than recorded interests
-    if (!m_recordedVv || std::get<0>(mergeStateVector(*m_recordedVv)))
+    if (!m_recordedVv || mergeStateVector(*m_recordedVv).myVectorNew)
       sendSyncInterest();
     m_recordedVv = nullptr;
   }
@@ -301,15 +298,11 @@ SVSyncCore::sendSyncInterest()
   m_face.expressInterest(interest, nullptr, nullptr, nullptr);
 }
 
-std::tuple<bool, bool, std::vector<MissingDataInfo>>
+SVSyncCore::MergeResult
 SVSyncCore::mergeStateVector(const VersionVector& vvOther)
 {
   std::lock_guard<std::mutex> lock(m_vvMutex);
-
-  bool myVectorNew = false, otherVectorNew = false;
-
-  // New data found in vvOther
-  std::vector<MissingDataInfo> missingData;
+  SVSyncCore::MergeResult result;
 
   // Check if other vector has newer state
   for (const auto& entry : vvOther) {
@@ -318,10 +311,10 @@ SVSyncCore::mergeStateVector(const VersionVector& vvOther)
     SeqNo seqCurrent = m_vv.get(nidOther);
 
     if (seqCurrent < seqOther) {
-      otherVectorNew = true;
+      result.otherVectorNew = true;
 
       SeqNo startSeq = m_vv.get(nidOther) + 1;
-      missingData.push_back({ nidOther, startSeq, seqOther, 0 });
+      result.missingInfo.push_back({ nidOther, startSeq, seqOther, 0 });
 
       m_vv.set(nidOther, seqOther);
     }
@@ -338,12 +331,12 @@ SVSyncCore::mergeStateVector(const VersionVector& vvOther)
       continue;
 
     if (seqOther < seq) {
-      myVectorNew = true;
+      result.myVectorNew = true;
       break;
     }
   }
 
-  return { myVectorNew, otherVectorNew, missingData };
+  return result;
 }
 
 void

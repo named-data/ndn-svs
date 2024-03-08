@@ -172,22 +172,25 @@ public:
    */
   void sendSyncInterest();
 
+  struct MergeResult
+  {
+    /// @brief If the local state vector has newer entries
+    bool myVectorNew;
+    /// @brief If the incoming state vector has newer entries
+    bool otherVectorNew;
+    /// @brief Newly learned missing information from incoming state vector
+    std::vector<MissingDataInfo> missingInfo;
+  };
+
   /**
    * @brief Merge state vector into the current
-   *
-   * Also adds missing data interests to data interest queue.
-   *
    * @param vvOther state vector to merge in
-   *
-   * @returns a tuple of representing:
-   *    <my vector new, other vector new, missinginfo>.
+   * @details Also adds missing data interests to data interest queue.
    */
-  std::tuple<bool, bool, std::vector<MissingDataInfo>> mergeStateVector(
-    const VersionVector& vvOther);
+  MergeResult mergeStateVector(const VersionVector& vvOther);
 
   /**
    * @brief Record vector by merging it into m_recordedVv
-   *
    * @param vvOther state vector to merge in
    * @returns if recorded successfully
    */
@@ -195,8 +198,7 @@ public:
 
   /**
    * @brief Enter suppression state by setting
-   * m_recording to True and initializing m_recordedVv to vvOther
-   *
+   * m_recording to True and initializing m_recordedVv to vvOther.
    * Does nothing if already in suppression state
    *
    * @param vvOther first vector to record
