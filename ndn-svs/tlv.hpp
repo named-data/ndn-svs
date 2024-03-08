@@ -5,13 +5,14 @@
 
 namespace ndn::svs::tlv {
 
-enum : uint32_t {
-  StateVector         = 201,
-  StateVectorEntry    = 202,
-  SeqNo               = 204,
-  MappingData         = 205,
-  MappingEntry        = 206,
-  LzmaBlock           = 211,
+enum : uint32_t
+{
+  StateVector = 201,
+  StateVectorEntry = 202,
+  SeqNo = 204,
+  MappingData = 205,
+  MappingEntry = 206,
+  LzmaBlock = 211,
 };
 
 } // namespace ndn::svs::tlv
