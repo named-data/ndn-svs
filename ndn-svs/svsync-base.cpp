@@ -2,16 +2,17 @@
 /*
  * Copyright (c) 2012-2023 University of California, Los Angeles
  *
- * This file is part of ndn-svs, synchronization library for distributed realtime
- * applications for NDN.
+ * This file is part of ndn-svs, synchronization library for distributed
+ * realtime applications for NDN.
  *
- * ndn-svs library is free software: you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License as published by the Free Software
- * Foundation, in version 2.1 of the License.
+ * ndn-svs library is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License as published by the
+ * Free Software Foundation, in version 2.1 of the License.
  *
- * ndn-svs library is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
- * PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
+ * ndn-svs library is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
  */
 
 #include "svsync-base.hpp"
@@ -43,22 +44,25 @@ SVSyncBase::SVSyncBase(const Name& syncPrefix,
     m_dataStore = std::make_shared<MemoryDataStore>();
 
   // Register data prefix
-  m_registeredDataPrefix =
-    m_face.setInterestFilter(m_dataPrefix,
-                             std::bind(&SVSyncBase::onDataInterest, this, _2),
-                             [] (auto&&...) {});
+  m_registeredDataPrefix = m_face.setInterestFilter(
+    m_dataPrefix, std::bind(&SVSyncBase::onDataInterest, this, _2), [](auto&&...) {});
 }
 
 SeqNo
-SVSyncBase::publishData(const uint8_t* buf, size_t len, const ndn::time::milliseconds& freshness,
+SVSyncBase::publishData(const uint8_t* buf,
+                        size_t len,
+                        const ndn::time::milliseconds& freshness,
                         const NodeID& nid)
 {
-  return publishData(ndn::encoding::makeBinaryBlock(ndn::tlv::Content, {buf, len}), freshness, nid);
+  return publishData(
+    ndn::encoding::makeBinaryBlock(ndn::tlv::Content, { buf, len }), freshness, nid);
 }
 
 SeqNo
-SVSyncBase::publishData(const Block& content, const ndn::time::milliseconds& freshness,
-                        const NodeID& id, uint32_t contentType)
+SVSyncBase::publishData(const Block& content,
+                        const ndn::time::milliseconds& freshness,
+                        const NodeID& id,
+                        uint32_t contentType)
 {
   NodeID pubId = id != EMPTY_NODE_ID ? id : m_id;
   SeqNo newSeq = m_core.getSeqNo(pubId) + 1;
@@ -79,9 +83,13 @@ SVSyncBase::publishData(const Block& content, const ndn::time::milliseconds& fre
 }
 
 void
-SVSyncBase::insertDataSegment(const Block& content, const ndn::time::milliseconds& freshness,
-                              const NodeID& nid, const SeqNo seq, const size_t segNo,
-                              const Name::Component& finalBlock, uint32_t contentType)
+SVSyncBase::insertDataSegment(const Block& content,
+                              const ndn::time::milliseconds& freshness,
+                              const NodeID& nid,
+                              const SeqNo seq,
+                              const size_t segNo,
+                              const Name::Component& finalBlock,
+                              uint32_t contentType)
 {
   Name dataName = getDataName(nid, seq).appendVersion(0).appendSegment(segNo);
   auto data = std::make_shared<Data>(dataName);
@@ -102,17 +110,20 @@ SVSyncBase::onDataInterest(const Interest& interest)
 }
 
 void
-SVSyncBase::fetchData(const NodeID& nid, const SeqNo& seqNo,
-                      const DataValidatedCallback& onValidated, int nRetries)
+SVSyncBase::fetchData(const NodeID& nid,
+                      const SeqNo& seqNo,
+                      const DataValidatedCallback& onValidated,
+                      int nRetries)
 {
   DataValidationErrorCallback onValidationFailed =
     std::bind(&SVSyncBase::onDataValidationFailed, this, _1, _2);
-  TimeoutCallback onTimeout = [] (auto&&...) {};
+  TimeoutCallback onTimeout = [](auto&&...) {};
   fetchData(nid, seqNo, onValidated, onValidationFailed, onTimeout, nRetries);
 }
 
 void
-SVSyncBase::fetchData(const NodeID& nid, const SeqNo& seqNo,
+SVSyncBase::fetchData(const NodeID& nid,
+                      const SeqNo& seqNo,
                       const DataValidatedCallback& onValidated,
                       const DataValidationErrorCallback& onValidationFailed,
                       const TimeoutCallback& onTimeout,
@@ -126,12 +137,13 @@ SVSyncBase::fetchData(const NodeID& nid, const SeqNo& seqNo,
   m_fetcher.expressInterest(interest,
                             std::bind(&SVSyncBase::onDataValidated, this, _2, onValidated),
                             std::bind(onTimeout, _1), // Nack
-                            onTimeout, nRetries, onValidationFailed);
+                            onTimeout,
+                            nRetries,
+                            onValidationFailed);
 }
 
 void
-SVSyncBase::onDataValidated(const Data& data,
-                            const DataValidatedCallback& dataCallback)
+SVSyncBase::onDataValidated(const Data& data, const DataValidatedCallback& dataCallback)
 {
   if (shouldCache(data))
     m_dataStore->insert(data);
@@ -140,8 +152,7 @@ SVSyncBase::onDataValidated(const Data& data,
 }
 
 void
-SVSyncBase::onDataValidationFailed(const Data& data,
-                                   const ValidationError& error)
+SVSyncBase::onDataValidationFailed(const Data& data, const ValidationError& error)
 {
 }
 

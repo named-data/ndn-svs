@@ -2,16 +2,17 @@
 /*
  * Copyright (c) 2012-2022 University of California, Los Angeles
  *
- * This file is part of ndn-svs, synchronization library for distributed realtime
- * applications for NDN.
+ * This file is part of ndn-svs, synchronization library for distributed
+ * realtime applications for NDN.
  *
- * ndn-svs library is free software: you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License as published by the Free Software
- * Foundation, in version 2.1 of the License.
+ * ndn-svs library is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License as published by the
+ * Free Software Foundation, in version 2.1 of the License.
  *
- * ndn-svs library is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
- * PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
+ * ndn-svs library is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
  */
 
 #include "version-vector.hpp"
@@ -44,8 +45,7 @@ VersionVector::encode() const
   ndn::encoding::EncodingBuffer enc;
   size_t totalLength = 0;
 
-  for (auto it = m_map.rbegin(); it != m_map.rend(); it++)
-  {
+  for (auto it = m_map.rbegin(); it != m_map.rend(); it++) {
     // SeqNo
     size_t entryLength = ndn::encoding::prependNonNegativeIntegerBlock(enc, tlv::SeqNo, it->second);
 
@@ -66,8 +66,7 @@ std::string
 VersionVector::toStr() const
 {
   std::ostringstream stream;
-  for (const auto& elem : m_map)
-  {
+  for (const auto& elem : m_map) {
     stream << elem.first << ":" << elem.second << " ";
   }
   return stream.str();

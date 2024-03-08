@@ -2,16 +2,17 @@
 /*
  * Copyright (c) 2012-2022 University of California, Los Angeles
  *
- * This file is part of ndn-svs, synchronization library for distributed realtime
- * applications for NDN.
+ * This file is part of ndn-svs, synchronization library for distributed
+ * realtime applications for NDN.
  *
- * ndn-svs library is free software: you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License as published by the Free Software
- * Foundation, in version 2.1 of the License.
+ * ndn-svs library is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License as published by the
+ * Free Software Foundation, in version 2.1 of the License.
  *
- * ndn-svs library is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
- * PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
+ * ndn-svs library is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
  */
 
 #ifndef NDN_SVS_SVSYNC_HPP
@@ -37,12 +38,17 @@ public:
          const UpdateCallback& updateCallback,
          const SecurityOptions& securityOptions = SecurityOptions::DEFAULT,
          std::shared_ptr<DataStore> dataStore = DEFAULT_DATASTORE)
-    : SVSyncBase(syncPrefix, Name(nodePrefix).append(syncPrefix), nodePrefix,
-                 face, updateCallback, securityOptions, std::move(dataStore))
-  {}
+    : SVSyncBase(syncPrefix,
+                 Name(nodePrefix).append(syncPrefix),
+                 nodePrefix,
+                 face,
+                 updateCallback,
+                 securityOptions,
+                 std::move(dataStore))
+  {
+  }
 
-  Name
-  getDataName(const NodeID& nid, const SeqNo& seqNo) override
+  Name getDataName(const NodeID& nid, const SeqNo& seqNo) override
   {
     return Name(nid).append(m_syncPrefix).appendNumber(seqNo);
   }

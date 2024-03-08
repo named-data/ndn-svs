@@ -2,16 +2,17 @@
 /*
  * Copyright (c) 2012-2023 University of California, Los Angeles
  *
- * This file is part of ndn-svs, synchronization library for distributed realtime
- * applications for NDN.
+ * This file is part of ndn-svs, synchronization library for distributed
+ * realtime applications for NDN.
  *
- * ndn-svs library is free software: you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License as published by the Free Software
- * Foundation, in version 2.1 of the License.
+ * ndn-svs library is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License as published by the
+ * Free Software Foundation, in version 2.1 of the License.
  *
- * ndn-svs library is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
- * PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
+ * ndn-svs library is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
  */
 
 #include "mapping-provider.hpp"
@@ -23,21 +24,20 @@ MappingList::MappingList() = default;
 
 MappingList::MappingList(const NodeID& nid)
   : nodeId(nid)
-{}
+{
+}
 
 MappingList::MappingList(const Block& block)
 {
   block.parse();
 
   for (auto it = block.elements_begin(); it != block.elements_end(); it++) {
-    if (it->type() == ndn::tlv::Name)
-    {
+    if (it->type() == ndn::tlv::Name) {
       nodeId = NodeID(*it);
       continue;
     }
 
-    if (it->type() == tlv::MappingEntry)
-    {
+    if (it->type() == tlv::MappingEntry) {
       it->parse();
 
       // SeqNo and ApplicationName
@@ -61,8 +61,7 @@ MappingList::encode() const
   ndn::encoding::EncodingBuffer enc;
   size_t totalLength = 0;
 
-  for (const auto& [seq, mapping] : pairs)
-  {
+  for (const auto& [seq, mapping] : pairs) {
     size_t entryLength = 0;
 
     // Additional blocks
@@ -100,11 +99,13 @@ MappingProvider::MappingProvider(const Name& syncPrefix,
   m_registeredPrefix =
     m_face.setInterestFilter(Name(m_id).append(m_syncPrefix).append("MAPPING"),
                              std::bind(&MappingProvider::onMappingQuery, this, _2),
-                             [] (auto&&...) {});
+                             [](auto&&...) {});
 }
 
 void
-MappingProvider::insertMapping(const NodeID& nodeId, const SeqNo& seqNo, const MappingEntryPair& entry)
+MappingProvider::insertMapping(const NodeID& nodeId,
+                               const SeqNo& seqNo,
+                               const MappingEntryPair& entry)
 {
   m_map[Name(nodeId).appendNumber(seqNo)] = entry;
 }
@@ -121,13 +122,11 @@ MappingProvider::onMappingQuery(const Interest& interest)
   MissingDataInfo query = parseMappingQueryDataName(interest.getName());
   MappingList queryResponse(query.nodeId);
 
-  for (SeqNo i = query.low; i <= std::max(query.high, query.low); i++)
-  {
+  for (SeqNo i = query.low; i <= std::max(query.high, query.low); i++) {
     try {
       auto mapping = getMapping(query.nodeId, i);
       queryResponse.pairs.emplace_back(i, mapping);
-    }
-    catch (const std::exception&) {
+    } catch (const std::exception&) {
       // TODO: don't give up if not everything is found
       // Instead return whatever we have and let the client request
       // the remaining mappings again
@@ -151,7 +150,7 @@ MappingProvider::fetchNameMapping(const MissingDataInfo& info,
                                   const MappingListCallback& onValidated,
                                   int nRetries)
 {
-  TimeoutCallback onTimeout = [] (auto&&...) {};
+  TimeoutCallback onTimeout = [](auto&&...) {};
   return fetchNameMapping(info, onValidated, onTimeout, nRetries);
 }
 
@@ -167,8 +166,7 @@ MappingProvider::fetchNameMapping(const MissingDataInfo& info,
   interest.setMustBeFresh(false);
   interest.setInterestLifetime(2_s);
 
-  auto onDataValidated = [this, onValidated, info] (const Data& data)
-  {
+  auto onDataValidated = [this, onValidated, info](const Data& data) {
     Block block = data.getContent().blockFromValue();
     MappingList list(block);
 
@@ -176,8 +174,7 @@ MappingProvider::fetchNameMapping(const MissingDataInfo& info,
     for (const auto& [seq, mapping] : list.pairs) {
       try {
         getMapping(info.nodeId, seq);
-      }
-      catch (const std::exception&) {
+      } catch (const std::exception&) {
         insertMapping(info.nodeId, seq, mapping);
       }
     }
@@ -188,17 +185,19 @@ MappingProvider::fetchNameMapping(const MissingDataInfo& info,
   m_fetcher.expressInterest(interest,
                             std::bind(onDataValidated, _2),
                             std::bind(onTimeout, _1), // Nack
-                            onTimeout, nRetries,
-                            [] (auto&&...) {});
+                            onTimeout,
+                            nRetries,
+                            [](auto&&...) {});
 }
 
 Name
 MappingProvider::getMappingQueryDataName(const MissingDataInfo& info)
 {
-  return Name(info.nodeId).append(m_syncPrefix)
-                          .append("MAPPING")
-                          .appendNumber(info.low)
-                          .appendNumber(info.high);
+  return Name(info.nodeId)
+    .append(m_syncPrefix)
+    .append("MAPPING")
+    .appendNumber(info.low)
+    .appendNumber(info.high);
 }
 
 MissingDataInfo

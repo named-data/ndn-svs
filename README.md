@@ -47,6 +47,8 @@ where `sync-prefix` is `/ndn/svs` for the example application.
 ## Contributing
 
 Contributions are welcome through GitHub.
+Use `clang-format` to format the code before submitting a pull request.
+The VS Code extension for `clang-format` is recommended to format the code automatically.
 
 ## License
 
