@@ -30,8 +30,6 @@ fi
 ./waf --color=yes configure --debug --with-tests $ASAN $COVERAGE
 ./waf --color=yes build
 
-# (tests will be run against the debug version)
-
 # Install
 sudo ./waf --color=yes install
 
