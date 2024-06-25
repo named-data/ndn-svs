@@ -1,7 +1,7 @@
 # ndn-svs: State Vector Sync library for distributed realtime applications for NDN
 
-[![CI](https://github.com/named-data/ndn-svs/actions/workflows/ci.yml/badge.svg)](https://github.com/named-data/ndn-svs/actions/workflows/ci.yml)
 ![Language](https://img.shields.io/badge/C%2B%2B-17-blue)
+[![CI](https://github.com/named-data/ndn-svs/actions/workflows/ci.yml/badge.svg)](https://github.com/named-data/ndn-svs/actions/workflows/ci.yml)
 
 This library provides an implementation of the [State Vector Sync (SVS)](https://named-data.github.io/StateVectorSync/)
 protocol and the [Pub/Sub API](https://dl.acm.org/doi/abs/10.1145/3460417.3483376) for state
