@@ -20,6 +20,8 @@
 
 #include <chrono>
 
+
+
 namespace ndn::svs {
 
 SVSPubSub::SVSPubSub(const Name& syncPrefix,
@@ -90,6 +92,23 @@ SVSPubSub::publish(const Name& name, span<const uint8_t> value,
   }
 }
 
+
+SeqNo
+SVSPubSub::publish(const Name& name,
+                   const Name& nodePrefix, time::milliseconds freshnessPeriod,
+                   std::vector<Block> mappingBlocks)
+{
+  // Segment the data if larger than MAX_DATA_SIZE
+  NodeID nid = nodePrefix == EMPTY_NAME ? m_dataPrefix : nodePrefix;
+  SeqNo seqNo = m_svsync.getCore().getSeqNo(nid) + 1;
+
+  // Insert mapping and manually update the sequence number
+  insertMapping(nid, seqNo, name, mappingBlocks);
+  m_svsync.getCore().updateSeqNo(seqNo, nid);
+
+  return seqNo;
+}
+
 SeqNo
 SVSPubSub::publishPacket(const Data& data, const Name& nodePrefix,
                          std::vector<Block> mappingBlocks)
@@ -136,6 +155,15 @@ SVSPubSub::subscribe(const Name& prefix, const SubscriptionCallback& callback, b
   uint32_t handle = ++m_subscriptionCount;
   Subscription sub = { handle, prefix, callback, packets, false };
   m_prefixSubscriptions.push_back(sub);
+  return handle;
+}
+
+uint32_t
+SVSPubSub::subscribeWithRegex(const Regex &regex, const SubscriptionCallback &callback,bool autofetch, bool packets)
+{
+  uint32_t handle = ++m_subscriptionCount;
+  Subscription sub = { handle, ndn::Name(), callback, packets, false, autofetch, make_shared<Regex>(regex)};
+  m_regexSubscriptions.push_back(sub);
   return handle;
 }
 
@@ -190,8 +218,8 @@ SVSPubSub::updateCallbackInternal(const std::vector<MissingDataInfo>& info)
       }
     }
 
-    // Fetch all mappings if we have prefix subscription(s)
-    if (!m_prefixSubscriptions.empty())
+    // Fetch all mappings if we have prefix subscription(s) or regex subscription(s)
+    if (!m_prefixSubscriptions.empty() or !m_regexSubscriptions.empty())
     {
       MissingDataInfo remainingInfo = stream;
 
@@ -277,8 +305,44 @@ SVSPubSub::processMapping(const NodeID& nodeId, SeqNo seqNo)
   {
     if (sub.prefix.isPrefixOf(mapping.first))
     {
-      m_fetchMap[std::pair(nodeId, seqNo)].push_back(sub);
-      queued = true;
+        if (sub.autofetch)
+        {
+            m_fetchMap[std::pair(nodeId, seqNo)].push_back(sub);
+            queued = true;
+        }
+        else
+        {
+            SubscriptionData subData = {
+                mapping.first,
+                ndn::span<const uint8_t>{},
+                nodeId,
+                seqNo,
+                ndn::Data()
+            };
+            sub.callback(subData);
+        }
+    }
+  }
+  for (const auto& sub : m_regexSubscriptions)
+  {
+    if (sub.regex->match(mapping.first))
+    {
+        if (sub.autofetch)
+        {
+            m_fetchMap[std::pair(nodeId, seqNo)].push_back(sub);
+            queued = true;
+        }
+        else
+        {
+            SubscriptionData subData = {
+                mapping.first,
+                ndn::span<const uint8_t>{},
+                nodeId,
+                seqNo,
+                ndn::Data()
+            };
+            sub.callback(subData);
+        }
     }
   }
 

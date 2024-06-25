@@ -24,6 +24,7 @@
 #include "svsync.hpp"
 
 #include <ndn-cxx/security/validator-null.hpp>
+#include <ndn-cxx/util/regex.hpp>
 
 namespace ndn::svs {
 
@@ -117,6 +118,20 @@ public:
           std::vector<Block> mappingBlocks = {});
 
   /**
+   * @brief Publish data names only on the pub/sub group.
+   *
+   * @param name name for the publication
+   * @param nodePrefix Name to publish the data under
+   * @param freshnessPeriod freshness period for the data
+   * @param mappingBlocks Additional blocks to be published with the mapping (use sparingly)
+   */
+  SeqNo
+  publish(const Name& name,
+          const Name& nodePrefix = EMPTY_NAME,
+          time::milliseconds freshnessPeriod = FRESH_FOREVER,
+          std::vector<Block> mappingBlocks = {});
+
+  /**
    * @brief Subscribe to a application name prefix.
    *
    * @param prefix Prefix of the application data
@@ -127,6 +142,18 @@ public:
    */
   uint32_t
   subscribe(const Name& prefix, const SubscriptionCallback& callback, bool packets = false);
+
+  /**
+   * @brief Subscribe with a regex to name.
+   *
+   * @param regex regex of the application data
+   * @param callback Callback when new data is received
+   * @param packets Subscribe to the raw Data packets instead of BLOBs
+   *
+   * @returns Handle to the subscription
+   */
+  uint32_t
+  subscribeWithRegex(const Regex& regex, const SubscriptionCallback& callback, bool autofetch = true, bool packets = false);
 
   /**
    * @brief Subscribe to a data producer
@@ -181,6 +208,9 @@ private:
     SubscriptionCallback callback;
     bool isPacketSubscription;
     bool prefetch;
+    bool autofetch = true;
+    std::shared_ptr<Regex> regex = make_shared<Regex>("^<>+$");
+    
   };
 
   void
@@ -241,6 +271,7 @@ private:
   uint32_t m_subscriptionCount;
   std::vector<Subscription> m_producerSubscriptions;
   std::vector<Subscription> m_prefixSubscriptions;
+  std::vector<Subscription> m_regexSubscriptions;
 
   // Queue of publications to fetch
   std::map<std::pair<Name, SeqNo>, std::vector<Subscription>> m_fetchMap;
