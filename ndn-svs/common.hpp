@@ -23,7 +23,6 @@
 #include <ndn-cxx/face.hpp>
 #include <ndn-cxx/interest.hpp>
 #include <ndn-cxx/security/validator.hpp>
-#include <ndn-cxx/util/regex.hpp>
 
 #include <functional>
 #include <memory>

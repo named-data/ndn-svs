@@ -24,6 +24,7 @@
 #include "svsync.hpp"
 
 #include <ndn-cxx/security/validator-null.hpp>
+#include <ndn-cxx/util/regex.hpp>
 
 namespace ndn::svs {
 
@@ -207,8 +208,9 @@ private:
     SubscriptionCallback callback;
     bool isPacketSubscription;
     bool prefetch;
-    std::shared_ptr<Regex> regex = make_shared<Regex>("^<>+$");
     bool autofetch = true;
+    std::shared_ptr<Regex> regex = make_shared<Regex>("^<>+$");
+    
   };
 
   void
