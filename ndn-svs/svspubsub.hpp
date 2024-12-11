@@ -25,6 +25,7 @@
 
 #include <ndn-cxx/security/validator-null.hpp>
 #include <ndn-cxx/util/regex.hpp>
+#include <ndn-cxx/ims/in-memory-storage-lru.hpp>
 
 namespace ndn::svs {
 
@@ -209,7 +210,7 @@ private:
     bool isPacketSubscription;
     bool prefetch;
     bool autofetch = true;
-    std::shared_ptr<Regex> regex = make_shared<Regex>("^<>+$");
+    std::shared_ptr<ndn::Regex> regex;
     
   };
 
@@ -276,6 +277,15 @@ private:
   // Queue of publications to fetch
   std::map<std::pair<Name, SeqNo>, std::vector<Subscription>> m_fetchMap;
   std::map<std::pair<Name, SeqNo>, bool> m_fetchingMap;
+
+  
+  size_t MAX_SIZE_OF_APPLICATION_PARAMETERS = 1024;
+  size_t MAX_SIZE_OF_PIGGYDATA = 800;
+  bool Enable_PiggyData = true;
+  // Queue of Pending Piggy Data (to be sent in the next update with sync interest) : First in first out
+  std::queue<ndn::Data> m_piggyDataQueue;
+  // A cache for received piggy data
+  ndn::InMemoryStorageLru m_piggyDataCache;
 };
 
 } // namespace ndn::svs
