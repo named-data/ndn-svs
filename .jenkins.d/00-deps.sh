@@ -19,7 +19,7 @@ APT_PKGS=(
     pkg-config
     python3
 )
-FORMULAE=(boost openssl pkg-config)
+FORMULAE=(boost openssl pkgconf)
 PIP_PKGS=()
 case $JOB_NAME in
     *code-coverage)
@@ -35,6 +35,7 @@ esac
 set -x
 
 if [[ $ID == macos ]]; then
+    export HOMEBREW_NO_ENV_HINTS=1
     if [[ -n $GITHUB_ACTIONS ]]; then
         export HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1
     fi
