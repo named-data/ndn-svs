@@ -2,16 +2,17 @@
 /*
  * Copyright (c) 2021-2023 University of California, Los Angeles
  *
- * This file is part of ndn-svs, synchronization library for distributed realtime
- * applications for NDN.
+ * This file is part of ndn-svs, synchronization library for distributed
+ * realtime applications for NDN.
  *
- * ndn-svs library is free software: you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License as published by the Free Software
- * Foundation, in version 2.1 of the License.
+ * ndn-svs library is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License as published by the
+ * Free Software Foundation, in version 2.1 of the License.
  *
- * ndn-svs library is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
- * PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
+ * ndn-svs library is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
  */
 
 #ifndef NDN_SVS_SVSPUBSUB_HPP
@@ -19,8 +20,8 @@
 
 #include "core.hpp"
 #include "mapping-provider.hpp"
-#include "store.hpp"
 #include "security-options.hpp"
+#include "store.hpp"
 #include "svsync.hpp"
 
 #include <ndn-cxx/security/validator-null.hpp>
@@ -77,8 +78,7 @@ public:
             const SVSPubSubOptions& options = {},
             const SecurityOptions& securityOptions = SecurityOptions::DEFAULT);
 
-  virtual
-  ~SVSPubSub() = default;
+  virtual ~SVSPubSub() = default;
 
   struct SubscriptionData
   {
@@ -108,13 +108,14 @@ public:
    * @param value data buffer
    * @param nodePrefix Name to publish the data under
    * @param freshnessPeriod freshness period for the data
-   * @param mappingBlocks Additional blocks to be published with the mapping (use sparingly)
+   * @param mappingBlocks Additional blocks to be published with the mapping
+   * (use sparingly)
    */
-  SeqNo
-  publish(const Name& name, span<const uint8_t> value,
-          const Name& nodePrefix = EMPTY_NAME,
-          time::milliseconds freshnessPeriod = FRESH_FOREVER,
-          std::vector<Block> mappingBlocks = {});
+  SeqNo publish(const Name& name,
+                span<const uint8_t> value,
+                const Name& nodePrefix = EMPTY_NAME,
+                time::milliseconds freshnessPeriod = FRESH_FOREVER,
+                std::vector<Block> mappingBlocks = {});
 
   /**
    * @brief Subscribe to a application name prefix.
@@ -125,8 +126,9 @@ public:
    *
    * @returns Handle to the subscription
    */
-  uint32_t
-  subscribe(const Name& prefix, const SubscriptionCallback& callback, bool packets = false);
+  uint32_t subscribe(const Name& prefix,
+                     const SubscriptionCallback& callback,
+                     bool packets = false);
 
   /**
    * @brief Subscribe to a data producer
@@ -138,17 +140,17 @@ public:
    *
    * @returns Handle to the subscription
    */
-  uint32_t
-  subscribeToProducer(const Name& nodePrefix, const SubscriptionCallback& callback,
-                      bool prefetch = false, bool packets = false);
+  uint32_t subscribeToProducer(const Name& nodePrefix,
+                               const SubscriptionCallback& callback,
+                               bool prefetch = false,
+                               bool packets = false);
 
   /**
    * @brief Unsubscribe from a stream using a handle
    *
    * @param handle Handle received during subscription
    */
-  void
-  unsubscribe(uint32_t handle);
+  void unsubscribe(uint32_t handle);
 
   /**
    * @brief Publish a encapsulated Data packet in the session and trigger
@@ -159,19 +161,15 @@ public:
    *
    * @param data Data packet to publish
    * @param nodePrefix Name to publish the data under
-   * @param mappingBlocks Additional blocks to be published with the mapping (use sparingly)
+   * @param mappingBlocks Additional blocks to be published with the mapping
+   * (use sparingly)
    */
-  SeqNo
-  publishPacket(const Data& data,
-                const Name& nodePrefix = EMPTY_NAME,
-                std::vector<Block> mappingBlocks = {});
+  SeqNo publishPacket(const Data& data,
+                      const Name& nodePrefix = EMPTY_NAME,
+                      std::vector<Block> mappingBlocks = {});
 
   /** @brief Get the underlying sync */
-  SVSync&
-  getSVSync()
-  {
-    return m_svsync;
-  }
+  SVSync& getSVSync() { return m_svsync; }
 
 private:
   struct Subscription
@@ -183,36 +181,30 @@ private:
     bool prefetch;
   };
 
-  void
-  onSyncData(const Data& syncData, const std::pair<Name, SeqNo>& publication);
+  void onSyncData(const Data& syncData, const std::pair<Name, SeqNo>& publication);
 
-  void
-  updateCallbackInternal(const std::vector<MissingDataInfo>& info);
+  void updateCallbackInternal(const std::vector<MissingDataInfo>& info);
 
-  Block
-  onGetExtraData(const VersionVector& vv);
+  Block onGetExtraData(const VersionVector& vv);
 
-  void
-  onRecvExtraData(const Block& block);
+  void onRecvExtraData(const Block& block);
 
   /// @brief Insert a mapping entry into the store
-  void
-  insertMapping(const NodeID& nid, SeqNo seqNo, const Name& name,
-                std::vector<Block> additional);
+  void insertMapping(const NodeID& nid,
+                     SeqNo seqNo,
+                     const Name& name,
+                     std::vector<Block> additional);
 
   /**
    * @brief Get and process mapping from store.
    * @returns true if new publications were queued for fetch
    * @throws std::exception error if mapping is not found
    */
-  bool
-  processMapping(const NodeID& nodeId, SeqNo seqNo);
+  bool processMapping(const NodeID& nodeId, SeqNo seqNo);
 
-  void
-  fetchAll();
+  void fetchAll();
 
-  void
-  cleanUpFetch(const std::pair<Name, SeqNo>& publication);
+  void cleanUpFetch(const std::pair<Name, SeqNo>& publication);
 
 public:
   static inline const Name EMPTY_NAME;
