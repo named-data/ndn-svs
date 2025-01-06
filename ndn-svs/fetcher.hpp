@@ -32,13 +32,12 @@ class Fetcher
 public:
   Fetcher(Face& face, const SecurityOptions& securityOptions);
 
-  void expressInterest(
-    const ndn::Interest& interest,
-    const ndn::DataCallback& afterSatisfied,
-    const ndn::NackCallback& afterNacked,
-    const ndn::TimeoutCallback& afterTimeout,
-    int nRetries = 0,
-    const ndn::security::DataValidationFailureCallback& afterValidationFailed = nullptr);
+  void expressInterest(const ndn::Interest& interest,
+                       const ndn::DataCallback& afterSatisfied,
+                       const ndn::NackCallback& afterNacked,
+                       const ndn::TimeoutCallback& afterTimeout,
+                       int nRetries = 0,
+                       const ndn::security::DataValidationFailureCallback& afterValidationFailed = nullptr);
 
 private:
   struct QueuedInterest;

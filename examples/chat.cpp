@@ -38,8 +38,7 @@ public:
     // Use HMAC signing for Sync Interests
     // Note: this is not generally recommended, but is used here for simplicity
     ndn::svs::SecurityOptions securityOptions(m_keyChain);
-    securityOptions.interestSigner->signingInfo.setSigningHmacKey(
-      "dGhpcyBpcyBhIHNlY3JldCBtZXNzYWdl");
+    securityOptions.interestSigner->signingInfo.setSigningHmacKey("dGhpcyBpcyBhIHNlY3JldCBtZXNzYWdl");
 
     // Create the SVSync instance
     m_svs = std::make_shared<ndn::svs::SVSync>(

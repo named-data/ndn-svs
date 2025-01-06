@@ -92,8 +92,7 @@ Fetcher::onData(const Interest& interest, const Data& data, const QueuedInterest
     auto onValidationFailed = [this, qi](const Data& data, const ValidationError& error) {
       if (qi.nRetriesOnValidationFail > 0) {
         this->m_scheduler.schedule(
-          ndn::time::milliseconds(this->m_securityOptions.millisBeforeRetryOnValidationFail),
-          [this, qi] {
+          ndn::time::milliseconds(this->m_securityOptions.millisBeforeRetryOnValidationFail), [this, qi] {
             QueuedInterest qiNew(qi);
             qiNew.nRetriesOnValidationFail--;
             this->expressInterest(qiNew);

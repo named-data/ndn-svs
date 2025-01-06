@@ -92,7 +92,10 @@ public:
    *
    * @param prefix prefix of the node
    */
-  const NodeID& getNodeId() { return m_id; }
+  const NodeID& getNodeId()
+  {
+    return m_id;
+  }
 
   /**
    * @brief Get current seqNo of the local session.
@@ -141,10 +144,16 @@ public:
   }
 
   /// @brief Get current version vector
-  VersionVector& getState() { return m_vv; }
+  VersionVector& getState()
+  {
+    return m_vv;
+  }
 
   /// @brief Get human-readable representation of version vector
-  std::string getStateStr() const { return m_vv.toStr(); }
+  std::string getStateStr() const
+  {
+    return m_vv.toStr();
+  }
 
   NDN_SVS_PUBLIC_WITH_TESTS_ELSE_PRIVATE : void onSyncInterest(const Interest& interest);
 
@@ -206,7 +215,10 @@ public:
   void enterSuppressionState(const VersionVector& vvOther);
 
   /// @brief Reference to scheduler
-  ndn::Scheduler& getScheduler() { return m_scheduler; }
+  ndn::Scheduler& getScheduler()
+  {
+    return m_scheduler;
+  }
 
   /// @brief Get the current time in microseconds with arbitrary reference
   long getCurrentTime() const;

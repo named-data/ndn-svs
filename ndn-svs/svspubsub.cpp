@@ -97,17 +97,13 @@ SeqNo
 SVSPubSub::publishPacket(const Data& data, const Name& nodePrefix, std::vector<Block> mappingBlocks)
 {
   NodeID nid = nodePrefix == EMPTY_NAME ? m_dataPrefix : nodePrefix;
-  SeqNo seqNo =
-    m_svsync.publishData(data.wireEncode(), data.getFreshnessPeriod(), nid, ndn::tlv::Data);
+  SeqNo seqNo = m_svsync.publishData(data.wireEncode(), data.getFreshnessPeriod(), nid, ndn::tlv::Data);
   insertMapping(nid, seqNo, data.getName(), mappingBlocks);
   return seqNo;
 }
 
 void
-SVSPubSub::insertMapping(const NodeID& nid,
-                         SeqNo seqNo,
-                         const Name& name,
-                         std::vector<Block> additional)
+SVSPubSub::insertMapping(const NodeID& nid, SeqNo seqNo, const Name& name, std::vector<Block> additional)
 {
   // additional is a copy deliberately
   // this way we can add well-known mappings to the list
@@ -186,8 +182,7 @@ SVSPubSub::updateCallbackInternal(const std::vector<MissingDataInfo>& info)
 
         // Prefetch next available data
         if (sub.prefetch)
-          m_svsync.fetchData(
-            stream.nodeId, stream.high + 1, [](auto&&...) {}); // do nothing with prefetch
+          m_svsync.fetchData(stream.nodeId, stream.high + 1, [](auto&&...) {}); // do nothing with prefetch
       }
     }
 
@@ -308,8 +303,7 @@ SVSPubSub::onSyncData(const Data& firstData, const std::pair<Name, SeqNo>& publi
 
   // Return data to packet subscriptions
   SubscriptionData subData = {
-    innerData.getName(), innerContent.value_bytes(), publication.first, publication.second,
-    innerData,
+    innerData.getName(), innerContent.value_bytes(), publication.first, publication.second, innerData,
   };
 
   // Function to return data to subscriptions
@@ -336,8 +330,7 @@ SVSPubSub::onSyncData(const Data& firstData, const std::pair<Name, SeqNo>& publi
       fetcher->onComplete.connectSingleShot([this, publication](const ndn::ConstBufferPtr& data) {
         try {
           // Binary BLOB to return to app
-          auto finalBuffer =
-            std::make_shared<std::vector<uint8_t>>(std::vector<uint8_t>(data->size()));
+          auto finalBuffer = std::make_shared<std::vector<uint8_t>>(std::vector<uint8_t>(data->size()));
           auto bufSize = std::make_shared<size_t>(0);
           bool hasValidator = !!m_securityOptions.encapsulatedDataValidator;
 

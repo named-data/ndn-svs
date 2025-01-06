@@ -64,8 +64,7 @@ public:
     // Subscribe to all data packets with prefix /chat (the "topic")
     m_svsps->subscribe(ndn::Name("/chat"), [](const auto& subData) {
       std::string content(reinterpret_cast<const char*>(subData.data.data()), subData.data.size());
-      std::cout << subData.producerPrefix << " [" << subData.seqNo << "] : " << subData.name
-                << " : ";
+      std::cout << subData.producerPrefix << " [" << subData.seqNo << "] : " << subData.name << " : ";
       if (content.length() > 200) {
         std::cout << "[LONG] " << content.length() << " bytes"
                   << " [" << std::hash<std::string>{}(content) << "]";
@@ -125,8 +124,8 @@ protected:
       for (auto& c : content)
         c = std::rand() % 26 + 'a';
 
-      std::cout << "> Sending random message with hash [" << std::hash<std::string>{}(content)
-                << "]" << std::endl;
+      std::cout << "> Sending random message with hash [" << std::hash<std::string>{}(content) << "]"
+                << std::endl;
     }
 
     // Note that unlike SVSync, names can be arbitrary,
@@ -135,8 +134,7 @@ protected:
     name.append(m_options.m_id); // who sent this
     name.appendTimestamp();      // and when
 
-    m_svsps->publish(
-      name, ndn::make_span(reinterpret_cast<const uint8_t*>(content.data()), content.size()));
+    m_svsps->publish(name, ndn::make_span(reinterpret_cast<const uint8_t*>(content.data()), content.size()));
   }
 
 private:

@@ -126,9 +126,7 @@ public:
    *
    * @returns Handle to the subscription
    */
-  uint32_t subscribe(const Name& prefix,
-                     const SubscriptionCallback& callback,
-                     bool packets = false);
+  uint32_t subscribe(const Name& prefix, const SubscriptionCallback& callback, bool packets = false);
 
   /**
    * @brief Subscribe to a data producer
@@ -169,7 +167,10 @@ public:
                       std::vector<Block> mappingBlocks = {});
 
   /** @brief Get the underlying sync */
-  SVSync& getSVSync() { return m_svsync; }
+  SVSync& getSVSync()
+  {
+    return m_svsync;
+  }
 
 private:
   struct Subscription
@@ -190,10 +191,7 @@ private:
   void onRecvExtraData(const Block& block);
 
   /// @brief Insert a mapping entry into the store
-  void insertMapping(const NodeID& nid,
-                     SeqNo seqNo,
-                     const Name& name,
-                     std::vector<Block> additional);
+  void insertMapping(const NodeID& nid, SeqNo seqNo, const Name& name, std::vector<Block> additional);
 
   /**
    * @brief Get and process mapping from store.

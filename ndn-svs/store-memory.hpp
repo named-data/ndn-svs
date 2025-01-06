@@ -32,7 +32,10 @@ public:
     return m_ims.find(interest);
   }
 
-  void insert(const Data& data) override { return m_ims.insert(data); }
+  void insert(const Data& data) override
+  {
+    return m_ims.insert(data);
+  }
 
 private:
   InMemoryStoragePersistent m_ims;

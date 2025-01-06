@@ -235,8 +235,7 @@ SVSyncCore::retxSyncInterest(bool send, unsigned int delay)
     // Store the scheduled time
     m_nextSyncInterest = getCurrentTime() + 1000 * delay;
 
-    m_retxEvent =
-      m_scheduler.schedule(time::milliseconds(delay), [this] { retxSyncInterest(true, 0); });
+    m_retxEvent = m_scheduler.schedule(time::milliseconds(delay), [this] { retxSyncInterest(true, 0); });
   }
 }
 

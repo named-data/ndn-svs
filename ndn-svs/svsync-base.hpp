@@ -148,10 +148,16 @@ public:
                  int nRetries = 0);
 
   /** @brief Get the underlying data store */
-  DataStore& getDataStore() { return *m_dataStore; }
+  DataStore& getDataStore()
+  {
+    return *m_dataStore;
+  }
 
   /** @brief Get the underlying SVS core */
-  SVSyncCore& getCore() { return m_core; }
+  SVSyncCore& getCore()
+  {
+    return m_core;
+  }
 
 protected:
   /**
@@ -180,7 +186,10 @@ private:
    * Can be used to cache data packets from other nodes when
    * using multicast data interests.
    */
-  virtual bool shouldCache(const Data& data) const { return false; }
+  virtual bool shouldCache(const Data& data) const
+  {
+    return false;
+  }
 
 protected:
   const Name m_syncPrefix;

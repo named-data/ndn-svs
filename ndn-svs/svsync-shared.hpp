@@ -55,10 +55,16 @@ public:
   }
 
   /** @brief Set whether data of other nodes is also cached and served */
-  void setCacheAll(bool val) { m_cacheAll = val; }
+  void setCacheAll(bool val)
+  {
+    m_cacheAll = val;
+  }
 
 private:
-  bool shouldCache(const Data&) const override { return m_cacheAll; }
+  bool shouldCache(const Data&) const override
+  {
+    return m_cacheAll;
+  }
 
 private:
   bool m_cacheAll = false;

@@ -65,11 +65,20 @@ public:
     return elem == m_lastUpdate.end() ? time::system_clock::time_point::min() : elem->second;
   }
 
-  const_iterator begin() const noexcept { return m_map.begin(); }
+  const_iterator begin() const noexcept
+  {
+    return m_map.begin();
+  }
 
-  const_iterator end() const noexcept { return m_map.end(); }
+  const_iterator end() const noexcept
+  {
+    return m_map.end();
+  }
 
-  bool has(const NodeID& nid) const { return m_map.find(nid) != end(); }
+  bool has(const NodeID& nid) const
+  {
+    return m_map.find(nid) != end();
+  }
 
 private:
   std::map<NodeID, SeqNo> m_map;

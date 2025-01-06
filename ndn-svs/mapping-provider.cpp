@@ -96,16 +96,13 @@ MappingProvider::MappingProvider(const Name& syncPrefix,
   , m_fetcher(face, securityOptions)
   , m_securityOptions(securityOptions)
 {
-  m_registeredPrefix =
-    m_face.setInterestFilter(Name(m_id).append(m_syncPrefix).append("MAPPING"),
-                             std::bind(&MappingProvider::onMappingQuery, this, _2),
-                             [](auto&&...) {});
+  m_registeredPrefix = m_face.setInterestFilter(Name(m_id).append(m_syncPrefix).append("MAPPING"),
+                                                std::bind(&MappingProvider::onMappingQuery, this, _2),
+                                                [](auto&&...) {});
 }
 
 void
-MappingProvider::insertMapping(const NodeID& nodeId,
-                               const SeqNo& seqNo,
-                               const MappingEntryPair& entry)
+MappingProvider::insertMapping(const NodeID& nodeId, const SeqNo& seqNo, const MappingEntryPair& entry)
 {
   m_map[Name(nodeId).appendNumber(seqNo)] = entry;
 }
