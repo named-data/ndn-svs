@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2023 University of California, Los Angeles
+ * Copyright (c) 2012-2025 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -27,8 +27,8 @@
 #ifdef NDN_SVS_COMPRESSION
 #include <boost/iostreams/copy.hpp>
 #include <boost/iostreams/device/array.hpp>
-#include <boost/iostreams/filtering_stream.hpp>
 #include <boost/iostreams/filter/lzma.hpp>
+#include <boost/iostreams/filtering_stream.hpp>
 #endif
 
 namespace ndn::svs {
@@ -58,7 +58,7 @@ SVSyncCore::SVSyncCore(ndn::Face& face,
     m_face.setInterestFilter(syncPrefix,
                              std::bind(&SVSyncCore::onSyncInterest, this, _2),
                              std::bind(&SVSyncCore::sendInitialInterest, this),
-                             [] (auto&&...) { NDN_THROW(Error("Failed to register sync prefix")); });
+                             [](auto&&...) { NDN_THROW(Error("Failed to register sync prefix")); });
 }
 
 static inline int
@@ -70,9 +70,9 @@ suppressionCurve(int constFactor, int value)
   // Increasing the curve factor makes the curve steeper =>
   // better for more nodes, but worse for fewer nodes.
 
-  double c = constFactor;
-  double v = value;
-  double f = 10.0; // curve factor
+  float c = constFactor;
+  float v = value;
+  float f = 10.0; // curve factor
 
   return static_cast<int>(c * (1.0 - std::exp((v - c) / (c / f))));
 }
@@ -91,14 +91,14 @@ SVSyncCore::sendInitialInterest()
 void
 SVSyncCore::onSyncInterest(const Interest& interest)
 {
-  switch (m_securityOptions.interestSigner->signingInfo.getSignerType())
-  {
+  switch (m_securityOptions.interestSigner->signingInfo.getSignerType()) {
     case security::SigningInfo::SIGNER_TYPE_NULL:
       onSyncInterestValidated(interest);
       return;
 
     case security::SigningInfo::SIGNER_TYPE_HMAC:
-      if (security::verifySignature(interest, m_keyChainMem.getTpm(),
+      if (security::verifySignature(interest,
+                                    m_keyChainMem.getTpm(),
                                     m_securityOptions.interestSigner->signingInfo.getSignerName(),
                                     DigestAlgorithm::SHA256))
         onSyncInterestValidated(interest);
@@ -106,9 +106,8 @@ SVSyncCore::onSyncInterest(const Interest& interest)
 
     default:
       if (m_securityOptions.validator)
-        m_securityOptions.validator->validate(interest,
-                                              std::bind(&SVSyncCore::onSyncInterestValidated, this, _1),
-                                              nullptr);
+        m_securityOptions.validator->validate(
+          interest, std::bind(&SVSyncCore::onSyncInterestValidated, this, _1), nullptr);
       else
         onSyncInterestValidated(interest);
       return;
@@ -118,9 +117,7 @@ SVSyncCore::onSyncInterest(const Interest& interest)
 void
 SVSyncCore::onSyncInterestValidated(const Interest& interest)
 {
-  const auto& n = interest.getName();
-
-  // Get incoming face
+  // Get incoming face (this is needed by NLSR)
   uint64_t incomingFace = 0;
   {
     auto tag = interest.getTag<ndn::lp::IncomingFaceIdTag>();
@@ -129,58 +126,66 @@ SVSyncCore::onSyncInterestValidated(const Interest& interest)
     }
   }
 
-  // Get state vector
-  std::shared_ptr<VersionVector> vvOther;
-  try
-  {
-    ndn::Block vvBlock = n.get(-2);
+  // Check for invalid Interest
+  if (!interest.hasApplicationParameters()) {
+    return;
+  }
 
-    // Decompress if necessary
-    if (vvBlock.type() == tlv::StateVectorLzma) {
+  // Decode state parameters
+  ndn::Block params = interest.getApplicationParameters();
+  params.parse();
+
 #ifdef NDN_SVS_COMPRESSION
-      boost::iostreams::filtering_istreambuf in;
-      in.push(boost::iostreams::lzma_decompressor());
-      in.push(boost::iostreams::array_source(reinterpret_cast<const char*>(vvBlock.value()), vvBlock.value_size()));
-      ndn::OBufferStream decompressed;
-      boost::iostreams::copy(in, decompressed);
-      auto inner = ndn::Block::fromBuffer(decompressed.buf());
-      if (!std::get<0>(inner)) {
-        NDN_THROW(ndn::tlv::Error("Failed to decode inner block"));
-      }
-      vvBlock = std::get<1>(inner);
-#else
-      NDN_THROW(ndn::tlv::Error("SVS was compiled without compression support"));
-#endif
+  // Decompress if necessary. The spec requires that if an LZMA block is
+  // present, then no other blocks are present (everything is compressed
+  // together)
+  if (params.find(tlv::LzmaBlock) != params.elements_end()) {
+    auto lzmaBlock = params.get(tlv::LzmaBlock);
+
+    boost::iostreams::filtering_istreambuf in;
+    in.push(boost::iostreams::lzma_decompressor());
+    in.push(boost::iostreams::array_source(reinterpret_cast<const char*>(lzmaBlock.value()),
+                                           lzmaBlock.value_size()));
+    ndn::OBufferStream decompressed;
+    boost::iostreams::copy(in, decompressed);
+
+    auto parsed = ndn::Block::fromBuffer(decompressed.buf());
+    if (!std::get<0>(parsed)) {
+      // TODO: log error parsing inner block
+      return;
     }
 
-    vvOther = std::make_shared<VersionVector>(vvBlock);
+    params = std::get<1>(parsed);
+    params.parse();
   }
-  catch (ndn::tlv::Error&)
-  {
+#endif
+
+  // Get state vector
+  std::shared_ptr<VersionVector> vvOther;
+  try {
+    vvOther = std::make_shared<VersionVector>(params.get(tlv::StateVector));
+  } catch (ndn::tlv::Error&) {
     // TODO: log error
     return;
   }
 
-  if (m_recvExtraBlock && interest.hasApplicationParameters())
-  {
+  // Read extra mapping blocks
+  if (m_recvExtraBlock) {
     try {
-      m_recvExtraBlock(interest.getApplicationParameters().blockFromValue(), *vvOther);
+      m_recvExtraBlock(params.get(tlv::MappingData), *vvOther);
+    } catch (std::exception&) {
+      // TODO: log error but continue
     }
-    catch (std::exception&) {}
   }
 
   // Merge state vector
   auto result = mergeStateVector(*vvOther);
 
-  bool myVectorNew = std::get<0>(result);
-  auto missingData = std::get<2>(result);
-
   // Callback if missing data found
-  if (!missingData.empty())
-  {
-    for (auto& e : missingData)
+  if (!result.missingInfo.empty()) {
+    for (auto& e : result.missingInfo)
       e.incomingFace = incomingFace;
-    m_onUpdate(missingData);
+    m_onUpdate(result.missingInfo);
   }
 
   // Try to record; the call will check if in suppression state
@@ -189,12 +194,9 @@ SVSyncCore::onSyncInterestValidated(const Interest& interest)
 
   // If incoming state identical/newer to local vector, reset timer
   // If incoming state is older, send sync interest immediately
-  if (!myVectorNew)
-  {
+  if (!result.myVectorNew) {
     retxSyncInterest(false, 0);
-  }
-  else
-  {
+  } else {
     enterSuppressionState(*vvOther);
     // Check how much time is left on the timer,
     // reset to ~m_intrReplyDist if more than that.
@@ -204,8 +206,7 @@ SVSyncCore::onSyncInterestValidated(const Interest& interest)
     // TODO: efficient curve depends on number of active nodes
     delay = suppressionCurve(m_maxSuppressionTime.count(), delay);
 
-    if (getCurrentTime() + delay * 1000 < m_nextSyncInterest)
-    {
+    if (getCurrentTime() + delay * 1000 < m_nextSyncInterest) {
       retxSyncInterest(false, delay);
     }
   }
@@ -214,13 +215,12 @@ SVSyncCore::onSyncInterestValidated(const Interest& interest)
 void
 SVSyncCore::retxSyncInterest(bool send, unsigned int delay)
 {
-  if (send)
-  {
+  if (send) {
     std::lock_guard<std::mutex> lock(m_recordedVvMutex);
 
     // Only send interest if in steady state or local vector has newer state
     // than recorded interests
-    if (!m_recordedVv || std::get<0>(mergeStateVector(*m_recordedVv)))
+    if (!m_recordedVv || mergeStateVector(*m_recordedVv).myVectorNew)
       sendSyncInterest();
     m_recordedVv = nullptr;
   }
@@ -234,8 +234,7 @@ SVSyncCore::retxSyncInterest(bool send, unsigned int delay)
     // Store the scheduled time
     m_nextSyncInterest = getCurrentTime() + 1000 * delay;
 
-    m_retxEvent = m_scheduler.schedule(time::milliseconds(delay),
-                                       [this] { retxSyncInterest(true, 0); });
+    m_retxEvent = m_scheduler.schedule(time::milliseconds(delay), [this] { retxSyncInterest(true, 0); });
   }
 }
 
@@ -245,40 +244,43 @@ SVSyncCore::sendSyncInterest()
   if (!m_initialized)
     return;
 
-  Interest interest;
-  interest.setApplicationParameters(span<const uint8_t>{'0'});
-
-  ndn::Block vvWire;
+  // Build app parameters
+  ndn::encoding::EncodingBuffer enc;
   {
     std::lock_guard<std::mutex> lock(m_vvMutex);
-    vvWire = m_vv.encode();
+    size_t length = 0;
 
-    // Add parameters digest
+    // Add extra mapping blocks
     if (m_getExtraBlock)
-    {
-      interest.setApplicationParameters(m_getExtraBlock(m_vv));
-    }
+      length += ndn::encoding::prependBlock(enc, m_getExtraBlock(m_vv));
+
+    // Add state vector
+    length += ndn::encoding::prependBlock(enc, m_vv.encode());
+
+    // Add length and ApplicationParameters type
+    enc.prependVarNumber(length);
+    enc.prependVarNumber(ndn::tlv::ApplicationParameters);
   }
 
-  // Create sync interest name
-  Name syncName(m_syncPrefix);
+  ndn::Block wire = enc.block();
+  wire.encode();
 
 #ifdef NDN_SVS_COMPRESSION
-  vvWire.encode();
   boost::iostreams::filtering_istreambuf in;
   in.push(boost::iostreams::lzma_compressor());
-  in.push(boost::iostreams::array_source(reinterpret_cast<const char*>(vvWire.data()), vvWire.size()));
+  in.push(boost::iostreams::array_source(reinterpret_cast<const char*>(wire.data()), wire.size()));
   ndn::OBufferStream compressed;
   boost::iostreams::copy(in, compressed);
-  vvWire = ndn::Block(tlv::StateVectorLzma, compressed.buf());
+  wire = ndn::Block(tlv::LzmaBlock, compressed.buf());
+  wire.encode();
 #endif
 
-  syncName.append(Name::Component(vvWire));
-  interest.setName(syncName);
+  // Create Sync Interest
+  Interest interest(Name(m_syncPrefix).appendVersion(2));
+  interest.setApplicationParameters(wire);
   interest.setInterestLifetime(1_ms);
 
-  switch (m_securityOptions.interestSigner->signingInfo.getSignerType())
-  {
+  switch (m_securityOptions.interestSigner->signingInfo.getSignerType()) {
     case security::SigningInfo::SIGNER_TYPE_NULL:
       break;
 
@@ -294,50 +296,45 @@ SVSyncCore::sendSyncInterest()
   m_face.expressInterest(interest, nullptr, nullptr, nullptr);
 }
 
-std::tuple<bool, bool, std::vector<MissingDataInfo>>
+SVSyncCore::MergeResult
 SVSyncCore::mergeStateVector(const VersionVector& vvOther)
 {
   std::lock_guard<std::mutex> lock(m_vvMutex);
-
-  bool myVectorNew = false,
-       otherVectorNew = false;
-
-  // New data found in vvOther
-  std::vector<MissingDataInfo> missingData;
+  SVSyncCore::MergeResult result;
 
   // Check if other vector has newer state
-  for (const auto& entry : vvOther)
-  {
+  for (const auto& entry : vvOther) {
     NodeID nidOther = entry.first;
     SeqNo seqOther = entry.second;
     SeqNo seqCurrent = m_vv.get(nidOther);
 
-    if (seqCurrent < seqOther)
-    {
-      otherVectorNew = true;
+    if (seqCurrent < seqOther) {
+      result.otherVectorNew = true;
 
       SeqNo startSeq = m_vv.get(nidOther) + 1;
-      missingData.push_back({nidOther, startSeq, seqOther, 0});
+      result.missingInfo.push_back({ nidOther, startSeq, seqOther, 0 });
 
       m_vv.set(nidOther, seqOther);
     }
   }
 
   // Check if I have newer state
-  for (const auto& entry : m_vv)
-  {
+  for (const auto& entry : m_vv) {
     NodeID nid = entry.first;
     SeqNo seq = entry.second;
     SeqNo seqOther = vvOther.get(nid);
 
-    if (seqOther < seq)
-    {
-      myVectorNew = true;
+    // Ignore this node if it was last updated within network RTT
+    if (time::system_clock::now() - m_vv.getLastUpdate(nid) < m_maxSuppressionTime)
+      continue;
+
+    if (seqOther < seq) {
+      result.myVectorNew = true;
       break;
     }
   }
 
-  return {myVectorNew, otherVectorNew, missingData};
+  return result;
 }
 
 void
@@ -374,8 +371,7 @@ SVSyncCore::getNodeIds() const
 {
   std::lock_guard<std::mutex> lock(m_vvMutex);
   std::set<NodeID> sessionNames;
-  for (const auto& nid : m_vv)
-  {
+  for (const auto& nid : m_vv) {
     sessionNames.insert(nid.first);
   }
   return sessionNames;
@@ -385,7 +381,8 @@ long
 SVSyncCore::getCurrentTime() const
 {
   return std::chrono::duration_cast<std::chrono::microseconds>(
-    std::chrono::steady_clock::now().time_since_epoch()).count();
+           std::chrono::steady_clock::now().time_since_epoch())
+    .count();
 }
 
 bool
@@ -398,14 +395,12 @@ SVSyncCore::recordVector(const VersionVector& vvOther)
 
   std::lock_guard<std::mutex> lock1(m_vvMutex);
 
-  for (const auto& entry : vvOther)
-  {
+  for (const auto& entry : vvOther) {
     NodeID nidOther = entry.first;
     SeqNo seqOther = entry.second;
     SeqNo seqCurrent = m_recordedVv->get(nidOther);
 
-    if (seqCurrent < seqOther)
-    {
+    if (seqCurrent < seqOther) {
       m_recordedVv->set(nidOther, seqOther);
     }
   }

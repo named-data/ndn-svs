@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2023 University of California, Los Angeles
+ * Copyright (c) 2012-2025 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -51,22 +51,19 @@ public:
     opts.maxPubAge = ndn::time::seconds(10);
 
     // Create the Pub/Sub instance
-    m_svsps = std::make_shared<SVSPubSub>(
-      ndn::Name(m_options.prefix),
-      ndn::Name(m_options.m_id),
-      face,
-      std::bind(&Program::onMissingData, this, _1),
-      opts,
-      secOpts);
+    m_svsps = std::make_shared<SVSPubSub>(ndn::Name(m_options.prefix),
+                                          ndn::Name(m_options.m_id),
+                                          face,
+                                          std::bind(&Program::onMissingData, this, _1),
+                                          opts,
+                                          secOpts);
 
     std::cout << "SVS client starting: " << m_options.m_id << std::endl;
 
     // Subscribe to all data packets with prefix /chat (the "topic")
-    m_svsps->subscribe(ndn::Name("/chat"), [] (const auto& subData)
-    {
+    m_svsps->subscribe(ndn::Name("/chat"), [](const auto& subData) {
       std::string content(reinterpret_cast<const char*>(subData.data.data()), subData.data.size());
-      std::cout << subData.producerPrefix << " [" << subData.seqNo << "] : " <<
-                   subData.name << " : ";
+      std::cout << subData.producerPrefix << " [" << subData.seqNo << "] : " << subData.name << " : ";
       if (content.length() > 200) {
         std::cout << "[LONG] " << content.length() << " bytes"
                   << " [" << std::hash<std::string>{}(content) << "]";
@@ -77,8 +74,7 @@ public:
     });
   }
 
-  void
-  run()
+  void run()
   {
     // Begin processing face events in a separate thread.
     std::thread svsThread([this] { face.processEvents(); });
@@ -101,11 +97,10 @@ public:
 protected:
   /**
    * Callback on receving a new State Vector from another node.
-   * This will be called regardless of whether the missing data contains any topics
-   * or producers that we are subscribed to.
+   * This will be called regardless of whether the missing data contains any
+   * topics or producers that we are subscribed to.
    */
-  void
-  onMissingData(const std::vector<MissingDataInfo>&)
+  void onMissingData(const std::vector<MissingDataInfo>&)
   {
     // Ignore any other missing data for this example
   }
@@ -113,8 +108,7 @@ protected:
   /**
    * Publish a string message to the group
    */
-  void
-  publishMsg(const std::string& msg)
+  void publishMsg(const std::string& msg)
   {
     // Message to send
     std::string content = msg;
@@ -129,14 +123,15 @@ protected:
       for (auto& c : content)
         c = std::rand() % 26 + 'a';
 
-      std::cout << "> Sending random message with hash [" << std::hash<std::string>{}(content) << "]" << std::endl;
+      std::cout << "> Sending random message with hash [" << std::hash<std::string>{}(content) << "]"
+                << std::endl;
     }
 
     // Note that unlike SVSync, names can be arbitrary,
     // and need not be prefixed with the producer prefix.
-    ndn::Name name("chat");       // topic of publication
-    name.append(m_options.m_id);  // who sent this
-    name.appendTimestamp();       // and when
+    ndn::Name name("chat");      // topic of publication
+    name.append(m_options.m_id); // who sent this
+    name.appendTimestamp();      // and when
 
     m_svsps->publish(name, ndn::make_span(reinterpret_cast<const uint8_t*>(content.data()), content.size()));
   }

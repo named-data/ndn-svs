@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2023 University of California, Los Angeles
+ * Copyright (c) 2012-2025 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -27,7 +27,7 @@ class CoreFixture
 protected:
   CoreFixture()
     : m_syncPrefix("/ndn/test")
-    , m_core(m_face, m_syncPrefix, [] (auto&&...) {})
+    , m_core(m_face, m_syncPrefix, [](auto&&...) {})
   {
   }
 
@@ -41,40 +41,40 @@ BOOST_FIXTURE_TEST_SUITE(TestCore, CoreFixture)
 
 BOOST_AUTO_TEST_CASE(MergeStateVector)
 {
-  std::vector<MissingDataInfo> missingData;
+  std::vector<MissingDataInfo> missingInfo;
 
   VersionVector v = m_core.getState();
   BOOST_CHECK_EQUAL(v.get("one"), 0);
   BOOST_CHECK_EQUAL(v.get("two"), 0);
   BOOST_CHECK_EQUAL(v.get("three"), 0);
-  BOOST_CHECK_EQUAL(missingData.size(), 0);
+  BOOST_CHECK_EQUAL(missingInfo.size(), 0);
 
   VersionVector v1;
   v1.set("one", 1);
   v1.set("two", 2);
-  missingData = std::get<2>(m_core.mergeStateVector(v1));
+  missingInfo = m_core.mergeStateVector(v1).missingInfo;
 
   v = m_core.getState();
   BOOST_CHECK_EQUAL(v.get("one"), 1);
   BOOST_CHECK_EQUAL(v.get("two"), 2);
   BOOST_CHECK_EQUAL(v.get("three"), 0);
-  BOOST_CHECK_EQUAL(missingData.size(), 2);
+  BOOST_CHECK_EQUAL(missingInfo.size(), 2);
 
   VersionVector v2;
   v2.set("one", 1);
   v2.set("two", 1);
   v2.set("three", 3);
-  missingData = std::get<2>(m_core.mergeStateVector(v2));
+  missingInfo = m_core.mergeStateVector(v2).missingInfo;
 
   v = m_core.getState();
   BOOST_CHECK_EQUAL(v.get("one"), 1);
   BOOST_CHECK_EQUAL(v.get("two"), 2);
   BOOST_CHECK_EQUAL(v.get("three"), 3);
 
-  BOOST_REQUIRE_EQUAL(missingData.size(), 1);
-  BOOST_CHECK_EQUAL(missingData[0].nodeId, "three");
-  BOOST_CHECK_EQUAL(missingData[0].low, 1);
-  BOOST_CHECK_EQUAL(missingData[0].high, 3);
+  BOOST_REQUIRE_EQUAL(missingInfo.size(), 1);
+  BOOST_CHECK_EQUAL(missingInfo[0].nodeId, "three");
+  BOOST_CHECK_EQUAL(missingInfo[0].low, 1);
+  BOOST_CHECK_EQUAL(missingInfo[0].high, 3);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

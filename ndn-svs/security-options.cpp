@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2022 University of California, Los Angeles
+ * Copyright (c) 2012-2025 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -18,7 +18,7 @@
 
 namespace ndn::svs {
 
-const SecurityOptions SecurityOptions::DEFAULT{SecurityOptions::DEFAULT_KEYCHAIN};
+const SecurityOptions SecurityOptions::DEFAULT{ SecurityOptions::DEFAULT_KEYCHAIN };
 
 BaseSigner::~BaseSigner() = default;
 

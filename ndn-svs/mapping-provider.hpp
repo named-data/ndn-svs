@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2022 University of California, Los Angeles
+ * Copyright (c) 2012-2025 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -34,16 +34,13 @@ class MappingList
 public:
   MappingList();
 
-  explicit
-  MappingList(const NodeID& nid);
+  explicit MappingList(const NodeID& nid);
 
   /// @brief Decode from Block
-  explicit
-  MappingList(const Block& block);
+  explicit MappingList(const Block& block);
 
   /// @brief Encode to Block
-  Block
-  encode() const;
+  Block encode() const;
 
 public:
   NodeID nodeId;
@@ -61,24 +58,21 @@ public:
                   ndn::Face& face,
                   const SecurityOptions& securityOptions);
 
-  virtual
-  ~MappingProvider() = default;
+  virtual ~MappingProvider() = default;
 
   using MappingListCallback = std::function<void(const MappingList&)>;
 
   /**
    * @brief Insert a mapping entry into the store
    */
-  void
-  insertMapping(const NodeID& nodeId, const SeqNo& seqNo, const MappingEntryPair& entry);
+  void insertMapping(const NodeID& nodeId, const SeqNo& seqNo, const MappingEntryPair& entry);
 
   /**
    * @brief Get a mapping and throw if not found
    *
    * @returns Corresponding application name
    */
-  MappingEntryPair
-  getMapping(const NodeID& nodeId, const SeqNo& seqNo);
+  MappingEntryPair getMapping(const NodeID& nodeId, const SeqNo& seqNo);
 
   /**
    * @brief Retrieve the data mappings for encapsulated data packets
@@ -86,10 +80,9 @@ public:
    * @param info Query info
    * @param onValidated Callback when mapping is fetched and validated
    */
-  void
-  fetchNameMapping(const MissingDataInfo& info,
-                   const MappingListCallback& onValidated,
-                   int nRetries = 0);
+  void fetchNameMapping(const MissingDataInfo& info,
+                        const MappingListCallback& onValidated,
+                        int nRetries = 0);
 
   /**
    * @brief Retrieve the data mappings for encapsulated data packets
@@ -98,27 +91,23 @@ public:
    * @param onValidated Callback when mapping is fetched and validated
    * @param onTimeout Callback when mapping is not retrieved
    */
-  void
-  fetchNameMapping(const MissingDataInfo& info,
-                   const MappingListCallback& onValidated,
-                   const TimeoutCallback& onTimeout,
-                   int nRetries = 0);
+  void fetchNameMapping(const MissingDataInfo& info,
+                        const MappingListCallback& onValidated,
+                        const TimeoutCallback& onTimeout,
+                        int nRetries = 0);
 
 private:
   /**
    * @brief Return data name for mapping query
    */
-  Name
-  getMappingQueryDataName(const MissingDataInfo& info);
+  Name getMappingQueryDataName(const MissingDataInfo& info);
 
   /**
    * @brief Return the query from mapping data name
    */
-  MissingDataInfo
-  parseMappingQueryDataName(const Name& name);
+  MissingDataInfo parseMappingQueryDataName(const Name& name);
 
-  void
-  onMappingQuery(const Interest& interest);
+  void onMappingQuery(const Interest& interest);
 
 private:
   const Name m_syncPrefix;

@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2023 University of California, Los Angeles
+ * Copyright (c) 2012-2025 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -53,11 +53,11 @@ public:
              const SecurityOptions& securityOptions = SecurityOptions::DEFAULT,
              std::shared_ptr<DataStore> dataStore = DEFAULT_DATASTORE);
 
-  virtual
-  ~SVSyncBase() = default;
+  virtual ~SVSyncBase() = default;
 
   /**
-   * @brief Publish a data packet in the session and trigger synchronization updates
+   * @brief Publish a data packet in the session and trigger synchronization
+   * updates
    *
    * This method will create a data packet with the supplied content.
    * The packet name is the local session + seqNo.
@@ -70,12 +70,14 @@ public:
    *
    * @returns Sequence number of the published data packet
    */
-  SeqNo
-  publishData(const uint8_t* buf, size_t len, const ndn::time::milliseconds& freshness,
-              const NodeID& id = EMPTY_NODE_ID);
+  SeqNo publishData(const uint8_t* buf,
+                    size_t len,
+                    const ndn::time::milliseconds& freshness,
+                    const NodeID& id = EMPTY_NODE_ID);
 
   /**
-   * @brief Publish a data packet in the session and trigger synchronization updates
+   * @brief Publish a data packet in the session and trigger synchronization
+   * updates
    *
    * This method will create a data packet with the supplied content.
    * The packet name is the local session + seqNo.
@@ -87,10 +89,10 @@ public:
    *
    * @returns Sequence number of the published data packet
    */
-  SeqNo
-  publishData(const Block& content, const ndn::time::milliseconds& freshness,
-              const NodeID& nid = EMPTY_NODE_ID,
-              uint32_t contentType = ndn::tlv::Content);
+  SeqNo publishData(const Block& content,
+                    const ndn::time::milliseconds& freshness,
+                    const NodeID& nid = EMPTY_NODE_ID,
+                    uint32_t contentType = ndn::tlv::Content);
 
   /**
    * Insert segment into the store without changing the sequence number.
@@ -103,52 +105,55 @@ public:
    * @param finalBlock FinalBlockId of the data packet
    * @param contentType Content type of the data packet
    */
-  void
-  insertDataSegment(const Block& content, const ndn::time::milliseconds& freshness,
-                    const NodeID& nid, const SeqNo seq, const size_t segNo,
-                    const Name::Component& finalBlock,
-                    uint32_t contentType = ndn::tlv::Content);
+  void insertDataSegment(const Block& content,
+                         const ndn::time::milliseconds& freshness,
+                         const NodeID& nid,
+                         const SeqNo seq,
+                         const size_t segNo,
+                         const Name::Component& finalBlock,
+                         uint32_t contentType = ndn::tlv::Content);
 
   /**
    * @brief Retrive a data packet with a particular seqNo from a session
    *
    * @param nid The name of the target node
    * @param seq The seqNo of the data packet.
-   * @param onValidated The callback when the retrieved packet has been validated.
+   * @param onValidated The callback when the retrieved packet has been
+   * validated.
    * @param nRetries The number of retries.
    */
-  void
-  fetchData(const NodeID& nid, const SeqNo& seq,
-            const DataValidatedCallback& onValidated,
-            int nRetries = 0);
+  void fetchData(const NodeID& nid,
+                 const SeqNo& seq,
+                 const DataValidatedCallback& onValidated,
+                 int nRetries = 0);
 
   /**
    * @brief Retrive a data packet with a particular seqNo from a session
    *
    * @param nid The name of the target node
    * @param seq The seqNo of the data packet.
-   * @param onValidated The callback when the retrieved packet has been validated.
-   * @param onValidationFailed The callback when the retrieved packet failed validation.
+   * @param onValidated The callback when the retrieved packet has been
+   * validated.
+   * @param onValidationFailed The callback when the retrieved packet failed
+   * validation.
    * @param onTimeout The callback when data is not retrieved.
    * @param nRetries The number of retries.
    */
-  void
-  fetchData(const NodeID& nid, const SeqNo& seq,
-            const DataValidatedCallback& onValidated,
-            const DataValidationErrorCallback& onValidationFailed,
-            const TimeoutCallback& onTimeout,
-            int nRetries = 0);
+  void fetchData(const NodeID& nid,
+                 const SeqNo& seq,
+                 const DataValidatedCallback& onValidated,
+                 const DataValidationErrorCallback& onValidationFailed,
+                 const TimeoutCallback& onTimeout,
+                 int nRetries = 0);
 
   /** @brief Get the underlying data store */
-  DataStore&
-  getDataStore()
+  DataStore& getDataStore()
   {
     return *m_dataStore;
   }
 
   /** @brief Get the underlying SVS core */
-  SVSyncCore&
-  getCore()
+  SVSyncCore& getCore()
   {
     return m_core;
   }
@@ -162,32 +167,25 @@ protected:
    * data prefix for proper functionality, or the application must
    * independently produce data under the prefix.
    */
-  virtual Name
-  getDataName(const NodeID& nid, const SeqNo& seqNo) = 0;
+  virtual Name getDataName(const NodeID& nid, const SeqNo& seqNo) = 0;
 
 public:
   static inline const NodeID EMPTY_NODE_ID;
   static inline const std::shared_ptr<DataStore> DEFAULT_DATASTORE;
 
 private:
-  void
-  onDataInterest(const Interest& interest);
+  void onDataInterest(const Interest& interest);
 
-  void
-  onDataValidated(const Data& data,
-                  const DataValidatedCallback& dataCallback);
+  void onDataValidated(const Data& data, const DataValidatedCallback& dataCallback);
 
-  void
-  onDataValidationFailed(const Data& data,
-                         const ValidationError& error);
+  void onDataValidationFailed(const Data& data, const ValidationError& error);
 
   /**
    * Determines whether a particular data packet is to be cached
    * Can be used to cache data packets from other nodes when
    * using multicast data interests.
    */
-  virtual bool
-  shouldCache(const Data& data) const
+  virtual bool shouldCache(const Data& data) const
   {
     return false;
   }

@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2022 University of California, Los Angeles
+ * Copyright (c) 2012-2025 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -27,18 +27,16 @@ namespace ndn::svs {
 class BaseValidator : noncopyable
 {
 public:
-  virtual
-  ~BaseValidator() = default;
+  virtual ~BaseValidator() = default;
 
   /**
    * @brief Asynchronously validate @p data
    *
    * @note @p successCb and @p failureCb must not be nullptr
    */
-  virtual void
-  validate(const Data& data,
-           const ndn::security::DataValidationSuccessCallback& successCb,
-           const ndn::security::DataValidationFailureCallback& failureCb)
+  virtual void validate(const Data& data,
+                        const ndn::security::DataValidationSuccessCallback& successCb,
+                        const ndn::security::DataValidationFailureCallback& failureCb)
   {
     successCb(data);
   }
@@ -48,10 +46,9 @@ public:
    *
    * @note @p successCb and @p failureCb must not be nullptr
    */
-  virtual void
-  validate(const Interest& interest,
-           const ndn::security::InterestValidationSuccessCallback& successCb,
-           const ndn::security::InterestValidationFailureCallback& failureCb)
+  virtual void validate(const Interest& interest,
+                        const ndn::security::InterestValidationSuccessCallback& successCb,
+                        const ndn::security::InterestValidationFailureCallback& failureCb)
   {
     successCb(interest);
   }
@@ -63,14 +60,11 @@ public:
 class BaseSigner : noncopyable
 {
 public:
-  virtual
-  ~BaseSigner();
+  virtual ~BaseSigner();
 
-  virtual void
-  sign(Interest& interest) const {}
+  virtual void sign(Interest& interest) const {}
 
-  virtual void
-  sign(Data& data) const {}
+  virtual void sign(Data& data) const {}
 
 public:
   security::SigningInfo signingInfo;
@@ -82,16 +76,14 @@ public:
 class KeyChainSigner : public BaseSigner
 {
 public:
-  explicit
-  KeyChainSigner(KeyChain& keyChain)
+  explicit KeyChainSigner(KeyChain& keyChain)
     : m_keyChain(keyChain)
-  {}
+  {
+  }
 
-  void
-  sign(Interest& interest) const override;
+  void sign(Interest& interest) const override;
 
-  void
-  sign(Data& data) const override;
+  void sign(Data& data) const override;
 
 private:
   KeyChain& m_keyChain;
@@ -103,8 +95,7 @@ private:
 class SecurityOptions
 {
 public:
-  explicit
-  SecurityOptions(KeyChain& keyChain);
+  explicit SecurityOptions(KeyChain& keyChain);
 
 public:
   /** Signing options for sync interests */

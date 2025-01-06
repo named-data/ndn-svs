@@ -1,0 +1,4 @@
+BasedOnStyle: Mozilla
+AllowShortFunctionsOnASingleLine: Empty
+IndentWidth: 2
+ColumnLimit: 110

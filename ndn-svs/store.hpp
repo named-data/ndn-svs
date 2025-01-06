@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2022 University of California, Los Angeles
+ * Copyright (c) 2012-2025 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -24,14 +24,11 @@ namespace ndn::svs {
 class DataStore : noncopyable
 {
 public:
-  virtual
-  ~DataStore() = default;
+  virtual ~DataStore() = default;
 
-  virtual std::shared_ptr<const Data>
-  find(const Interest& interest) = 0;
+  virtual std::shared_ptr<const Data> find(const Interest& interest) = 0;
 
-  virtual void
-  insert(const Data& data) = 0;
+  virtual void insert(const Data& data) = 0;
 };
 
 } // namespace ndn::svs

@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2022 University of California, Los Angeles
+ * Copyright (c) 2012-2025 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -31,34 +31,25 @@ class Fetcher
 public:
   Fetcher(Face& face, const SecurityOptions& securityOptions);
 
-  void
-  expressInterest(const ndn::Interest& interest,
-                  const ndn::DataCallback& afterSatisfied,
-                  const ndn::NackCallback& afterNacked,
-                  const ndn::TimeoutCallback& afterTimeout,
-                  int nRetries = 0,
-                  const ndn::security::DataValidationFailureCallback& afterValidationFailed = nullptr);
+  void expressInterest(const ndn::Interest& interest,
+                       const ndn::DataCallback& afterSatisfied,
+                       const ndn::NackCallback& afterNacked,
+                       const ndn::TimeoutCallback& afterTimeout,
+                       int nRetries = 0,
+                       const ndn::security::DataValidationFailureCallback& afterValidationFailed = nullptr);
 
 private:
   struct QueuedInterest;
 
-  void
-  expressInterest(const QueuedInterest& qi);
+  void expressInterest(const QueuedInterest& qi);
 
-  void
-  onData(const Interest& interest, const Data& data,
-         const QueuedInterest& qi);
+  void onData(const Interest& interest, const Data& data, const QueuedInterest& qi);
 
-  void
-  onNack(const ndn::Interest& interest, const ndn::lp::Nack& nack,
-         const QueuedInterest& qi);
+  void onNack(const ndn::Interest& interest, const ndn::lp::Nack& nack, const QueuedInterest& qi);
 
-  void
-  onTimeout(const Interest& interest,
-            const QueuedInterest& qi);
+  void onTimeout(const Interest& interest, const QueuedInterest& qi);
 
-  void
-  processQueue();
+  void processQueue();
 
 private:
   Face& m_face;

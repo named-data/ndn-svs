@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2022 University of California, Los Angeles
+ * Copyright (c) 2012-2025 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -44,7 +44,7 @@ using SeqNo = uint64_t;
 using ndn::security::ValidationError;
 
 using DataValidatedCallback = std::function<void(const Data&)>;
-using DataValidationErrorCallback = std::function<void(const Data&, const ValidationError&)> ;
+using DataValidationErrorCallback = std::function<void(const Data&, const ValidationError&)>;
 
 } // namespace ndn::svs
 

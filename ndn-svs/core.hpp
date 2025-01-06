@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2023 University of California, Los Angeles
+ * Copyright (c) 2012-2025 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -81,18 +81,17 @@ public:
   /**
    * @brief Reset the sync tree (and restart synchronization again)
    *
-   * @param isOnInterest a flag that tells whether the reset is called by reset interest.
+   * @param isOnInterest a flag that tells whether the reset is called by reset
+   * interest.
    */
-  void
-  reset(bool isOnInterest = false);
+  void reset(bool isOnInterest = false);
 
   /**
    * @brief Get the node ID of the local session.
    *
    * @param prefix prefix of the node
    */
-  const NodeID&
-  getNodeId()
+  const NodeID& getNodeId()
   {
     return m_id;
   }
@@ -105,8 +104,7 @@ public:
    *
    * @param prefix prefix of the node
    */
-  SeqNo
-  getSeqNo(const NodeID& nid = EMPTY_NODE_ID) const;
+  SeqNo getSeqNo(const NodeID& nid = EMPTY_NODE_ID) const;
 
   /**
    * @brief Update the seqNo of the local session
@@ -116,12 +114,10 @@ public:
    * @param seq The new seqNo.
    * @param nid The NodeID of node to update.
    */
-  void
-  updateSeqNo(const SeqNo& seq, const NodeID& nid = EMPTY_NODE_ID);
+  void updateSeqNo(const SeqNo& seq, const NodeID& nid = EMPTY_NODE_ID);
 
   /// @brief Get all the nodeIDs
-  std::set<NodeID>
-  getNodeIds() const;
+  std::set<NodeID> getNodeIds() const;
 
   using GetExtraBlockCallback = std::function<ndn::Block(const VersionVector&)>;
   using RecvExtraBlockCallback = std::function<void(const ndn::Block&, const VersionVector&)>;
@@ -132,8 +128,7 @@ public:
    * The version vector will be locked during the duration of this callback,
    * so it must return FAST!
    */
-  void
-  setGetExtraBlockCallback(const GetExtraBlockCallback& callback)
+  void setGetExtraBlockCallback(const GetExtraBlockCallback& callback)
   {
     m_getExtraBlock = callback;
   }
@@ -142,47 +137,40 @@ public:
    * @brief Callback on receiving extra data in a sync interest.
    * Will be called BEFORE the interest is processed.
    */
-  void
-  setRecvExtraBlockCallback(const RecvExtraBlockCallback& callback)
+  void setRecvExtraBlockCallback(const RecvExtraBlockCallback& callback)
   {
     m_recvExtraBlock = callback;
   }
 
   /// @brief Get current version vector
-  VersionVector&
-  getState()
+  VersionVector& getState()
   {
     return m_vv;
   }
 
   /// @brief Get human-readable representation of version vector
-  std::string
-  getStateStr() const
+  std::string getStateStr() const
   {
     return m_vv.toStr();
   }
 
-NDN_SVS_PUBLIC_WITH_TESTS_ELSE_PRIVATE:
-  void
-  onSyncInterest(const Interest& interest);
+  NDN_SVS_PUBLIC_WITH_TESTS_ELSE_PRIVATE : void onSyncInterest(const Interest& interest);
 
-  void
-  onSyncInterestValidated(const Interest& interest);
+  void onSyncInterestValidated(const Interest& interest);
 
   /**
    * @brief Mark the instance as initialized and send the first interest
    */
-  void
-  sendInitialInterest();
+  void sendInitialInterest();
 
   /**
    * @brief sendSyncInterest and schedule a new retxSyncInterest event.
    *
    * @param send Send a sync interest immediately
-   * @param delay Delay in milliseconds to schedule next interest (0 for default).
+   * @param delay Delay in milliseconds to schedule next interest (0 for
+   * default).
    */
-  void
-  retxSyncInterest(bool send, unsigned int delay);
+  void retxSyncInterest(bool send, unsigned int delay);
 
   /**
    * @brief Add one sync interest to queue.
@@ -190,52 +178,49 @@ NDN_SVS_PUBLIC_WITH_TESTS_ELSE_PRIVATE:
    * Called by retxSyncInterest(), or after increasing a sequence
    * number with updateSeqNo()
    */
-  void
-  sendSyncInterest();
+  void sendSyncInterest();
+
+  struct MergeResult
+  {
+    /// @brief If the local state vector has newer entries
+    bool myVectorNew;
+    /// @brief If the incoming state vector has newer entries
+    bool otherVectorNew;
+    /// @brief Newly learned missing information from incoming state vector
+    std::vector<MissingDataInfo> missingInfo;
+  };
 
   /**
    * @brief Merge state vector into the current
-   *
-   * Also adds missing data interests to data interest queue.
-   *
    * @param vvOther state vector to merge in
-   *
-   * @returns a tuple of representing:
-   *    <my vector new, other vector new, missinginfo>.
+   * @details Also adds missing data interests to data interest queue.
    */
-  std::tuple<bool, bool, std::vector<MissingDataInfo>>
-  mergeStateVector(const VersionVector& vvOther);
+  MergeResult mergeStateVector(const VersionVector& vvOther);
 
   /**
    * @brief Record vector by merging it into m_recordedVv
-   *
    * @param vvOther state vector to merge in
    * @returns if recorded successfully
    */
-  bool
-  recordVector(const VersionVector& vvOther);
+  bool recordVector(const VersionVector& vvOther);
 
   /**
    * @brief Enter suppression state by setting
-   * m_recording to True and initializing m_recordedVv to vvOther
-   *
+   * m_recording to True and initializing m_recordedVv to vvOther.
    * Does nothing if already in suppression state
    *
    * @param vvOther first vector to record
    */
-  void
-  enterSuppressionState(const VersionVector& vvOther);
+  void enterSuppressionState(const VersionVector& vvOther);
 
   /// @brief Reference to scheduler
-  ndn::Scheduler&
-  getScheduler()
+  ndn::Scheduler& getScheduler()
   {
     return m_scheduler;
   }
 
   /// @brief Get the current time in microseconds with arbitrary reference
-  long
-  getCurrentTime() const;
+  long getCurrentTime() const;
 
 public:
   static inline const NodeID EMPTY_NODE_ID;

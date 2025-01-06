@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2022 University of California, Los Angeles
+ * Copyright (c) 2012-2025 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -37,51 +37,51 @@ public:
   VersionVector() = default;
 
   /** Decode a version vector from ndn::Block */
-  explicit
-  VersionVector(const ndn::Block& encoded);
+  explicit VersionVector(const ndn::Block& encoded);
 
   /** Encode the version vector to a string */
-  ndn::Block
-  encode() const;
+  ndn::Block encode() const;
 
   /** Get a human-readable representation */
-  std::string
-  toStr() const;
+  std::string toStr() const;
 
-  SeqNo
-  set(const NodeID& nid, SeqNo seqNo)
+  SeqNo set(const NodeID& nid, SeqNo seqNo)
   {
     m_map[nid] = seqNo;
+    m_lastUpdate[nid] = time::system_clock::now();
     return seqNo;
   }
 
-  SeqNo
-  get(const NodeID& nid) const
+  SeqNo get(const NodeID& nid) const
   {
     auto elem = m_map.find(nid);
     return elem == m_map.end() ? 0 : elem->second;
   }
 
-  const_iterator
-  begin() const noexcept
+  time::system_clock::time_point getLastUpdate(const NodeID& nid) const
+  {
+    auto elem = m_lastUpdate.find(nid);
+    return elem == m_lastUpdate.end() ? time::system_clock::time_point::min() : elem->second;
+  }
+
+  const_iterator begin() const noexcept
   {
     return m_map.begin();
   }
 
-  const_iterator
-  end() const noexcept
+  const_iterator end() const noexcept
   {
     return m_map.end();
   }
 
-  bool
-  has(const NodeID& nid) const
+  bool has(const NodeID& nid) const
   {
     return m_map.find(nid) != end();
   }
 
 private:
   std::map<NodeID, SeqNo> m_map;
+  std::map<NodeID, time::system_clock::time_point> m_lastUpdate;
 };
 
 } // namespace ndn::svs

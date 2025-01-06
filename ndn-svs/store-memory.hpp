@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012-2022 University of California, Los Angeles
+ * Copyright (c) 2012-2025 University of California, Los Angeles
  *
  * This file is part of ndn-svs, synchronization library for distributed realtime
  * applications for NDN.
@@ -26,14 +26,12 @@ namespace ndn::svs {
 class MemoryDataStore : public DataStore
 {
 public:
-  std::shared_ptr<const Data>
-  find(const Interest& interest) override
+  std::shared_ptr<const Data> find(const Interest& interest) override
   {
     return m_ims.find(interest);
   }
 
-  void
-  insert(const Data& data) override
+  void insert(const Data& data) override
   {
     return m_ims.insert(data);
   }
