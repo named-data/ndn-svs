@@ -23,23 +23,15 @@ const SecurityOptions SecurityOptions::DEFAULT{ SecurityOptions::DEFAULT_KEYCHAI
 BaseSigner::~BaseSigner() = default;
 
 void
-KeyChainSigner::sign(Interest& interest) const
-{
-  m_keyChain.sign(interest, signingInfo);
-}
-
-void
 KeyChainSigner::sign(Data& data) const
 {
   m_keyChain.sign(data, signingInfo);
 }
 
 SecurityOptions::SecurityOptions(KeyChain& keyChain)
-  : interestSigner(std::make_shared<KeyChainSigner>(keyChain))
-  , dataSigner(std::make_shared<KeyChainSigner>(keyChain))
+  : dataSigner(std::make_shared<KeyChainSigner>(keyChain))
   , pubSigner(std::make_shared<KeyChainSigner>(keyChain))
 {
-  interestSigner->signingInfo.setSignedInterestFormat(security::SignedInterestFormat::V03);
 }
 
 } // namespace ndn::svs

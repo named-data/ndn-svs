@@ -27,7 +27,8 @@ SVSyncBase::SVSyncBase(const Name& syncPrefix,
                        ndn::Face& face,
                        const UpdateCallback& updateCallback,
                        const SecurityOptions& securityOptions,
-                       std::shared_ptr<DataStore> dataStore)
+                       std::shared_ptr<DataStore> dataStore,
+                       const SyncProtocolOptions& protocolOptions)
   : m_syncPrefix(syncPrefix)
   , m_dataPrefix(dataPrefix)
   , m_securityOptions(securityOptions)
@@ -36,7 +37,7 @@ SVSyncBase::SVSyncBase(const Name& syncPrefix,
   , m_fetcher(face, securityOptions)
   , m_onUpdate(updateCallback)
   , m_dataStore(std::move(dataStore))
-  , m_core(m_face, m_syncPrefix, m_onUpdate, securityOptions, m_id)
+  , m_core(m_face, m_syncPrefix, m_onUpdate, securityOptions, m_id, protocolOptions)
 {
   // Register new data store
   if (m_dataStore == DEFAULT_DATASTORE)
@@ -89,7 +90,7 @@ SVSyncBase::insertDataSegment(const Block& content,
                               const Name::Component& finalBlock,
                               uint32_t contentType)
 {
-  Name dataName = getDataName(nid, seq).appendVersion(0).appendSegment(segNo);
+  Name dataName = getDataName(nid, m_core.getBootstrapTime(), seq).appendVersion(0).appendSegment(segNo);
   auto data = std::make_shared<Data>(dataName);
   data->setContent(content);
   data->setFreshnessPeriod(freshness);
@@ -116,7 +117,20 @@ SVSyncBase::fetchData(const NodeID& nid,
   DataValidationErrorCallback onValidationFailed =
     std::bind(&SVSyncBase::onDataValidationFailed, this, _1, _2);
   TimeoutCallback onTimeout = [](auto&&...) {};
-  fetchData(nid, seqNo, onValidated, onValidationFailed, onTimeout, nRetries);
+  fetchData(nid, m_core.getBootstrapTime(), seqNo, onValidated, onValidationFailed, onTimeout, nRetries);
+}
+
+void
+SVSyncBase::fetchData(const NodeID& nid,
+                      const BootstrapTime& bootstrapTime,
+                      const SeqNo& seqNo,
+                      const DataValidatedCallback& onValidated,
+                      int nRetries)
+{
+  DataValidationErrorCallback onValidationFailed =
+    std::bind(&SVSyncBase::onDataValidationFailed, this, _1, _2);
+  TimeoutCallback onTimeout = [](auto&&...) {};
+  fetchData(nid, bootstrapTime, seqNo, onValidated, onValidationFailed, onTimeout, nRetries);
 }
 
 void
@@ -127,7 +141,19 @@ SVSyncBase::fetchData(const NodeID& nid,
                       const TimeoutCallback& onTimeout,
                       int nRetries)
 {
-  Name interestName = getDataName(nid, seqNo);
+  fetchData(nid, m_core.getBootstrapTime(), seqNo, onValidated, onValidationFailed, onTimeout, nRetries);
+}
+
+void
+SVSyncBase::fetchData(const NodeID& nid,
+                      const BootstrapTime& bootstrapTime,
+                      const SeqNo& seqNo,
+                      const DataValidatedCallback& onValidated,
+                      const DataValidationErrorCallback& onValidationFailed,
+                      const TimeoutCallback& onTimeout,
+                      int nRetries)
+{
+  Name interestName = getDataName(nid, bootstrapTime, seqNo);
   Interest interest(interestName);
   interest.setCanBePrefix(true);
   interest.setInterestLifetime(2_s);

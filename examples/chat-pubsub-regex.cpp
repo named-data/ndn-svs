@@ -37,10 +37,7 @@ public:
   Program(const Options& options)
     : m_options(options)
   {
-    // Use HMAC signing for Sync Interests
-    // Note: this is not generally recommended, but is used here for simplicity
     SecurityOptions secOpts(m_keyChain);
-    secOpts.interestSigner->signingInfo.setSigningHmacKey("dGhpcyBpcyBhIHNlY3JldCBtZXNzYWdl");
 
     // Sign data packets using SHA256 (for simplicity)
     secOpts.dataSigner->signingInfo.setSha256Signing();

@@ -33,6 +33,9 @@ namespace ndn::svs {
  */
 struct SVSPubSubOptions
 {
+  /// @brief Sync wire protocol profile. Experimental defaults to complete V3.
+  SyncProtocolOptions syncProtocol;
+
   /// @brief Interface to store data packets
   std::shared_ptr<DataStore> dataStore = SVSync::DEFAULT_DATASTORE;
 
@@ -79,6 +82,12 @@ public:
             const SecurityOptions& securityOptions = SecurityOptions::DEFAULT);
 
   virtual ~SVSPubSub() = default;
+
+  const ResolvedSyncProtocolOptions&
+  getSyncProtocolOptions() const noexcept
+  {
+    return m_svsync.getCore().getProtocolOptions();
+  }
 
   struct SubscriptionData
   {
@@ -210,27 +219,30 @@ private:
     std::shared_ptr<Regex> regex = make_shared<Regex>("^<>+$");
   };
 
-  void onSyncData(const Data& syncData, const std::pair<Name, SeqNo>& publication);
+  using PublicationKey = std::tuple<Name, BootstrapTime, SeqNo>;
+
+  void onSyncData(const Data& syncData, const PublicationKey& publication);
 
   void updateCallbackInternal(const std::vector<MissingDataInfo>& info);
 
   Block onGetExtraData(const VersionVector& vv);
 
-  void onRecvExtraData(const Block& block);
+  void onRecvExtraData(const Block& block, const VersionVector& vv);
 
   /// @brief Insert a mapping entry into the store
-  void insertMapping(const NodeID& nid, SeqNo seqNo, const Name& name, std::vector<Block> additional);
+  void insertMapping(const NodeID& nid, BootstrapTime bootstrapTime, SeqNo seqNo,
+                     const Name& name, std::vector<Block> additional);
 
   /**
    * @brief Get and process mapping from store.
    * @returns true if new publications were queued for fetch
    * @throws std::exception error if mapping is not found
    */
-  bool processMapping(const NodeID& nodeId, SeqNo seqNo);
+  bool processMapping(const NodeID& nodeId, BootstrapTime bootstrapTime, SeqNo seqNo);
 
   void fetchAll();
 
-  void cleanUpFetch(const std::pair<Name, SeqNo>& publication);
+  void cleanUpFetch(const PublicationKey& publication);
 
 public:
   static inline const Name EMPTY_NAME;
@@ -262,8 +274,8 @@ private:
   std::vector<Subscription> m_regexSubscriptions;
 
   // Queue of publications to fetch
-  std::map<std::pair<Name, SeqNo>, std::vector<Subscription>> m_fetchMap;
-  std::map<std::pair<Name, SeqNo>, bool> m_fetchingMap;
+  std::map<PublicationKey, std::vector<Subscription>> m_fetchMap;
+  std::map<PublicationKey, bool> m_fetchingMap;
 };
 
 } // namespace ndn::svs

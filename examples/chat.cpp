@@ -34,10 +34,7 @@ public:
   Program(const Options& options)
     : m_options(options)
   {
-    // Use HMAC signing for Sync Interests
-    // Note: this is not generally recommended, but is used here for simplicity
     ndn::svs::SecurityOptions securityOptions(m_keyChain);
-    securityOptions.interestSigner->signingInfo.setSigningHmacKey("dGhpcyBpcyBhIHNlY3JldCBtZXNzYWdl");
 
     // Create the SVSync instance
     m_svs = std::make_shared<ndn::svs::SVSync>(
@@ -84,7 +81,7 @@ protected:
       for (ndn::svs::SeqNo s = v[i].low; s <= v[i].high; ++s) {
         // Request a single data packet using the SVSync API
         ndn::svs::NodeID nid = v[i].nodeId;
-        m_svs->fetchData(nid, s, [nid](const auto& data) {
+        m_svs->fetchData(nid, v[i].bootstrapTime, s, [nid](const auto& data) {
           std::string content(reinterpret_cast<const char*>(data.getContent().value()),
                               data.getContent().value_size());
           std::cout << data.getName() << " : " << content << std::endl;

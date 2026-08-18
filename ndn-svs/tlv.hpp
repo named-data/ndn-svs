@@ -25,10 +25,12 @@ enum : uint32_t
 {
   StateVector = 201,
   StateVectorEntry = 202,
-  SeqNo = 204,
   MappingData = 205,
   MappingEntry = 206,
+  SeqNoEntry = 210,
   LzmaBlock = 211,
+  BootstrapTime = 212,
+  SeqNo = 214,
 };
 
 } // namespace ndn::svs::tlv

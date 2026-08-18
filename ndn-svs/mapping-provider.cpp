@@ -17,7 +17,21 @@
 #include "mapping-provider.hpp"
 #include "tlv.hpp"
 
+#include <ndn-cxx/util/time.hpp>
+
 namespace ndn::svs {
+
+namespace {
+
+Name
+makeMappingKey(const NodeID& nodeId, BootstrapTime bootstrapTime, SeqNo seqNo)
+{
+  return Name(nodeId).append(Name::Component::fromTimestamp(
+                       time::fromUnixTimestamp(time::seconds(bootstrapTime))))
+                     .append(Name::Component::fromSequenceNumber(seqNo));
+}
+
+} // namespace
 
 MappingList::MappingList() = default;
 
@@ -39,8 +53,16 @@ MappingList::MappingList(const Block& block)
     if (it->type() == tlv::MappingEntry) {
       it->parse();
 
-      // SeqNo and ApplicationName
-      SeqNo seqNo = ndn::encoding::readNonNegativeInteger(it->elements().at(0));
+      auto seqNoEntry = it->elements().at(0);
+      seqNoEntry.parse();
+      if (seqNoEntry.type() != tlv::SeqNoEntry ||
+          seqNoEntry.elements().size() < 2 ||
+          seqNoEntry.elements().at(0).type() != tlv::BootstrapTime ||
+          seqNoEntry.elements().at(1).type() != tlv::SeqNo) {
+        NDN_THROW(ndn::tlv::Error("SeqNoEntry", seqNoEntry.type()));
+      }
+      BootstrapTime bootstrapTime = ndn::encoding::readNonNegativeInteger(seqNoEntry.elements().at(0));
+      SeqNo seqNo = ndn::encoding::readNonNegativeInteger(seqNoEntry.elements().at(1));
       Name name(it->elements().at(1));
 
       // Additional blocks
@@ -48,7 +70,7 @@ MappingList::MappingList(const Block& block)
       for (auto it2 = it->elements().begin() + 2; it2 != it->elements().end(); it2++)
         blocks.push_back(*it2);
 
-      pairs.push_back({ seqNo, std::make_pair(name, blocks) });
+      pairs.push_back({ bootstrapTime, seqNo, std::make_pair(name, blocks) });
       continue;
     }
   }
@@ -60,18 +82,24 @@ MappingList::encode() const
   ndn::encoding::EncodingBuffer enc;
   size_t totalLength = 0;
 
-  for (const auto& [seq, mapping] : pairs) {
+  for (const auto& entry : pairs) {
     size_t entryLength = 0;
 
     // Additional blocks
-    for (const auto& block : mapping.second)
+    for (const auto& block : entry.mapping.second)
       entryLength += ndn::encoding::prependBlock(enc, block);
 
     // Name
-    entryLength += ndn::encoding::prependBlock(enc, mapping.first.wireEncode());
+    entryLength += ndn::encoding::prependBlock(enc, entry.mapping.first.wireEncode());
 
-    // SeqNo
-    entryLength += ndn::encoding::prependNonNegativeIntegerBlock(enc, tlv::SeqNo, seq);
+    size_t seqEntryLength = 0;
+    seqEntryLength += ndn::encoding::prependNonNegativeIntegerBlock(enc, tlv::SeqNo,
+                                                                    entry.seqNo);
+    seqEntryLength += ndn::encoding::prependNonNegativeIntegerBlock(enc, tlv::BootstrapTime,
+                                                                    entry.bootstrapTime);
+    entryLength += enc.prependVarNumber(seqEntryLength);
+    entryLength += enc.prependVarNumber(tlv::SeqNoEntry);
+    entryLength += seqEntryLength;
 
     totalLength += enc.prependVarNumber(entryLength);
     totalLength += enc.prependVarNumber(tlv::MappingEntry);
@@ -95,33 +123,42 @@ MappingProvider::MappingProvider(const Name& syncPrefix,
   , m_fetcher(face, securityOptions)
   , m_securityOptions(securityOptions)
 {
-  m_registeredPrefix = m_face.setInterestFilter(Name(m_id).append(m_syncPrefix).append("MAPPING"),
-                                                std::bind(&MappingProvider::onMappingQuery, this, _2),
-                                                [](auto&&...) {});
+  m_interestFilter = m_face.setInterestFilter(
+    InterestFilter(Name(m_id).append(m_syncPrefix)),
+    std::bind(&MappingProvider::onMappingQuery, this, _2));
 }
 
 void
-MappingProvider::insertMapping(const NodeID& nodeId, const SeqNo& seqNo, const MappingEntryPair& entry)
+MappingProvider::insertMapping(const NodeID& nodeId, BootstrapTime bootstrapTime,
+                               const SeqNo& seqNo, const MappingEntryPair& entry)
 {
-  m_map[Name(nodeId).appendNumber(seqNo)] = entry;
+  m_map[makeMappingKey(nodeId, bootstrapTime, seqNo)] = entry;
 }
 
 MappingEntryPair
-MappingProvider::getMapping(const NodeID& nodeId, const SeqNo& seqNo)
+MappingProvider::getMapping(const NodeID& nodeId, BootstrapTime bootstrapTime,
+                            const SeqNo& seqNo)
 {
-  return m_map.at(Name(nodeId).appendNumber(seqNo));
+  return m_map.at(makeMappingKey(nodeId, bootstrapTime, seqNo));
 }
 
 void
 MappingProvider::onMappingQuery(const Interest& interest)
 {
-  MissingDataInfo query = parseMappingQueryDataName(interest.getName());
+  MissingDataInfo query;
+  try {
+    query = parseMappingQueryDataName(interest.getName());
+  }
+  catch (const std::exception&) {
+    return;
+  }
+
   MappingList queryResponse(query.nodeId);
 
   for (SeqNo i = query.low; i <= std::max(query.high, query.low); i++) {
     try {
-      auto mapping = getMapping(query.nodeId, i);
-      queryResponse.pairs.emplace_back(i, mapping);
+      auto mapping = getMapping(query.nodeId, query.bootstrapTime, i);
+      queryResponse.pairs.push_back({query.bootstrapTime, i, mapping});
     } catch (const std::exception&) {
       // TODO: don't give up if not everything is found
       // Instead return whatever we have and let the client request
@@ -167,11 +204,11 @@ MappingProvider::fetchNameMapping(const MissingDataInfo& info,
     MappingList list(block);
 
     // Add all mappings to self
-    for (const auto& [seq, mapping] : list.pairs) {
+    for (const auto& entry : list.pairs) {
       try {
-        getMapping(info.nodeId, seq);
+        getMapping(info.nodeId, entry.bootstrapTime, entry.seqNo);
       } catch (const std::exception&) {
-        insertMapping(info.nodeId, seq, mapping);
+        insertMapping(info.nodeId, entry.bootstrapTime, entry.seqNo, entry.mapping);
       }
     }
 
@@ -189,20 +226,32 @@ MappingProvider::fetchNameMapping(const MissingDataInfo& info,
 Name
 MappingProvider::getMappingQueryDataName(const MissingDataInfo& info)
 {
-  return Name(info.nodeId)
-    .append(m_syncPrefix)
-    .append("MAPPING")
-    .appendNumber(info.low)
-    .appendNumber(info.high);
+  Name name = Name(info.nodeId).append(m_syncPrefix);
+  return name.append(Name::Component::fromTimestamp(
+                       time::fromUnixTimestamp(time::seconds(info.bootstrapTime))))
+             .append("MAPPING")
+             .append(Name::Component::fromSequenceNumber(info.low))
+             .append(Name::Component::fromSequenceNumber(info.high));
 }
 
 MissingDataInfo
 MappingProvider::parseMappingQueryDataName(const Name& name)
 {
   MissingDataInfo info;
-  info.low = name.get(-2).toNumber();
-  info.high = name.get(-1).toNumber();
-  info.nodeId = name.getPrefix(-3 - m_syncPrefix.size());
+  const Name expectedPrefix = Name(m_id).append(m_syncPrefix);
+  if (name.size() != expectedPrefix.size() + 4 ||
+      name.getPrefix(expectedPrefix.size()) != expectedPrefix ||
+      name.get(-3) != Name::Component("MAPPING") ||
+      !name.get(-4).isTimestamp() ||
+      !name.get(-2).isSequenceNumber() ||
+      !name.get(-1).isSequenceNumber()) {
+    NDN_THROW(std::invalid_argument("invalid SVS-PS V3 Mapping query name"));
+  }
+  info.bootstrapTime = static_cast<BootstrapTime>(
+    time::toUnixTimestamp<time::seconds>(name.get(-4).toTimestamp()).count());
+  info.low = name.get(-2).toSequenceNumber();
+  info.high = name.get(-1).toSequenceNumber();
+  info.nodeId = name.getPrefix(-4 - m_syncPrefix.size());
   return info;
 }
 
