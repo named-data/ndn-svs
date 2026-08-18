@@ -65,17 +65,17 @@ SVSyncCore::SVSyncCore(ndn::Face& face,
   , m_scheduler(m_face.getIoContext())
 {
   m_validationGate->owner = this;
-  // Dispatch only the selected wire version locally, but advertise the group
-  // prefix so peers that follow the established SVS registration convention
-  // can reach this participant through the forwarder.
+  // Dispatch and advertise the version-specific Sync Interest prefix.  SVS
+  // V3 defines this exact name (/<group-prefix>/v=3) as the prefix-announcement
+  // name; registering only the group prefix does not satisfy the specification.
   m_syncInterestFilter =
     m_face.setInterestFilter(m_syncInterestPrefix,
                              std::bind(&SVSyncCore::onSyncInterest, this, _2));
   m_syncRegisteredPrefix =
-    m_face.registerPrefix(m_syncPrefix,
+    m_face.registerPrefix(m_syncInterestPrefix,
                           std::bind(&SVSyncCore::sendInitialInterest, this),
                           [this] (auto&&...) {
-                            NDN_LOG_ERROR("Failed to register sync prefix " << m_syncPrefix);
+                            NDN_LOG_ERROR("Failed to register sync prefix " << m_syncInterestPrefix);
                           });
 }
 

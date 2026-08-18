@@ -154,7 +154,7 @@ BOOST_AUTO_TEST_CASE(DefaultProfileEmitsCompleteV3Envelope)
   BOOST_CHECK_EQUAL(params.elements().front().type(), ndn::tlv::Data);
 }
 
-BOOST_AUTO_TEST_CASE(DefaultProfileRegistersGroupPrefix)
+BOOST_AUTO_TEST_CASE(DefaultProfileRegistersV3AnnouncementPrefix)
 {
   DummyClientFace::Options options;
   options.enableRegistrationReply = true;
@@ -177,10 +177,10 @@ BOOST_AUTO_TEST_CASE(DefaultProfileRegistersGroupPrefix)
   BOOST_REQUIRE_GT(found->getName().size(), 4);
   nfd::ControlParameters parameters(found->getName().at(4).blockFromValue());
   BOOST_REQUIRE(parameters.hasName());
-  BOOST_CHECK_EQUAL(parameters.getName(), m_syncPrefix);
+  BOOST_CHECK_EQUAL(parameters.getName(), m_syncPrefix.appendVersion(3));
 }
 
-BOOST_AUTO_TEST_CASE(GroupPrefixRegistrationIsReleasedOnDestruction)
+BOOST_AUTO_TEST_CASE(V3AnnouncementPrefixRegistrationIsReleasedOnDestruction)
 {
   DummyClientFace::Options options;
   options.enableRegistrationReply = true;
@@ -211,10 +211,10 @@ BOOST_AUTO_TEST_CASE(GroupPrefixRegistrationIsReleasedOnDestruction)
   BOOST_REQUIRE_GT(found->getName().size(), 4);
   nfd::ControlParameters parameters(found->getName().at(4).blockFromValue());
   BOOST_REQUIRE(parameters.hasName());
-  BOOST_CHECK_EQUAL(parameters.getName(), m_syncPrefix);
+  BOOST_CHECK_EQUAL(parameters.getName(), m_syncPrefix.appendVersion(3));
 }
 
-BOOST_AUTO_TEST_CASE(GroupPrefixRegistrationFailureIsReported)
+BOOST_AUTO_TEST_CASE(V3AnnouncementPrefixRegistrationFailureIsReported)
 {
   DummyClientFace face;
   KeyChain keyChain("pib-memory:core-registration-failure",
