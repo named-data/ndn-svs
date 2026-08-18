@@ -40,7 +40,7 @@ MappingList::MappingList(const NodeID& nid)
 {
 }
 
-MappingList::MappingList(const Block& block)
+MappingList::MappingList(const Block& block, BootstrapTime bootstrapTime)
 {
   block.parse();
 
@@ -53,16 +53,11 @@ MappingList::MappingList(const Block& block)
     if (it->type() == tlv::MappingEntry) {
       it->parse();
 
-      auto seqNoEntry = it->elements().at(0);
-      seqNoEntry.parse();
-      if (seqNoEntry.type() != tlv::SeqNoEntry ||
-          seqNoEntry.elements().size() < 2 ||
-          seqNoEntry.elements().at(0).type() != tlv::BootstrapTime ||
-          seqNoEntry.elements().at(1).type() != tlv::SeqNo) {
-        NDN_THROW(ndn::tlv::Error("SeqNoEntry", seqNoEntry.type()));
+      if (it->elements().size() < 2 || it->elements().at(0).type() != tlv::MappingSeqNo ||
+          it->elements().at(1).type() != ndn::tlv::Name) {
+        NDN_THROW(ndn::tlv::Error("MappingEntry SeqNo/Name", it->elements().at(0).type()));
       }
-      BootstrapTime bootstrapTime = ndn::encoding::readNonNegativeInteger(seqNoEntry.elements().at(0));
-      SeqNo seqNo = ndn::encoding::readNonNegativeInteger(seqNoEntry.elements().at(1));
+      SeqNo seqNo = ndn::encoding::readNonNegativeInteger(it->elements().at(0));
       Name name(it->elements().at(1));
 
       // Additional blocks
@@ -92,14 +87,8 @@ MappingList::encode() const
     // Name
     entryLength += ndn::encoding::prependBlock(enc, entry.mapping.first.wireEncode());
 
-    size_t seqEntryLength = 0;
-    seqEntryLength += ndn::encoding::prependNonNegativeIntegerBlock(enc, tlv::SeqNo,
-                                                                    entry.seqNo);
-    seqEntryLength += ndn::encoding::prependNonNegativeIntegerBlock(enc, tlv::BootstrapTime,
-                                                                    entry.bootstrapTime);
-    entryLength += enc.prependVarNumber(seqEntryLength);
-    entryLength += enc.prependVarNumber(tlv::SeqNoEntry);
-    entryLength += seqEntryLength;
+    entryLength += ndn::encoding::prependNonNegativeIntegerBlock(enc, tlv::MappingSeqNo,
+                                                                 entry.seqNo);
 
     totalLength += enc.prependVarNumber(entryLength);
     totalLength += enc.prependVarNumber(tlv::MappingEntry);
@@ -201,7 +190,7 @@ MappingProvider::fetchNameMapping(const MissingDataInfo& info,
 
   auto onDataValidated = [this, onValidated, info](const Data& data) {
     Block block = data.getContent().blockFromValue();
-    MappingList list(block);
+    MappingList list(block, info.bootstrapTime);
 
     // Add all mappings to self
     for (const auto& entry : list.pairs) {

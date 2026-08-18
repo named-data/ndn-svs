@@ -25,6 +25,7 @@ enum : uint32_t
 {
   StateVector = 201,
   StateVectorEntry = 202,
+  MappingSeqNo = 204,
   MappingData = 205,
   MappingEntry = 206,
   SeqNoEntry = 210,

@@ -63,6 +63,30 @@ BOOST_AUTO_TEST_CASE(MappingStoreSeparatesBootstrapEpochs)
   BOOST_CHECK_EQUAL(provider.getMapping("/node", 200, 1).first, "/app/new");
 }
 
+BOOST_AUTO_TEST_CASE(MappingDataUsesV3WireFormat)
+{
+  MappingList list("/node");
+  list.pairs.push_back({1700000000, 7, {"/app/data", {}}});
+
+  auto encoded = list.encode();
+  encoded.parse();
+  BOOST_REQUIRE_EQUAL(encoded.type(), ndn::svs::tlv::MappingData);
+  BOOST_REQUIRE_EQUAL(encoded.elements_size(), 2);
+  auto entry = encoded.elements().at(1);
+  entry.parse();
+  BOOST_REQUIRE_EQUAL(entry.type(), ndn::svs::tlv::MappingEntry);
+  BOOST_REQUIRE_EQUAL(entry.elements_size(), 2);
+  BOOST_CHECK_EQUAL(entry.elements().at(0).type(), ndn::svs::tlv::MappingSeqNo);
+  BOOST_CHECK_EQUAL(ndn::encoding::readNonNegativeInteger(entry.elements().at(0)), 7);
+  BOOST_CHECK_EQUAL(entry.elements().at(1).type(), ndn::tlv::Name);
+
+  MappingList decoded(encoded, 1700000000);
+  BOOST_REQUIRE_EQUAL(decoded.pairs.size(), 1);
+  BOOST_CHECK_EQUAL(decoded.pairs.front().bootstrapTime, 1700000000);
+  BOOST_CHECK_EQUAL(decoded.pairs.front().seqNo, 7);
+  BOOST_CHECK_EQUAL(decoded.pairs.front().mapping.first, "/app/data");
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 } // namespace ndn::tests

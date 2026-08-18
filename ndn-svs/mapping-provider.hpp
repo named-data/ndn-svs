@@ -44,7 +44,7 @@ public:
   explicit MappingList(const NodeID& nid);
 
   /// @brief Decode from Block
-  explicit MappingList(const Block& block);
+  explicit MappingList(const Block& block, BootstrapTime bootstrapTime = 0);
 
   /// @brief Encode to Block
   Block encode() const;

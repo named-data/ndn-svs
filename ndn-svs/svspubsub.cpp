@@ -499,12 +499,16 @@ SVSPubSub::onGetExtraData(const VersionVector&)
 }
 
 void
-SVSPubSub::onRecvExtraData(const Block& block, const VersionVector&)
+SVSPubSub::onRecvExtraData(const Block& block, const VersionVector& vv)
 {
   try {
     MappingList list(block);
+    // V3 MappingData deliberately carries no bootstrap-time TLV.  For
+    // piggybacked mappings the enclosing State Vector identifies the current
+    // epoch for this producer; mapping queries carry the epoch in their name.
+    const auto bootstrapTime = vv.getBootstrapTime(list.nodeId);
     for (const auto& entry : list.pairs) {
-      m_mappingProvider.insertMapping(list.nodeId, entry.bootstrapTime,
+      m_mappingProvider.insertMapping(list.nodeId, bootstrapTime,
                                       entry.seqNo, entry.mapping);
     }
   } catch (const std::exception&) {
