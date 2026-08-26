@@ -48,28 +48,16 @@ SyncProtocolCodec::makeSyncName(const Name& groupPrefix, SvsProtocolVersion vers
 Interest
 SyncProtocolCodec::encode(const Name& groupPrefix,
                           const VersionVector& stateVector,
-                          const std::vector<Block>& extensions,
                           const ResolvedSyncProtocolOptions& options,
                           const DataSigner& signData)
 {
   const auto syncName = makeSyncName(groupPrefix, options.version);
-  if (extensions.size() > MAX_EXTENSION_BLOCKS) {
-    NDN_THROW(Error("too many SVS extension blocks"));
-  }
-  for (const auto& extension : extensions) {
-    if (extension.type() == tlv::StateVector || extension.type() == ndn::tlv::Data) {
-      NDN_THROW(Error("extension collides with SVS core envelope"));
-    }
-  }
   ndn::encoding::EncodingBuffer encoder;
   size_t length = 0;
 
   Data stateData(syncName);
   Block content(ndn::tlv::Content);
   content.push_back(stateVector.encode());
-  for (const auto& extension : extensions) {
-    content.push_back(extension);
-  }
   content.encode();
   stateData.setContent(content);
   if (!signData) {
@@ -125,17 +113,8 @@ SyncProtocolCodec::decode(const Interest& interest,
   }
   auto content = stateData.getContent();
   content.parse();
-  if (content.elements().empty() || content.elements().front().type() != tlv::StateVector) {
+  if (content.elements().size() != 1 || content.elements().front().type() != tlv::StateVector) {
     NDN_THROW(ndn::tlv::Error("SVS V3 StateVector Content"));
-  }
-  for (auto it = std::next(content.elements_begin()); it != content.elements_end(); ++it) {
-    if (decoded.extensions.size() >= MAX_EXTENSION_BLOCKS) {
-      NDN_THROW(Error("too many SVS extension blocks"));
-    }
-    if (it->type() == tlv::StateVector || it->type() == ndn::tlv::Data) {
-      NDN_THROW(Error("duplicate SVS core envelope"));
-    }
-    decoded.extensions.push_back(*it);
   }
   decoded.stateVectorData = std::move(stateData);
   if (decodeSemanticState) {

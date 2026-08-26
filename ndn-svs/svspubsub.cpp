@@ -44,11 +44,7 @@ SVSPubSub::SVSPubSub(const Name& syncPrefix,
              options.dataStore,
              options.syncProtocol)
   , m_mappingProvider(syncPrefix, nodePrefix, face, securityOptions)
-  , m_notificationMappingList()
 {
-  m_svsync.getCore().setGetExtraBlockCallback(std::bind(&SVSPubSub::onGetExtraData, this, _1));
-  m_svsync.getCore().setRecvExtraBlockCallback(
-    std::bind(&SVSPubSub::onRecvExtraData, this, _1, _2));
 }
 
 SeqNo
@@ -141,12 +137,6 @@ SVSPubSub::insertMapping(const NodeID& nid, BootstrapTime bootstrapTime, SeqNo s
 
   // create mapping entry
   MappingEntryPair entry = { name, additional };
-
-  // notify subscribers in next sync interest
-  if (m_notificationMappingList.nodeId == EMPTY_NAME || m_notificationMappingList.nodeId == nid) {
-    m_notificationMappingList.nodeId = nid;
-    m_notificationMappingList.pairs.push_back({bootstrapTime, seqNo, entry});
-  }
 
   // send mapping to provider
   m_mappingProvider.insertMapping(nid, bootstrapTime, seqNo, entry);
@@ -488,31 +478,6 @@ SVSPubSub::cleanUpFetch(const PublicationKey& publication)
 {
   m_fetchMap.erase(publication);
   m_fetchingMap.erase(publication);
-}
-
-Block
-SVSPubSub::onGetExtraData(const VersionVector&)
-{
-  MappingList copy = m_notificationMappingList;
-  m_notificationMappingList = MappingList();
-  return copy.encode();
-}
-
-void
-SVSPubSub::onRecvExtraData(const Block& block, const VersionVector& vv)
-{
-  try {
-    MappingList list(block);
-    // V3 MappingData deliberately carries no bootstrap-time TLV.  For
-    // piggybacked mappings the enclosing State Vector identifies the current
-    // epoch for this producer; mapping queries carry the epoch in their name.
-    const auto bootstrapTime = vv.getBootstrapTime(list.nodeId);
-    for (const auto& entry : list.pairs) {
-      m_mappingProvider.insertMapping(list.nodeId, bootstrapTime,
-                                      entry.seqNo, entry.mapping);
-    }
-  } catch (const std::exception&) {
-  }
 }
 
 } // namespace ndn::svs

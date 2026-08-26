@@ -131,6 +131,34 @@ MappingProvider::getMapping(const NodeID& nodeId, BootstrapTime bootstrapTime,
   return m_map.at(makeMappingKey(nodeId, bootstrapTime, seqNo));
 }
 
+MappingEntryPair
+MappingProvider::getLatestMapping(const NodeID& nodeId, SeqNo seqNo,
+                                  BootstrapTime& bootstrapTime)
+{
+  const Name nodeName(nodeId);
+  bool found = false;
+  MappingEntryPair result;
+  BootstrapTime latest = 0;
+  for (const auto& [key, mapping] : m_map) {
+    if (key.size() < 2 || key.getPrefix(key.size() - 2) != nodeName ||
+        !key.get(-2).isTimestamp() || !key.get(-1).isSequenceNumber() ||
+        key.get(-1).toSequenceNumber() != seqNo) {
+      continue;
+    }
+    const auto epoch = static_cast<BootstrapTime>(
+      time::toUnixTimestamp<time::seconds>(key.get(-2).toTimestamp()).count());
+    if (!found || epoch > latest) {
+      found = true;
+      latest = epoch;
+      result = mapping;
+    }
+  }
+  if (!found)
+    throw std::out_of_range("mapping not found");
+  bootstrapTime = latest;
+  return result;
+}
+
 void
 MappingProvider::onMappingQuery(const Interest& interest)
 {
@@ -146,13 +174,11 @@ MappingProvider::onMappingQuery(const Interest& interest)
 
   for (SeqNo i = query.low; i <= std::max(query.high, query.low); i++) {
     try {
-      auto mapping = getMapping(query.nodeId, query.bootstrapTime, i);
-      queryResponse.pairs.push_back({query.bootstrapTime, i, mapping});
+      BootstrapTime bootstrapTime = 0;
+      auto mapping = getLatestMapping(query.nodeId, i, bootstrapTime);
+      queryResponse.pairs.push_back({bootstrapTime, i, mapping});
     } catch (const std::exception&) {
-      // TODO: don't give up if not everything is found
-      // Instead return whatever we have and let the client request
-      // the remaining mappings again
-      return;
+      continue;
     }
   }
 
@@ -216,11 +242,7 @@ Name
 MappingProvider::getMappingQueryDataName(const MissingDataInfo& info)
 {
   Name name = Name(info.nodeId).append(m_syncPrefix);
-  return name.append(Name::Component::fromTimestamp(
-                       time::fromUnixTimestamp(time::seconds(info.bootstrapTime))))
-             .append("MAPPING")
-             .append(Name::Component::fromSequenceNumber(info.low))
-             .append(Name::Component::fromSequenceNumber(info.high));
+  return name.append("MAPPING").appendNumber(info.low).appendNumber(info.high);
 }
 
 MissingDataInfo
@@ -228,19 +250,17 @@ MappingProvider::parseMappingQueryDataName(const Name& name)
 {
   MissingDataInfo info;
   const Name expectedPrefix = Name(m_id).append(m_syncPrefix);
-  if (name.size() != expectedPrefix.size() + 4 ||
+  if (name.size() != expectedPrefix.size() + 3 ||
       name.getPrefix(expectedPrefix.size()) != expectedPrefix ||
       name.get(-3) != Name::Component("MAPPING") ||
-      !name.get(-4).isTimestamp() ||
-      !name.get(-2).isSequenceNumber() ||
-      !name.get(-1).isSequenceNumber()) {
-    NDN_THROW(std::invalid_argument("invalid SVS-PS V3 Mapping query name"));
+      !name.get(-2).isGeneric() || !name.get(-1).isGeneric()) {
+    NDN_THROW(std::invalid_argument("invalid SVS-PS Mapping query name"));
   }
-  info.bootstrapTime = static_cast<BootstrapTime>(
-    time::toUnixTimestamp<time::seconds>(name.get(-4).toTimestamp()).count());
-  info.low = name.get(-2).toSequenceNumber();
-  info.high = name.get(-1).toSequenceNumber();
-  info.nodeId = name.getPrefix(-4 - m_syncPrefix.size());
+  info.low = name.get(-2).toNumber();
+  info.high = name.get(-1).toNumber();
+  if (info.low == 0 || info.high < info.low)
+    NDN_THROW(std::invalid_argument("invalid SVS-PS Mapping query range"));
+  info.nodeId = name.getPrefix(-3 - m_syncPrefix.size());
   return info;
 }
 

@@ -180,19 +180,6 @@ SVSyncCore::onSyncInterestValidated(const Interest& interest)
     return;
   }
 
-  // Extension callbacks run only after the complete envelope and state vector
-  // have decoded. In V3 these blocks are covered by the embedded Data signature.
-  if (m_recvExtraBlock) {
-    for (const auto& extension : envelope.extensions) {
-      try {
-        m_recvExtraBlock(extension, envelope.stateVector);
-      }
-      catch (const std::exception& e) {
-        NDN_LOG_DEBUG("Reject SVS extension type=" << extension.type() << ": " << e.what());
-      }
-    }
-  }
-
   // Merge state vector
   auto result = mergeStateVector(envelope.stateVector);
 
@@ -260,20 +247,13 @@ SVSyncCore::sendSyncInterest()
     return;
 
   VersionVector stateVector;
-  std::vector<Block> extensions;
   {
     std::lock_guard<std::mutex> lock(m_vvMutex);
     stateVector = m_vv;
-    if (m_getExtraBlocks) {
-      extensions = m_getExtraBlocks(m_vv);
-    }
-    else if (m_getExtraBlock) {
-      extensions.push_back(m_getExtraBlock(m_vv));
-    }
   }
 
   Interest interest = SyncProtocolCodec::encode(
-    m_syncPrefix, stateVector, extensions, m_protocolOptions,
+    m_syncPrefix, stateVector, m_protocolOptions,
     [this] (Data& data) {
       if (m_securityOptions.dataSigner->signingInfo.getSignerType() ==
           security::SigningInfo::SIGNER_TYPE_NULL) {

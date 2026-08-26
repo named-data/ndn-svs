@@ -119,6 +119,9 @@ NDN_SVS_PUBLIC_WITH_TESTS_ELSE_PRIVATE:
 
   void onMappingQuery(const Interest& interest);
 
+  MappingEntryPair getLatestMapping(const NodeID& nodeId, SeqNo seqNo,
+                                    BootstrapTime& bootstrapTime);
+
 private:
   const Name m_syncPrefix;
   const NodeID m_id;

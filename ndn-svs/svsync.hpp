@@ -55,10 +55,8 @@ private:
   Name makeDataName(const NodeID& nid, const BootstrapTime& bootstrapTime,
                     const SeqNo& seqNo) override
   {
-    Name name = Name(nid).append(m_syncPrefix);
-    name.append(Name::Component::fromTimestamp(
-      time::fromUnixTimestamp(time::seconds(bootstrapTime))));
-    return name.append(Name::Component::fromSequenceNumber(seqNo));
+    static_cast<void>(bootstrapTime);
+    return Name(nid).append(m_syncPrefix).appendNumber(seqNo);
   }
 };
 

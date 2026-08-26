@@ -42,7 +42,7 @@ makeV3SyncInterest(const Name& syncPrefix, const VersionVector& vv)
 {
   KeyChain keyChain("pib-memory:core-v3-test", "tpm-memory:core-v3-test");
   return SyncProtocolCodec::encode(
-    syncPrefix, vv, {}, SyncProtocolOptions().resolve(),
+    syncPrefix, vv, SyncProtocolOptions().resolve(),
     [&] (Data& data) { keyChain.sign(data, security::signingWithSha256()); });
 }
 

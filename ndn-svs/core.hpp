@@ -150,43 +150,6 @@ public:
   /// @brief Get all the nodeIDs
   std::set<NodeID> getNodeIds() const;
 
-  using GetExtraBlockCallback = std::function<ndn::Block(const VersionVector&)>;
-  using GetExtraBlocksCallback = std::function<std::vector<ndn::Block>(const VersionVector&)>;
-  using RecvExtraBlockCallback = std::function<void(const ndn::Block&, const VersionVector&)>;
-
-  /**
-   * @brief Callback to get extra data block for sync interest.
-   *
-   * The version vector will be locked during the duration of this callback,
-   * so it must return FAST!
-   */
-  void setGetExtraBlockCallback(const GetExtraBlockCallback& callback)
-  {
-    m_getExtraBlock = callback;
-    m_getExtraBlocks = nullptr;
-  }
-
-  /**
-   * @brief Install a bounded collection producer for extension TLVs.
-   *
-   * In V3, extension blocks are placed inside the signed State Vector Data
-   * content. The singular callback remains available for source compatibility.
-   */
-  void setGetExtraBlocksCallback(const GetExtraBlocksCallback& callback)
-  {
-    m_getExtraBlocks = callback;
-    m_getExtraBlock = nullptr;
-  }
-
-  /**
-   * @brief Callback on receiving extra data in a sync interest.
-   * Will be called BEFORE the interest is processed.
-   */
-  void setRecvExtraBlockCallback(const RecvExtraBlockCallback& callback)
-  {
-    m_recvExtraBlock = callback;
-  }
-
   /// @brief Get current version vector
   VersionVector& getState()
   {
@@ -308,11 +271,6 @@ private:
   // Aggregates incoming vectors while in suppression state
   std::unique_ptr<VersionVector> m_recordedVv = nullptr;
   mutable std::mutex m_recordedVvMutex;
-
-  // Extra block
-  GetExtraBlockCallback m_getExtraBlock;
-  GetExtraBlocksCallback m_getExtraBlocks;
-  RecvExtraBlockCallback m_recvExtraBlock;
 
   // Max suppression time; this value is roughly
   // positively correlated to the network diameter

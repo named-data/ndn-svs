@@ -42,7 +42,6 @@ struct DecodedSyncEnvelope
 {
   VersionVector stateVector;
   bool stateVectorDecoded = false;
-  std::vector<Block> extensions;
   std::optional<Data> stateVectorData;
 };
 
@@ -57,13 +56,10 @@ public:
 
   using DataSigner = std::function<void(Data&)>;
 
-  static constexpr size_t MAX_EXTENSION_BLOCKS = 16;
-
   static Name makeSyncName(const Name& groupPrefix, SvsProtocolVersion version);
 
   static Interest encode(const Name& groupPrefix,
                          const VersionVector& stateVector,
-                         const std::vector<Block>& extensions,
                          const ResolvedSyncProtocolOptions& options,
                          const DataSigner& signData);
 

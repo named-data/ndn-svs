@@ -225,10 +225,6 @@ private:
 
   void updateCallbackInternal(const std::vector<MissingDataInfo>& info);
 
-  Block onGetExtraData(const VersionVector& vv);
-
-  void onRecvExtraData(const Block& block, const VersionVector& vv);
-
   /// @brief Insert a mapping entry into the store
   void insertMapping(const NodeID& nid, BootstrapTime bootstrapTime, SeqNo seqNo,
                      const Name& name, std::vector<Block> additional);
@@ -264,9 +260,6 @@ private:
 
   // Provider for mapping interests
   MappingProvider m_mappingProvider;
-
-  // MappingList to be sent in the next update with sync interest
-  MappingList m_notificationMappingList;
 
   uint32_t m_subscriptionCount;
   std::vector<Subscription> m_producerSubscriptions;

@@ -90,7 +90,7 @@ def main() -> None:
     write(ROOT / "v3-empty.hex", params(group, empty))
     write(ROOT / "v3-one-node.hex", params(group, one))
     write(ROOT / "v3-multi-epoch.hex", params(group, multi))
-    write(ROOT / "v3-unknown-extension.hex",
+    write(INVALID / "unknown-extension.hex",
           params(group, one, signed_extensions=tlv(0xF001, b"opaque")))
 
     write(INVALID / "wrong-data-name.hex", params("/ndn/svs-v3-test/v=2", one))
