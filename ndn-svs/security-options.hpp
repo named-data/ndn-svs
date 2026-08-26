@@ -62,8 +62,6 @@ class BaseSigner : noncopyable
 public:
   virtual ~BaseSigner();
 
-  virtual void sign(Interest& interest) const {}
-
   virtual void sign(Data& data) const {}
 
 public:
@@ -81,8 +79,6 @@ public:
   {
   }
 
-  void sign(Interest& interest) const override;
-
   void sign(Data& data) const override;
 
 private:
@@ -98,8 +94,6 @@ public:
   explicit SecurityOptions(KeyChain& keyChain);
 
 public:
-  /** Signing options for sync interests */
-  std::shared_ptr<BaseSigner> interestSigner;
   /** Signing options for data packets */
   std::shared_ptr<BaseSigner> dataSigner;
   /** Signing options for publication (encapsulated) packets */

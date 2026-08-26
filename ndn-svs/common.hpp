@@ -40,6 +40,7 @@ namespace ndn::svs {
 // Type and constant declarations for State Vector Sync (SVS)
 using NodeID = ndn::Name;
 using SeqNo = uint64_t;
+using BootstrapTime = uint64_t;
 
 using ndn::security::ValidationError;
 

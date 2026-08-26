@@ -24,6 +24,7 @@
 #include "svsync.hpp"
 
 #include <ndn-cxx/security/validator-null.hpp>
+#include <ndn-cxx/util/regex.hpp>
 
 namespace ndn::svs {
 
@@ -32,6 +33,9 @@ namespace ndn::svs {
  */
 struct SVSPubSubOptions
 {
+  /// @brief Sync wire protocol profile. Experimental defaults to complete V3.
+  SyncProtocolOptions syncProtocol;
+
   /// @brief Interface to store data packets
   std::shared_ptr<DataStore> dataStore = SVSync::DEFAULT_DATASTORE;
 
@@ -79,6 +83,12 @@ public:
 
   virtual ~SVSPubSub() = default;
 
+  const ResolvedSyncProtocolOptions&
+  getSyncProtocolOptions() const noexcept
+  {
+    return m_svsync.getCore().getProtocolOptions();
+  }
+
   struct SubscriptionData
   {
     /** @brief Name of the received publication */
@@ -117,6 +127,20 @@ public:
                 std::vector<Block> mappingBlocks = {});
 
   /**
+   * @brief Publish data names only on the pub/sub group.
+   *
+   * @param name name for the publication
+   * @param nodePrefix Name to publish the data under
+   * @param freshnessPeriod freshness period for the data
+   * @param mappingBlocks Additional blocks to be published with the mapping (use sparingly)
+   */
+  SeqNo
+  publish(const Name& name,
+          const Name& nodePrefix = EMPTY_NAME,
+          time::milliseconds freshnessPeriod = FRESH_FOREVER,
+          std::vector<Block> mappingBlocks = {});
+
+  /**
    * @brief Subscribe to a application name prefix.
    *
    * @param prefix Prefix of the application data
@@ -126,6 +150,18 @@ public:
    * @returns Handle to the subscription
    */
   uint32_t subscribe(const Name& prefix, const SubscriptionCallback& callback, bool packets = false);
+
+  /**
+   * @brief Subscribe with a regex to name.
+   *
+   * @param regex regex of the application data
+   * @param callback Callback when new data is received
+   * @param packets Subscribe to the raw Data packets instead of BLOBs
+   *
+   * @returns Handle to the subscription
+   */
+  uint32_t
+  subscribeWithRegex(const Regex& regex, const SubscriptionCallback& callback, bool autofetch = true, bool packets = false);
 
   /**
    * @brief Subscribe to a data producer
@@ -179,29 +215,30 @@ private:
     SubscriptionCallback callback;
     bool isPacketSubscription;
     bool prefetch;
+    bool autofetch = true;
+    std::shared_ptr<Regex> regex = make_shared<Regex>("^<>+$");
   };
 
-  void onSyncData(const Data& syncData, const std::pair<Name, SeqNo>& publication);
+  using PublicationKey = std::tuple<Name, BootstrapTime, SeqNo>;
+
+  void onSyncData(const Data& syncData, const PublicationKey& publication);
 
   void updateCallbackInternal(const std::vector<MissingDataInfo>& info);
 
-  Block onGetExtraData(const VersionVector& vv);
-
-  void onRecvExtraData(const Block& block);
-
   /// @brief Insert a mapping entry into the store
-  void insertMapping(const NodeID& nid, SeqNo seqNo, const Name& name, std::vector<Block> additional);
+  void insertMapping(const NodeID& nid, BootstrapTime bootstrapTime, SeqNo seqNo,
+                     const Name& name, std::vector<Block> additional);
 
   /**
    * @brief Get and process mapping from store.
    * @returns true if new publications were queued for fetch
    * @throws std::exception error if mapping is not found
    */
-  bool processMapping(const NodeID& nodeId, SeqNo seqNo);
+  bool processMapping(const NodeID& nodeId, BootstrapTime bootstrapTime, SeqNo seqNo);
 
   void fetchAll();
 
-  void cleanUpFetch(const std::pair<Name, SeqNo>& publication);
+  void cleanUpFetch(const PublicationKey& publication);
 
 public:
   static inline const Name EMPTY_NAME;
@@ -224,16 +261,14 @@ private:
   // Provider for mapping interests
   MappingProvider m_mappingProvider;
 
-  // MappingList to be sent in the next update with sync interest
-  MappingList m_notificationMappingList;
-
   uint32_t m_subscriptionCount;
   std::vector<Subscription> m_producerSubscriptions;
   std::vector<Subscription> m_prefixSubscriptions;
+  std::vector<Subscription> m_regexSubscriptions;
 
   // Queue of publications to fetch
-  std::map<std::pair<Name, SeqNo>, std::vector<Subscription>> m_fetchMap;
-  std::map<std::pair<Name, SeqNo>, bool> m_fetchingMap;
+  std::map<PublicationKey, std::vector<Subscription>> m_fetchMap;
+  std::map<PublicationKey, bool> m_fetchingMap;
 };
 
 } // namespace ndn::svs

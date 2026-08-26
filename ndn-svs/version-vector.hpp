@@ -19,7 +19,9 @@
 
 #include "common.hpp"
 
+#include <functional>
 #include <map>
+#include <set>
 
 namespace ndn::svs {
 
@@ -33,6 +35,7 @@ public:
   };
 
   using const_iterator = std::map<NodeID, SeqNo>::const_iterator;
+  using BootstrapSeqMap = std::map<BootstrapTime, SeqNo>;
 
   VersionVector() = default;
 
@@ -46,16 +49,54 @@ public:
   std::string toStr() const;
 
   SeqNo set(const NodeID& nid, SeqNo seqNo)
+  = delete;
+
+  SeqNo set(const NodeID& nid, BootstrapTime bootstrapTime, SeqNo seqNo)
   {
-    m_map[nid] = seqNo;
+    if (seqNo == 0) {
+      NDN_THROW(std::invalid_argument("SVS sequence number must be positive"));
+    }
+    m_entries[nid][bootstrapTime] = seqNo;
+    refreshLatest(nid);
     m_lastUpdate[nid] = time::system_clock::now();
     return seqNo;
   }
 
   SeqNo get(const NodeID& nid) const
   {
-    auto elem = m_map.find(nid);
-    return elem == m_map.end() ? 0 : elem->second;
+    auto elem = m_latestMap.find(nid);
+    return elem == m_latestMap.end() ? 0 : elem->second;
+  }
+
+  SeqNo get(const NodeID& nid, BootstrapTime bootstrapTime) const
+  {
+    auto node = m_entries.find(nid);
+    if (node == m_entries.end()) {
+      return 0;
+    }
+    auto entry = node->second.find(bootstrapTime);
+    return entry == node->second.end() ? 0 : entry->second;
+  }
+
+  const BootstrapSeqMap& getEntries(const NodeID& nid) const
+  {
+    static const BootstrapSeqMap EMPTY_ENTRIES;
+    auto elem = m_entries.find(nid);
+    return elem == m_entries.end() ? EMPTY_ENTRIES : elem->second;
+  }
+
+  BootstrapTime getBootstrapTime(const NodeID& nid) const
+  {
+    auto node = m_entries.find(nid);
+    if (node == m_entries.end() || node->second.empty()) {
+      return 0;
+    }
+    return node->second.rbegin()->first;
+  }
+
+  const std::map<NodeID, BootstrapSeqMap>& getAllEntries() const
+  {
+    return m_entries;
   }
 
   time::system_clock::time_point getLastUpdate(const NodeID& nid) const
@@ -66,21 +107,25 @@ public:
 
   const_iterator begin() const noexcept
   {
-    return m_map.begin();
+    return m_latestMap.begin();
   }
 
   const_iterator end() const noexcept
   {
-    return m_map.end();
+    return m_latestMap.end();
   }
 
   bool has(const NodeID& nid) const
   {
-    return m_map.find(nid) != end();
+    return m_entries.find(nid) != m_entries.end();
   }
 
 private:
-  std::map<NodeID, SeqNo> m_map;
+  void refreshLatest(const NodeID& nid);
+
+private:
+  std::map<NodeID, BootstrapSeqMap> m_entries;
+  std::map<NodeID, SeqNo> m_latestMap;
   std::map<NodeID, time::system_clock::time_point> m_lastUpdate;
 };
 

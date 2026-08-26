@@ -16,7 +16,6 @@
 
 #include <iostream>
 #include <string>
-#include <string_view>
 #include <thread>
 #include <vector>
 
@@ -89,14 +88,13 @@ int
 main(int argc, char** argv)
 {
   if (argc != 2) {
-    std::cerr << "Usage: " << argv[0] << " <prefix>" << std::endl;
+    std::cerr << "Usage: " << argv[0] << " <node-prefix>" << std::endl;
     return 1;
   }
 
   Options opt;
   opt.prefix = "/ndn/svs";
   opt.m_id = argv[1];
-
   Program program(opt);
   program.run();
 

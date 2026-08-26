@@ -20,6 +20,8 @@
 
 #include <chrono>
 
+
+
 namespace ndn::svs {
 
 SVSPubSub::SVSPubSub(const Name& syncPrefix,
@@ -39,11 +41,10 @@ SVSPubSub::SVSPubSub(const Name& syncPrefix,
              face,
              std::bind(&SVSPubSub::updateCallbackInternal, this, _1),
              securityOptions,
-             options.dataStore)
+             options.dataStore,
+             options.syncProtocol)
   , m_mappingProvider(syncPrefix, nodePrefix, face, securityOptions)
 {
-  m_svsync.getCore().setGetExtraBlockCallback(std::bind(&SVSPubSub::onGetExtraData, this, _1));
-  m_svsync.getCore().setRecvExtraBlockCallback(std::bind(&SVSPubSub::onRecvExtraData, this, _1));
 }
 
 SeqNo
@@ -59,6 +60,7 @@ SVSPubSub::publish(const Name& name,
     auto finalBlock = name::Component::fromSegment(nSegments - 1);
 
     NodeID nid = nodePrefix == EMPTY_NAME ? m_dataPrefix : nodePrefix;
+    const auto bootstrapTime = m_svsync.getCore().getBootstrapTime();
     SeqNo seqNo = m_svsync.getCore().getSeqNo(nid) + 1;
 
     for (size_t i = 0; i < nSegments; i++) {
@@ -80,7 +82,7 @@ SVSPubSub::publish(const Name& name,
     }
 
     // Insert mapping and manually update the sequence number
-    insertMapping(nid, seqNo, name, mappingBlocks);
+    insertMapping(nid, bootstrapTime, seqNo, name, mappingBlocks);
     m_svsync.getCore().updateSeqNo(seqNo, nid);
     return seqNo;
   } else {
@@ -92,41 +94,52 @@ SVSPubSub::publish(const Name& name,
   }
 }
 
+
+SeqNo
+SVSPubSub::publish(const Name& name,
+                   const Name& nodePrefix, time::milliseconds freshnessPeriod,
+                   std::vector<Block> mappingBlocks)
+{
+  // Segment the data if larger than MAX_DATA_SIZE
+  NodeID nid = nodePrefix == EMPTY_NAME ? m_dataPrefix : nodePrefix;
+  const auto bootstrapTime = m_svsync.getCore().getBootstrapTime();
+  SeqNo seqNo = m_svsync.getCore().getSeqNo(nid) + 1;
+
+  // Insert mapping and manually update the sequence number
+  insertMapping(nid, bootstrapTime, seqNo, name, mappingBlocks);
+  m_svsync.getCore().updateSeqNo(seqNo, nid);
+
+  return seqNo;
+}
+
 SeqNo
 SVSPubSub::publishPacket(const Data& data, const Name& nodePrefix, std::vector<Block> mappingBlocks)
 {
   NodeID nid = nodePrefix == EMPTY_NAME ? m_dataPrefix : nodePrefix;
   SeqNo seqNo = m_svsync.publishData(data.wireEncode(), data.getFreshnessPeriod(), nid, ndn::tlv::Data);
-  insertMapping(nid, seqNo, data.getName(), mappingBlocks);
+  insertMapping(nid, m_svsync.getCore().getBootstrapTime(), seqNo,
+                data.getName(), mappingBlocks);
   return seqNo;
 }
 
 void
-SVSPubSub::insertMapping(const NodeID& nid, SeqNo seqNo, const Name& name, std::vector<Block> additional)
+SVSPubSub::insertMapping(const NodeID& nid, BootstrapTime bootstrapTime, SeqNo seqNo,
+                         const Name& name, std::vector<Block> additional)
 {
   // additional is a copy deliberately
   // this way we can add well-known mappings to the list
 
   // add timestamp block
   if (m_opts.useTimestamp) {
-    unsigned long now = std::chrono::duration_cast<std::chrono::microseconds>(
-                          std::chrono::system_clock::now().time_since_epoch())
-                          .count();
-    auto timestamp = Name::Component::fromNumber(now, tlv::TimestampNameComponent);
+    auto timestamp = Name::Component::fromTimestamp(time::system_clock::now());
     additional.push_back(timestamp);
   }
 
   // create mapping entry
   MappingEntryPair entry = { name, additional };
 
-  // notify subscribers in next sync interest
-  if (m_notificationMappingList.nodeId == EMPTY_NAME || m_notificationMappingList.nodeId == nid) {
-    m_notificationMappingList.nodeId = nid;
-    m_notificationMappingList.pairs.push_back({ seqNo, entry });
-  }
-
   // send mapping to provider
-  m_mappingProvider.insertMapping(nid, seqNo, entry);
+  m_mappingProvider.insertMapping(nid, bootstrapTime, seqNo, entry);
 }
 
 uint32_t
@@ -139,10 +152,17 @@ SVSPubSub::subscribe(const Name& prefix, const SubscriptionCallback& callback, b
 }
 
 uint32_t
-SVSPubSub::subscribeToProducer(const Name& nodePrefix,
-                               const SubscriptionCallback& callback,
-                               bool prefetch,
-                               bool packets)
+SVSPubSub::subscribeWithRegex(const Regex &regex, const SubscriptionCallback &callback,bool autofetch, bool packets)
+{
+  uint32_t handle = ++m_subscriptionCount;
+  Subscription sub = { handle, ndn::Name(), callback, packets, false, autofetch, make_shared<Regex>(regex)};
+  m_regexSubscriptions.push_back(sub);
+  return handle;
+}
+
+uint32_t
+SVSPubSub::subscribeToProducer(const Name& nodePrefix, const SubscriptionCallback& callback,
+                               bool prefetch, bool packets)
 {
   uint32_t handle = ++m_subscriptionCount;
   Subscription sub = { handle, nodePrefix, callback, packets, prefetch };
@@ -164,6 +184,7 @@ SVSPubSub::unsubscribe(uint32_t handle)
 
   unsub(m_producerSubscriptions);
   unsub(m_prefixSubscriptions);
+  unsub(m_regexSubscriptions);
 }
 
 void
@@ -177,16 +198,17 @@ SVSPubSub::updateCallbackInternal(const std::vector<MissingDataInfo>& info)
       if (sub.prefix.isPrefixOf(streamName)) {
         // Add to fetching queue
         for (SeqNo i = stream.low; i <= stream.high; i++)
-          m_fetchMap[std::pair(stream.nodeId, i)].push_back(sub);
+          m_fetchMap[PublicationKey(stream.nodeId, stream.bootstrapTime, i)].push_back(sub);
 
         // Prefetch next available data
         if (sub.prefetch)
-          m_svsync.fetchData(stream.nodeId, stream.high + 1, [](auto&&...) {}); // do nothing with prefetch
+          m_svsync.fetchData(stream.nodeId, stream.bootstrapTime,
+                             stream.high + 1, [](auto&&...) {}); // do nothing with prefetch
       }
     }
 
-    // Fetch all mappings if we have prefix subscription(s)
-    if (!m_prefixSubscriptions.empty()) {
+    // Fetch all mappings if we have prefix subscription(s) or regex subscription(s)
+    if (!m_prefixSubscriptions.empty() || !m_regexSubscriptions.empty()) {
       MissingDataInfo remainingInfo = stream;
 
       // Attemt to find what we already know about mapping
@@ -195,7 +217,7 @@ SVSPubSub::updateCallbackInternal(const std::vector<MissingDataInfo>& info)
       for (SeqNo i = remainingInfo.low; i <= remainingInfo.high; i++) {
         try {
           // throws if mapping not found
-          this->processMapping(stream.nodeId, i);
+          this->processMapping(stream.nodeId, stream.bootstrapTime, i);
           remainingInfo.low++;
         } catch (const std::exception&) {
           break;
@@ -216,8 +238,8 @@ SVSPubSub::updateCallbackInternal(const std::vector<MissingDataInfo>& info)
           truncatedRemainingInfo,
           [this, remainingInfo, streamName](const MappingList& list) {
             bool queued = false;
-            for (const auto& [seq, mapping] : list.pairs)
-              queued |= this->processMapping(streamName, seq);
+            for (const auto& entry : list.pairs)
+              queued |= this->processMapping(streamName, entry.bootstrapTime, entry.seqNo);
 
             if (queued)
               this->fetchAll();
@@ -234,27 +256,22 @@ SVSPubSub::updateCallbackInternal(const std::vector<MissingDataInfo>& info)
 }
 
 bool
-SVSPubSub::processMapping(const NodeID& nodeId, SeqNo seqNo)
+SVSPubSub::processMapping(const NodeID& nodeId, BootstrapTime bootstrapTime, SeqNo seqNo)
 {
   // this will throw if mapping not found
-  auto mapping = m_mappingProvider.getMapping(nodeId, seqNo);
+  auto mapping = m_mappingProvider.getMapping(nodeId, bootstrapTime, seqNo);
 
   // check if timestamp is too old
   if (m_opts.maxPubAge > 0_ms) {
     // look for the additional timestamp block
     // if no timestamp block is present, we just skip this step
     for (const auto& block : mapping.second) {
-      if (block.type() != tlv::TimestampNameComponent)
+      Name::Component component(block);
+      if (!component.isTimestamp())
         continue;
 
-      unsigned long now = std::chrono::duration_cast<std::chrono::microseconds>(
-                            std::chrono::system_clock::now().time_since_epoch())
-                            .count();
-
-      unsigned long pubTime = Name::Component(block).toNumber();
-      unsigned long maxAge = time::microseconds(m_opts.maxPubAge).count();
-
-      if (now - pubTime > maxAge)
+      const auto pubTime = component.toTimestamp();
+      if (time::system_clock::now() - pubTime > m_opts.maxPubAge)
         return false;
     }
   }
@@ -262,9 +279,43 @@ SVSPubSub::processMapping(const NodeID& nodeId, SeqNo seqNo)
   // check if known mapping matches subscription
   bool queued = false;
   for (const auto& sub : m_prefixSubscriptions) {
-    if (sub.prefix.isPrefixOf(mapping.first)) {
-      m_fetchMap[std::pair(nodeId, seqNo)].push_back(sub);
+    if (!sub.prefix.isPrefixOf(mapping.first)) {
+      continue;
+    }
+
+    if (sub.autofetch) {
+      m_fetchMap[PublicationKey(nodeId, bootstrapTime, seqNo)].push_back(sub);
       queued = true;
+    }
+    else {
+      SubscriptionData subData = {
+        mapping.first,
+        ndn::span<const uint8_t>{},
+        nodeId,
+        seqNo,
+        std::nullopt
+      };
+      sub.callback(subData);
+    }
+  }
+  for (const auto& sub : m_regexSubscriptions) {
+    if (!sub.regex->match(mapping.first)) {
+      continue;
+    }
+
+    if (sub.autofetch) {
+      m_fetchMap[PublicationKey(nodeId, bootstrapTime, seqNo)].push_back(sub);
+      queued = true;
+    }
+    else {
+      SubscriptionData subData = {
+        mapping.first,
+        ndn::span<const uint8_t>{},
+        nodeId,
+        seqNo,
+        std::nullopt
+      };
+      sub.callback(subData);
     }
   }
 
@@ -282,14 +333,18 @@ SVSPubSub::fetchAll()
     m_fetchingMap[key] = true;
 
     // Fetch first data packet
-    const auto& [nodeId, seqNo] = key;
-    m_svsync.fetchData(nodeId, seqNo, std::bind(&SVSPubSub::onSyncData, this, _1, key), 12);
+    const auto& [nodeId, bootstrapTime, seqNo] = key;
+    m_svsync.fetchData(nodeId, bootstrapTime, seqNo,
+                       std::bind(&SVSPubSub::onSyncData, this, _1, key), 12);
   }
 }
 
 void
-SVSPubSub::onSyncData(const Data& firstData, const std::pair<Name, SeqNo>& publication)
+SVSPubSub::onSyncData(const Data& firstData, const PublicationKey& publication)
 {
+  const auto& nodeId = std::get<0>(publication);
+  const auto seqNo = std::get<2>(publication);
+
   // Make sure the data is encapsulated
   if (firstData.getContentType() != ndn::tlv::Data) {
     m_fetchingMap[publication] = false;
@@ -302,7 +357,7 @@ SVSPubSub::onSyncData(const Data& firstData, const std::pair<Name, SeqNo>& publi
 
   // Return data to packet subscriptions
   SubscriptionData subData = {
-    innerData.getName(), innerContent.value_bytes(), publication.first, publication.second, innerData,
+    innerData.getName(), innerContent.value_bytes(), nodeId, seqNo, innerData,
   };
 
   // Function to return data to subscriptions
@@ -362,7 +417,8 @@ SVSPubSub::onSyncData(const Data& firstData, const std::pair<Name, SeqNo>& publi
 
               // Return data to packet subscriptions
               SubscriptionData subData = {
-                innerName, *finalBuffer, publication.first, publication.second, std::nullopt,
+                innerName, *finalBuffer, std::get<0>(publication), std::get<2>(publication),
+                std::nullopt,
               };
 
               for (const auto& sub : this->m_fetchMap[publication])
@@ -418,30 +474,10 @@ SVSPubSub::onSyncData(const Data& firstData, const std::pair<Name, SeqNo>& publi
 }
 
 void
-SVSPubSub::cleanUpFetch(const std::pair<Name, SeqNo>& publication)
+SVSPubSub::cleanUpFetch(const PublicationKey& publication)
 {
   m_fetchMap.erase(publication);
   m_fetchingMap.erase(publication);
-}
-
-Block
-SVSPubSub::onGetExtraData(const VersionVector&)
-{
-  MappingList copy = m_notificationMappingList;
-  m_notificationMappingList = MappingList();
-  return copy.encode();
-}
-
-void
-SVSPubSub::onRecvExtraData(const Block& block)
-{
-  try {
-    MappingList list(block);
-    for (const auto& p : list.pairs) {
-      m_mappingProvider.insertMapping(list.nodeId, p.first, p.second);
-    }
-  } catch (const std::exception&) {
-  }
 }
 
 } // namespace ndn::svs

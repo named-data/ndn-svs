@@ -26,6 +26,13 @@ namespace ndn::svs {
 
 using MappingEntryPair = std::pair<Name, std::vector<Block>>;
 
+struct MappingEntry
+{
+  BootstrapTime bootstrapTime = 0;
+  SeqNo seqNo = 0;
+  MappingEntryPair mapping;
+};
+
 /**
  * @brief TLV type for mapping list
  */
@@ -37,14 +44,15 @@ public:
   explicit MappingList(const NodeID& nid);
 
   /// @brief Decode from Block
-  explicit MappingList(const Block& block);
+  explicit MappingList(const Block& block, BootstrapTime bootstrapTime = 0);
 
   /// @brief Encode to Block
   Block encode() const;
 
 public:
   NodeID nodeId;
-  std::vector<std::pair<SeqNo, MappingEntryPair>> pairs;
+  std::vector<MappingEntry> pairs;
+
 };
 
 /**
@@ -65,14 +73,16 @@ public:
   /**
    * @brief Insert a mapping entry into the store
    */
-  void insertMapping(const NodeID& nodeId, const SeqNo& seqNo, const MappingEntryPair& entry);
+  void insertMapping(const NodeID& nodeId, BootstrapTime bootstrapTime,
+                     const SeqNo& seqNo, const MappingEntryPair& entry);
 
   /**
    * @brief Get a mapping and throw if not found
    *
    * @returns Corresponding application name
    */
-  MappingEntryPair getMapping(const NodeID& nodeId, const SeqNo& seqNo);
+  MappingEntryPair getMapping(const NodeID& nodeId, BootstrapTime bootstrapTime,
+                              const SeqNo& seqNo);
 
   /**
    * @brief Retrieve the data mappings for encapsulated data packets
@@ -96,7 +106,7 @@ public:
                         const TimeoutCallback& onTimeout,
                         int nRetries = 0);
 
-private:
+NDN_SVS_PUBLIC_WITH_TESTS_ELSE_PRIVATE:
   /**
    * @brief Return data name for mapping query
    */
@@ -109,6 +119,9 @@ private:
 
   void onMappingQuery(const Interest& interest);
 
+  MappingEntryPair getLatestMapping(const NodeID& nodeId, SeqNo seqNo,
+                                    BootstrapTime& bootstrapTime);
+
 private:
   const Name m_syncPrefix;
   const NodeID m_id;
@@ -116,7 +129,7 @@ private:
   Fetcher m_fetcher;
   const SecurityOptions m_securityOptions;
 
-  ndn::ScopedRegisteredPrefixHandle m_registeredPrefix;
+  ndn::ScopedInterestFilterHandle m_interestFilter;
 
   std::map<Name, MappingEntryPair> m_map;
 };

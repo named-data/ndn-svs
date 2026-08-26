@@ -19,13 +19,15 @@
 
 #include "svsync-base.hpp"
 
+#include <ndn-cxx/util/time.hpp>
+
 namespace ndn::svs {
 
 /**
  * @brief SVSync using shared prefix for data delivery
  *
  * Sync core runs under <grp-prefix>/s/
- * Data is produced as <grp-prefix>/d/<node-id>/<seq>
+ * V3 Data is produced as <grp-prefix>/d/<node-id>/<bootstrap-time>/<seq>
  * Both prefixes use multicast strategy, so all nodes receive
  * data interests for all other nodes.
  */
@@ -37,20 +39,17 @@ public:
                ndn::Face& face,
                const UpdateCallback& updateCallback,
                const SecurityOptions& securityOptions = SecurityOptions::DEFAULT,
-               std::shared_ptr<DataStore> dataStore = DEFAULT_DATASTORE)
+               std::shared_ptr<DataStore> dataStore = DEFAULT_DATASTORE,
+               const SyncProtocolOptions& protocolOptions = {})
     : SVSyncBase(Name(grpPrefix).append("s"),
                  Name(grpPrefix).append("d"),
                  id,
                  face,
                  updateCallback,
                  securityOptions,
-                 std::move(dataStore))
+                 std::move(dataStore),
+                 protocolOptions)
   {
-  }
-
-  Name getDataName(const NodeID& nid, const SeqNo& seqNo) override
-  {
-    return Name(m_dataPrefix).append(nid).appendNumber(seqNo);
   }
 
   /** @brief Set whether data of other nodes is also cached and served */
@@ -60,6 +59,15 @@ public:
   }
 
 private:
+  Name makeDataName(const NodeID& nid, const BootstrapTime& bootstrapTime,
+                    const SeqNo& seqNo) override
+  {
+    Name name = Name(m_dataPrefix).append(nid);
+    name.append(Name::Component::fromTimestamp(
+      time::fromUnixTimestamp(time::seconds(bootstrapTime))));
+    return name.append(Name::Component::fromSequenceNumber(seqNo));
+  }
+
   bool shouldCache(const Data&) const override
   {
     return m_cacheAll;
